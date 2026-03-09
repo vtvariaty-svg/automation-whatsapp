@@ -11,6 +11,8 @@ export const metadata: Metadata = {
   description: "Automatize atendimento, pedidos e agendamentos com IA",
 };
 
+import { AuthProvider } from "@/context/AuthContext";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -19,15 +21,17 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <body className={inter.className}>
-        <div className="flex h-screen overflow-hidden bg-gray-50">
-          <Sidebar />
-          <div className="flex flex-col flex-1 w-full relative">
-            <Header />
-            <main className="flex-1 overflow-auto p-6">
-              {children}
-            </main>
+        <AuthProvider>
+          <div className="flex h-screen overflow-hidden bg-gray-50">
+            <Sidebar />
+            <div className="flex flex-col flex-1 w-full relative">
+              <Header />
+              <main className="flex-1 overflow-auto p-6">
+                {children}
+              </main>
+            </div>
           </div>
-        </div>
+        </AuthProvider>
       </body>
     </html>
   );

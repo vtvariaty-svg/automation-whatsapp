@@ -10,10 +10,9 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-app.post('/auth/login', (req, res) => {
-  // Demo token for stage 3
-  res.json({ token: 'token_demo_backend' });
-});
+import authRouter from './routes/auth';
+
+app.use('/auth', authRouter);
 
 const PORT = process.env.PORT || 3000;
 

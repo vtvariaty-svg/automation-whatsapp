@@ -23,11 +23,19 @@ export async function apiClient(endpoint: string, options: RequestInit = {}) {
 
 export const authApi = {
   login: async (credentials: any) => {
-    // Mock login for now
-    return { token: 'token_demo_123', user: { email: credentials.email, name: 'User Demo' } };
+    return apiClient('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(credentials)
+    });
+  },
+  register: async (data: any) => {
+    return apiClient('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
   },
   getUser: async () => {
-    // Mock get user
+    // Stage 4 doesn't explicitly require a GET /auth/me, but we define the stub for later
     return { email: 'demo@example.com', name: 'User Demo' };
   }
 };

@@ -7,7 +7,7 @@ export const generateResponse = async (tenantId: string, userMessage: string) =>
   const config = await getTenantConfig(tenantId);
   const products = await listProducts(tenantId);
 
-  const productList = products.map(p => `- ${p.name}: ${p.description} (R$ ${p.price})`).join('\n');
+  const productList = products.map((p: any) => `- ${p.name}: ${p.description} (R$ ${p.price})`).join('\n');
 
   const systemPrompt = `
 Você é um assistente virtual da empresa ${config.name}.

@@ -1,3 +1,4 @@
+// WhatsApp Automation Server - Initial Structure
 import express from 'express';
 import cors from 'cors';
 

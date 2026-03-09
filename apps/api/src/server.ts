@@ -11,8 +11,12 @@ app.get('/health', (req, res) => {
 });
 
 import authRouter from './routes/auth';
+import tenantRouter from './routes/tenant';
+import productsRouter from './routes/products';
 
 app.use('/auth', authRouter);
+app.use('/tenant', tenantRouter);
+app.use('/products', productsRouter);
 
 const PORT = process.env.PORT || 3000;
 

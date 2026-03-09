@@ -16,7 +16,10 @@ export default function Sidebar() {
         <Link href="/dashboard/agenda" className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md">
           Agenda
         </Link>
-        <Link href="/dashboard/configuracoes" className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md">
+        <Link href="/dashboard/products" className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md">
+          Produtos
+        </Link>
+        <Link href="/dashboard/settings" className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md">
           Configurações
         </Link>
       </nav>

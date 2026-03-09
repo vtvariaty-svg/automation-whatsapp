@@ -35,7 +35,24 @@ export const authApi = {
     });
   },
   getUser: async () => {
-    // Stage 4 doesn't explicitly require a GET /auth/me, but we define the stub for later
     return { email: 'demo@example.com', name: 'User Demo' };
+  },
+  getTenantConfig: async () => {
+    return apiClient('/tenant/config');
+  },
+  updateTenantConfig: async (data: any) => {
+    return apiClient('/tenant/config', {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  },
+  createProduct: async (data: any) => {
+    return apiClient('/products', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  },
+  listProducts: async () => {
+    return apiClient('/products');
   }
 };

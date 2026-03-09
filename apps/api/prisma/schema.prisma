@@ -8,11 +8,36 @@ datasource db {
 }
 
 model Tenant {
-  id            String         @id @default(uuid())
-  name          String
-  createdAt     DateTime       @default(now())
-  users         User[]
-  conversations Conversation[]
+  id                  String          @id @default(uuid())
+  name                String
+  businessDescription String?
+  businessType        String?
+  phone               String?
+  createdAt           DateTime        @default(now())
+  users               User[]
+  conversations       Conversation[]
+  products            Product[]
+  businessConfig      BusinessConfig?
+}
+
+model BusinessConfig {
+  id           String   @id @default(uuid())
+  tenantId     String   @unique
+  openingHours String?
+  address      String?
+  faqJson      String?  @db.Text
+  createdAt    DateTime @default(now())
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  tenantId    String
+  name        String
+  description String?
+  price       Float    @default(0.0)
+  createdAt   DateTime @default(now())
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
 }
 
 model User {

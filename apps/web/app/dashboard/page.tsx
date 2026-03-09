@@ -9,7 +9,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
           <h3 className="text-lg font-medium text-gray-900 mb-2">Status da integração</h3>
-          <p className="text-red-500 font-medium">WhatsApp não conectado</p>
+          <p className="text-green-500 font-medium">Webhook ativo</p>
         </div>
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
           <h3 className="text-lg font-medium text-gray-900 mb-2">Configuração de IA</h3>

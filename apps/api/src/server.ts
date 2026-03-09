@@ -13,10 +13,12 @@ app.get('/health', (req, res) => {
 import authRouter from './routes/auth';
 import tenantRouter from './routes/tenant';
 import productsRouter from './routes/products';
+import aiRouter from './routes/ai';
 
 app.use('/auth', authRouter);
 app.use('/tenant', tenantRouter);
 app.use('/products', productsRouter);
+app.use('/ai', aiRouter);
 
 const PORT = process.env.PORT || 3000;
 

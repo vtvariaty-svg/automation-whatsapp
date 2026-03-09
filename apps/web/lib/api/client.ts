@@ -54,5 +54,11 @@ export const authApi = {
   },
   listProducts: async () => {
     return apiClient('/products');
+  },
+  testAI: async (message: string) => {
+    return apiClient('/ai/test', {
+      method: 'POST',
+      body: JSON.stringify({ message })
+    });
   }
 };

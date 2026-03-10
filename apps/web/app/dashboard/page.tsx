@@ -13,7 +13,9 @@ export default function DashboardPage() {
         </div>
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
           <h3 className="text-lg font-medium text-gray-900 mb-2">Configuração de IA</h3>
-          <p className="text-yellow-600 font-medium">IA não configurada</p>
+          <p className={process.env.OPENAI_API_KEY ? "text-green-500 font-medium" : "text-yellow-600 font-medium"}>
+            {process.env.OPENAI_API_KEY ? "IA Configurada" : "IA não configurada"}
+          </p>
         </div>
       </div>
     </div>

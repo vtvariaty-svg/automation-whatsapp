@@ -10,6 +10,7 @@ interface AuthContextType {
   token: string | null;
   loading: boolean;
   login: (credentials: any) => Promise<void>;
+  register: (data: any) => Promise<void>;
   logout: () => void;
 }
 
@@ -25,7 +26,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const savedToken = authStorage.getToken();
     if (savedToken) {
       setToken(savedToken);
-      // In a real app, we would fetch the user here
       setUser({ email: 'user@demo.com', name: 'SaaS User' });
     }
     setLoading(false);
@@ -38,11 +38,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setToken(response.token);
       setUser(response.user);
       authStorage.saveToken(response.token);
-      // Set cookie for middleware
       document.cookie = `auth_token=${response.token}; path=/; max-age=86400`;
       router.push('/dashboard');
     } catch (error) {
       console.error('Login failed', error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const register = async (data: any) => {
+    setLoading(true);
+    try {
+      const response = await authApi.register(data);
+      setToken(response.token);
+      setUser(response.user);
+      authStorage.saveToken(response.token);
+      document.cookie = `auth_token=${response.token}; path=/; max-age=86400`;
+      router.push('/dashboard');
+    } catch (error) {
+      console.error('Register failed', error);
+      throw error;
     } finally {
       setLoading(false);
     }
@@ -57,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, token, loading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

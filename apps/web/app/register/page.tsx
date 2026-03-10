@@ -7,19 +7,32 @@ import { Input } from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
 import { useAuth } from "@/hooks/useAuth";
 
-export default function LoginPage() {
+export default function RegisterPage() {
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
-  const { login, loading } = useAuth();
+  const { register, loading } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    if (password !== confirmPassword) {
+      setError("As senhas não coincidem.");
+      return;
+    }
+
+    if (password.length < 6) {
+      setError("A senha deve ter no mínimo 6 caracteres.");
+      return;
+    }
+
     try {
-      await login({ email, password });
+      await register({ name, email, password });
     } catch (err) {
-      setError("Email ou senha inválidos. Tente novamente.");
+      setError("Erro ao criar conta. Verifique os dados e tente novamente.");
     }
   };
 
@@ -32,7 +45,7 @@ export default function LoginPage() {
             <span className="text-white font-bold text-2xl">V</span>
           </div>
           <h1 className="text-2xl font-bold text-gray-900">VTvariaty IA Secretaria</h1>
-          <p className="text-sm text-gray-500 mt-1">Acesse sua conta para continuar</p>
+          <p className="text-sm text-gray-500 mt-1">Crie sua conta para começar</p>
         </div>
 
         <Card className="p-8">
@@ -43,12 +56,25 @@ export default function LoginPage() {
               </div>
             )}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="email">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="name">
+                Nome completo
+              </label>
+              <Input
+                type="text"
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Seu nome"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="reg-email">
                 Email
               </label>
               <Input
                 type="email"
-                id="email"
+                id="reg-email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="seu@email.com"
@@ -56,28 +82,41 @@ export default function LoginPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="password">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="reg-password">
                 Senha
               </label>
               <Input
                 type="password"
-                id="password"
+                id="reg-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
+                placeholder="Mínimo 6 caracteres"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="confirm-password">
+                Confirmar senha
+              </label>
+              <Input
+                type="password"
+                id="confirm-password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Repita a senha"
                 required
               />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Entrando..." : "Entrar"}
+              {loading ? "Criando conta..." : "Criar conta"}
             </Button>
           </form>
         </Card>
 
         <p className="text-center text-sm text-gray-500 mt-6">
-          Não tem uma conta?{" "}
-          <Link href="/register" className="text-[#4f46e5] font-semibold hover:text-[#4338ca] transition-colors">
-            Criar conta
+          Já possui uma conta?{" "}
+          <Link href="/login" className="text-[#4f46e5] font-semibold hover:text-[#4338ca] transition-colors">
+            Fazer login
           </Link>
         </p>
       </div>

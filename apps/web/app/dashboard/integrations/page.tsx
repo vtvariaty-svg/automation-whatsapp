@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
-import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function IntegrationsPage() {
-  const [tenantId, setTenantId] = useState("");
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [fbLoaded, setFbLoaded] = useState(false);
@@ -41,8 +41,9 @@ export default function IntegrationsPage() {
   }, []);
 
   const handleConnectWhatsApp = () => {
+    const tenantId = user?.tenantId;
     if (!tenantId) {
-      setMessage("Por favor, preencha o Tenant ID primeiro.");
+      setMessage("Erro: Usuário não autenticado no Tenant corretamente.");
       return;
     }
 
@@ -93,7 +94,7 @@ export default function IntegrationsPage() {
       const fakePhoneId = `phone_${Math.floor(Math.random() * 100000)}`;
       
       const payload = {
-        tenantId,
+        tenantId: user?.tenantId,
         business_account_id: fakeWabaId, // Replace com GraphData WABA ID Real
         phone_number_id: fakePhoneId, // Replace com GraphData Phone ID Real
         access_token: accessToken
@@ -123,17 +124,8 @@ export default function IntegrationsPage() {
       <Card>
         <CardHeader className="mb-6">
           <CardTitle className="text-2xl">Integrações</CardTitle>
-          <CardDescription>Conecte canais de atendimento e outras plataformas ao seu Tenant.</CardDescription>
+          <CardDescription>Conecte canais de atendimento e outras plataformas ao seu Workspace.</CardDescription>
         </CardHeader>
-
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Seu Tenant ID (Temporário para contexto)</label>
-          <Input 
-            value={tenantId}
-            onChange={(e) => setTenantId(e.target.value)}
-            placeholder="Cole seu Tenant UUID"
-          />
-        </div>
 
         <div className="border border-gray-200 rounded-xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 transition hover:border-[#4f46e5]/40 hover:bg-gray-50/50">
           <div className="flex items-center gap-4">

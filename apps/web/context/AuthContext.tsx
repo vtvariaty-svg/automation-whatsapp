@@ -26,7 +26,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const savedToken = authStorage.getToken();
     if (savedToken) {
       setToken(savedToken);
-      setUser({ email: 'user@demo.com', name: 'SaaS User' });
+      try {
+        const base64Url = savedToken.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        const payload = JSON.parse(jsonPayload);
+        
+        setUser({ 
+          id: payload.userId, 
+          tenantId: payload.tenantId, 
+          role: payload.role || 'user',
+          email: 'user@empresa.com', 
+          name: 'Usuário' 
+        });
+      } catch (e) {
+        // Fallback se não conseguir decodificar
+        setUser({ email: 'user@demo.com', name: 'SaaS User' });
+      }
     }
     setLoading(false);
   }, []);

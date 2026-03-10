@@ -21,9 +21,9 @@ export default function Sidebar() {
         {/* Abstract Logo */}
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#4f46e5] to-[#4338ca] flex items-center justify-center shadow-lg">
-            <span className="text-white font-bold text-lg">W</span>
+            <span className="text-white font-bold text-lg">V</span>
           </div>
-          <span className="text-white font-bold text-lg tracking-tight">AutoSync</span>
+          <span className="text-white font-bold text-lg tracking-tight">VTvariaty</span>
         </div>
       </div>
 

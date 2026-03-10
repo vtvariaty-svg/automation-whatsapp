@@ -28,7 +28,7 @@ export default function IntegrationsPage() {
     // define fbAsyncInit before script loads
     window.fbAsyncInit = function() {
       window.FB.init({
-        appId: process.env.NEXT_PUBLIC_FB_APP_ID || 'SEU_APP_ID_AQUI',
+        appId: process.env.NEXT_PUBLIC_FB_APP_ID || '876274044576394',
         autoLogAppEvents: true,
         xfbml: true,
         version: 'v22.0'
@@ -63,7 +63,7 @@ export default function IntegrationsPage() {
       // @ts-ignore
       // Força o init antes do login no SPA caso a navegação cliente tenha limpado o escopo
       window.FB.init({
-        appId: process.env.NEXT_PUBLIC_FB_APP_ID || '1146740640523030', // Default fallback
+        appId: process.env.NEXT_PUBLIC_FB_APP_ID || '876274044576394', // Original user App ID
         autoLogAppEvents: true,
         xfbml: true,
         version: 'v22.0'

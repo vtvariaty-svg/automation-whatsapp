@@ -59,8 +59,8 @@ export async function POST(req: Request) {
             if (history.length === 0 && tenant.welcome_message) {
               console.log(`Enviando mensagem de boas-vindas para ${from} no tenant ${tenant.name}`);
               
-              const sendPhoneId = tenant.whatsapp_phone_number_id || tenant.whatsapp_phone_id;
-              const sendToken = tenant.whatsapp_access_token || tenant.whatsapp_token;
+              const sendPhoneId = tenant.whatsappPhoneNumberId || tenant.whatsappPhoneId;
+              const sendToken = tenant.whatsappToken;
 
               await sendWhatsAppMessage(from, tenant.welcome_message, sendPhoneId, sendToken);
               // Opcional: Salvar a mensagem de boas vindas no histórico
@@ -83,15 +83,15 @@ export async function POST(req: Request) {
           }
 
           // Fluxo: enviar texto para aiService com configurações do tenant
-          const aiResponse = await generateAIResponse(textBody, tenant.openai_key, tenant.ai_prompt, tenant.business_hours);
+          const aiResponse = await generateAIResponse(textBody, tenant.openaiKey, tenant.aiPrompt, tenant.businessHours);
           console.log(`Resposta da IA para ${from} (Tenant ${tenant.name}): ${aiResponse}`);
 
           // Etapa 9/Multi-tenant: salvar resposta da IA no banco com tenant_id
           await saveAIMessage(from, aiResponse, tenant.id, status);
 
           // Resolve quais credenciais WhatsApp usar no envio (priorizar nova do embedded)
-          const replyPhoneId = tenant.whatsapp_phone_number_id || tenant.whatsapp_phone_id;
-          const replyToken = tenant.whatsapp_access_token || tenant.whatsapp_token;
+          const replyPhoneId = tenant.whatsappPhoneNumberId || tenant.whatsappPhoneId;
+          const replyToken = tenant.whatsappToken;
 
           // Fluxo: enviar resposta via whatsappService com credenciais do tenant
           await sendWhatsAppMessage(from, aiResponse, replyPhoneId, replyToken);

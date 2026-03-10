@@ -24,8 +24,8 @@ export async function POST(
       return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
     }
 
-    const sendPhoneId = tenant.whatsapp_phone_number_id || tenant.whatsapp_phone_id;
-    const sendToken = tenant.whatsapp_access_token || tenant.whatsapp_token;
+    const sendPhoneId = tenant.whatsappPhoneNumberId || tenant.whatsappPhoneId;
+    const sendToken = tenant.whatsappToken;
 
     // Send message via WhatsApp API (from tenant)
     await sendWhatsAppMessage(phone, message, sendPhoneId, sendToken);

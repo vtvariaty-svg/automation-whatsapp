@@ -10,7 +10,7 @@ export async function GET() {
     const cookieStore = await cookies();
     const authToken = cookieStore.get('auth_token')?.value;
     if (!authToken) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+      return NextResponse.redirect(new URL('/login', process.env.NEXT_PUBLIC_BASE_URL || 'https://automation-whatsapp.onrender.com'));
     }
 
     let tenantId: string;
@@ -18,32 +18,35 @@ export async function GET() {
       const decoded = jwt.verify(authToken, JWT_SECRET) as { tenantId: string };
       tenantId = decoded.tenantId;
     } catch {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+      return NextResponse.redirect(new URL('/login', process.env.NEXT_PUBLIC_BASE_URL || 'https://automation-whatsapp.onrender.com'));
     }
 
     const fbAppId = process.env.NEXT_PUBLIC_FB_APP_ID;
     if (!fbAppId) {
-      return NextResponse.json({ error: 'FB_APP_ID not configured' }, { status: 500 });
+      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://automation-whatsapp.onrender.com';
+      return NextResponse.redirect(`${baseUrl}/dashboard/integrations?error=missing_app_id`);
     }
 
-    // Build the redirect URI based on the current host
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://automation-whatsapp.onrender.com';
-    const redirectUri = `${baseUrl}/api/integrations/whatsapp/callback`;
+    // Use the client-side callback page (not API route) for implicit flow
+    const redirectUri = `${baseUrl}/dashboard/integrations/callback`;
 
-    // Build Facebook OAuth URL
-    const state = JSON.stringify({ tenantId });
-    const encodedState = encodeURIComponent(Buffer.from(state).toString('base64'));
+    // Encode tenantId in state
+    const state = Buffer.from(JSON.stringify({ tenantId })).toString('base64');
 
+    // Build Facebook OAuth URL with IMPLICIT grant (response_type=token)
+    // This does NOT require FB_APP_SECRET
     const fbOAuthUrl = new URL('https://www.facebook.com/v22.0/dialog/oauth');
     fbOAuthUrl.searchParams.set('client_id', fbAppId);
     fbOAuthUrl.searchParams.set('redirect_uri', redirectUri);
     fbOAuthUrl.searchParams.set('scope', 'whatsapp_business_management,whatsapp_business_messaging');
-    fbOAuthUrl.searchParams.set('response_type', 'code');
-    fbOAuthUrl.searchParams.set('state', encodedState);
+    fbOAuthUrl.searchParams.set('response_type', 'token');
+    fbOAuthUrl.searchParams.set('state', state);
 
     return NextResponse.redirect(fbOAuthUrl.toString());
   } catch (error: any) {
     console.error('Error generating OAuth URL:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://automation-whatsapp.onrender.com';
+    return NextResponse.redirect(`${baseUrl}/dashboard/integrations?error=server_error`);
   }
 }

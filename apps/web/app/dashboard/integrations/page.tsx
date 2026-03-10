@@ -28,7 +28,7 @@ export default function IntegrationsPage() {
     // define fbAsyncInit before script loads
     window.fbAsyncInit = function() {
       window.FB.init({
-        appId: process.env.NEXT_PUBLIC_FB_APP_ID || '876274044576394',
+        appId: process.env.NEXT_PUBLIC_FB_APP_ID || '', // Requer variável de ambiente configurada no Build
         autoLogAppEvents: true,
         xfbml: true,
         version: 'v22.0'
@@ -59,13 +59,20 @@ export default function IntegrationsPage() {
       return;
     }
 
-    try {
+      const fbAppId = process.env.NEXT_PUBLIC_FB_APP_ID;
+      if (!fbAppId) {
+        setMessage("Erro: A variável NEXT_PUBLIC_FB_APP_ID não foi configurada no Render. Configure-a e refaça o deploy.");
+        return;
+      }
+
       // @ts-ignore
       // Força o init antes do login no SPA caso a navegação cliente tenha limpado o escopo
       window.FB.init({
-        appId: process.env.NEXT_PUBLIC_FB_APP_ID || '876274044576394', // Original user App ID
+        appId: fbAppId,
         autoLogAppEvents: true,
         xfbml: true,
+        version: 'v22.0'
+      });
         version: 'v22.0'
       });
     } catch(e) {

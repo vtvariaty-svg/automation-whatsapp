@@ -1,13 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function AISettingsPage() {
-  const [tenantId, setTenantId] = useState("");
+  const { user } = useAuth();
   const [aiPrompt, setAiPrompt] = useState("");
   const [welcomeMessage, setWelcomeMessage] = useState("");
   const [businessHours, setBusinessHours] = useState("");
@@ -15,18 +16,16 @@ export default function AISettingsPage() {
   const [message, setMessage] = useState("");
 
   const loadSettings = async () => {
-    if (!tenantId) return;
+    if (!user?.tenantId) return;
     setLoading(true);
     setMessage("");
     try {
-      const res = await fetch(`/api/tenant/settings?tenantId=${tenantId}`);
+      const res = await fetch(`/api/tenant/settings?tenantId=${user.tenantId}`);
       if (res.ok) {
         const data = await res.json();
         setAiPrompt(data.ai_prompt || "");
         setWelcomeMessage(data.welcome_message || "");
         setBusinessHours(data.business_hours || "");
-      } else {
-        setMessage("Tenant não encontrado.");
       }
     } catch (err) {
       console.error(err);
@@ -36,9 +35,15 @@ export default function AISettingsPage() {
     }
   };
 
+  useEffect(() => {
+    if (user?.tenantId) {
+      loadSettings();
+    }
+  }, [user?.tenantId]);
+
   const saveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!tenantId) return;
+    if (!user?.tenantId) return;
     setLoading(true);
     setMessage("");
     try {
@@ -48,7 +53,7 @@ export default function AISettingsPage() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          tenantId,
+          tenantId: user.tenantId,
           ai_prompt: aiPrompt,
           welcome_message: welcomeMessage,
           business_hours: businessHours
@@ -56,7 +61,7 @@ export default function AISettingsPage() {
       });
 
       if (res.ok) {
-        setMessage("Configuração salva.");
+        setMessage("Configuração salva com sucesso.");
       } else {
         setMessage("Erro ao salvar.");
       }
@@ -74,33 +79,15 @@ export default function AISettingsPage() {
         <CardHeader className="mb-6">
           <CardTitle className="text-2xl">Configuração da IA</CardTitle>
         </CardHeader>
-        
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Tenant ID</label>
-          <div className="flex gap-3">
-            <Input 
-              value={tenantId}
-              onChange={(e) => setTenantId(e.target.value)}
-              placeholder="Cole o ID do seu tenant para carregar"
-            />
-            <Button 
-              variant="secondary"
-              onClick={loadSettings}
-              type="button"
-            >
-              Carregar
-            </Button>
-          </div>
-        </div>
 
         <form onSubmit={saveSettings} className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">AI Prompt</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">AI Prompt Base</label>
             <Textarea 
               rows={4}
               value={aiPrompt}
               onChange={(e) => setAiPrompt(e.target.value)}
-              placeholder="Instruções para a inteligência artificial..."
+              placeholder="Ex: Você é um assistente da loja X..."
             />
           </div>
 
@@ -115,25 +102,25 @@ export default function AISettingsPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">Horário de atendimento</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Horários e Regras da Loja</label>
             <Textarea 
               rows={3}
               value={businessHours}
               onChange={(e) => setBusinessHours(e.target.value)}
-              placeholder="Defina os dias e horários..."
+              placeholder="Defina os dias de funcionamento, endereço, etc."
             />
           </div>
 
-          <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-            <p className={`text-sm font-medium ${message.includes("Erro") || message.includes("não encontrado") ? "text-red-500" : "text-green-500"}`}>
-              {message}
-            </p>
-            <Button 
-              type="submit"
-              disabled={loading || !tenantId}
-            >
-              {loading ? "Salvando..." : "Salvar Configurações"}
-            </Button>
+          <div className="flex items-center justify-between pt-4 border-t border-gray-100 mt-6">
+             <p className={`text-sm font-medium ${message.includes("Erro") ? "text-red-500" : "text-green-500"}`}>
+               {message}
+             </p>
+             <Button 
+               type="submit"
+               disabled={loading || !user?.tenantId}
+             >
+               {loading ? "Salvando..." : "Salvar Configurações"}
+             </Button>
           </div>
         </form>
       </Card>

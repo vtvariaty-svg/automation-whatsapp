@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
+import { useAuth } from "@/hooks/useAuth";
 
 type Conversation = {
   id: string;
@@ -22,7 +23,8 @@ type Message = {
 };
 
 export default function InboxPage() {
-  const [tenantId, setTenantId] = useState("");
+  const { user } = useAuth();
+  const tenantId = user?.tenantId;
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedPhone, setSelectedPhone] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -118,22 +120,9 @@ export default function InboxPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-4">
-      {/* Header Tenant Setup */}
-      <div className="bg-white p-4 border border-gray-100 rounded-xl flex items-center gap-4 shrink-0 shadow-sm mb-4">
-        <label className="font-medium text-gray-700 whitespace-nowrap">Seu Tenant ID:</label>
-        <Input 
-          value={tenantId}
-          onChange={(e) => setTenantId(e.target.value)}
-          placeholder="Cole seu Tenant UUID"
-          className="max-w-md w-full"
-        />
-        <Button onClick={loadConversations}>
-          Carregar Inbox
-        </Button>
-      </div>
 
       {/* Main Inbox UI */}
-      <div className="flex flex-1 overflow-hidden bg-white border border-gray-200 rounded-2xl shadow-sm">
+      <div className="flex flex-1 overflow-hidden bg-white border border-gray-200 rounded-2xl shadow-sm mt-4">
         {/* Sidebar */}
         <div className="w-1/3 max-w-sm bg-gray-50/50 border-r border-gray-100 flex flex-col">
           <div className="px-5 py-4 border-b border-gray-100 bg-white">
@@ -149,7 +138,7 @@ export default function InboxPage() {
                 <div 
                   key={conv.phone_number} 
                   onClick={() => loadMessages(conv.phone_number, conv.status)}
-                  className={`p-4 rounded-xl cursor-pointer transition-all border ${selectedPhone === conv.phone_number ? 'border-primary/30 bg-primary/5 shadow-sm' : 'border-transparent hover:bg-white hover:shadow-sm'}`}
+                  className={`p-4 rounded-xl cursor-pointer transition-all border ${selectedPhone === conv.phone_number ? 'border-primary/30 bg-[#4f46e5]/5 shadow-sm' : 'border-transparent hover:bg-white hover:shadow-sm'}`}
                 >
                   <div className="flex justify-between items-start mb-1.5 gap-2">
                     <span className="font-semibold text-gray-900 truncate">{conv.phone_number}</span>

@@ -4,18 +4,19 @@ import { useState } from "react";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function ConversasPage() {
+  const { user } = useAuth();
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [tenantId, setTenantId] = useState("");
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   async function fetchHistory() {
-    if (!phoneNumber || !tenantId) return;
+    if (!phoneNumber || !user?.tenantId) return;
     setLoading(true);
     try {
-      const resp = await fetch(`/api/conversations/${phoneNumber}?tenantId=${tenantId}`);
+      const resp = await fetch(`/api/conversations/${phoneNumber}?tenantId=${user.tenantId}`);
       const data = await resp.json();
       setHistory(data);
     } catch (err) {
@@ -35,12 +36,6 @@ export default function ConversasPage() {
       <Card className="p-6">
         <div className="flex flex-col sm:flex-row gap-3">
           <Input
-            placeholder="Tenant ID (UUID)"
-            value={tenantId}
-            onChange={(e) => setTenantId(e.target.value)}
-            className="sm:w-1/3"
-          />
-          <Input
             placeholder="Número (ex: 5511...)"
             value={phoneNumber}
             onChange={(e) => setPhoneNumber(e.target.value)}
@@ -48,7 +43,8 @@ export default function ConversasPage() {
           />
           <Button
             onClick={fetchHistory}
-            disabled={loading}
+            disabled={loading || !user?.tenantId}
+            className="sm:w-32"
           >
             {loading ? "Buscando..." : "Buscar"}
           </Button>
@@ -86,7 +82,7 @@ export default function ConversasPage() {
             <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mb-4 border border-gray-200">
               <span className="text-2xl">🔍</span>
             </div>
-            <p className="text-sm text-gray-500">Nenhuma conversa encontrada. Insira um Tenant ID e número de telefone para buscar.</p>
+            <p className="text-sm text-gray-500">Nenhuma conversa encontrada. Insira um número de telefone para buscar os logs.</p>
           </div>
         )}
       </Card>

@@ -1,7 +1,7 @@
 import React, { ButtonHTMLAttributes } from 'react';
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'danger' | 'warning';
+  variant?: 'primary' | 'secondary' | 'danger' | 'warning' | 'custom';
   size?: 'sm' | 'md' | 'lg';
 }
 
@@ -14,8 +14,8 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       secondary: "bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 focus:ring-gray-500",
       danger: "bg-red-600 hover:bg-red-700 text-white focus:ring-red-500",
       warning: "bg-amber-500 hover:bg-amber-600 text-white focus:ring-amber-500",
+      custom: "", // allows full style override
     };
-
 
     const sizes = {
       sm: "h-8 px-3 text-xs",
@@ -26,7 +26,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <button
         ref={ref}
-        className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`}
+        className={`${baseStyles} ${variants[variant as keyof typeof variants] || variants.primary} ${sizes[size]} ${className}`}
         {...props}
       />
     );

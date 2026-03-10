@@ -1,6 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Input } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Textarea";
+import { Button } from "@/components/ui/Button";
 
 export default function AISettingsPage() {
   const [tenantId, setTenantId] = useState("");
@@ -65,36 +69,35 @@ export default function AISettingsPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-2xl mx-auto">
-      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">Configuração da IA</h2>
+    <div className="space-y-8 max-w-3xl mx-auto">
+      <Card>
+        <CardHeader className="mb-6">
+          <CardTitle className="text-2xl">Configuração da IA</CardTitle>
+        </CardHeader>
         
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Tenant ID</label>
-          <div className="flex gap-2">
-            <input 
-              type="text" 
-              className="flex-1 border border-gray-300 rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">Tenant ID</label>
+          <div className="flex gap-3">
+            <Input 
               value={tenantId}
               onChange={(e) => setTenantId(e.target.value)}
               placeholder="Cole o ID do seu tenant para carregar"
             />
-            <button 
+            <Button 
+              variant="secondary"
               onClick={loadSettings}
-              className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded-md transition font-medium"
               type="button"
             >
               Carregar
-            </button>
+            </Button>
           </div>
         </div>
 
-        <form onSubmit={saveSettings} className="space-y-4">
+        <form onSubmit={saveSettings} className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">AI Prompt</label>
-            <textarea 
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">AI Prompt</label>
+            <Textarea 
               rows={4}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
               value={aiPrompt}
               onChange={(e) => setAiPrompt(e.target.value)}
               placeholder="Instruções para a inteligência artificial..."
@@ -102,10 +105,9 @@ export default function AISettingsPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Mensagem de boas-vindas</label>
-            <textarea 
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Mensagem de boas-vindas</label>
+            <Textarea 
               rows={3}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
               value={welcomeMessage}
               onChange={(e) => setWelcomeMessage(e.target.value)}
               placeholder="Mensagem inicial enviada ao cliente..."
@@ -113,30 +115,28 @@ export default function AISettingsPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Horário de atendimento</label>
-            <textarea 
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Horário de atendimento</label>
+            <Textarea 
               rows={3}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
               value={businessHours}
               onChange={(e) => setBusinessHours(e.target.value)}
               placeholder="Defina os dias e horários..."
             />
           </div>
 
-          <div className="flex items-center justify-between pt-4">
+          <div className="flex items-center justify-between pt-4 border-t border-gray-100">
             <p className={`text-sm font-medium ${message.includes("Erro") || message.includes("não encontrado") ? "text-red-500" : "text-green-500"}`}>
               {message}
             </p>
-            <button 
+            <Button 
               type="submit"
               disabled={loading || !tenantId}
-              className="bg-blue-600 text-white font-medium px-6 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 transition"
             >
               {loading ? "Salvando..." : "Salvar Configurações"}
-            </button>
+            </Button>
           </div>
         </form>
-      </div>
+      </Card>
     </div>
   );
 }

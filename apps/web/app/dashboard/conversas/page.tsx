@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { Card } from "@/components/ui/Card";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
 
 export default function ConversasPage() {
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -23,59 +26,70 @@ export default function ConversasPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-        <h2 className="text-xl font-semibold mb-4">Histórico de Conversas</h2>
-        <div className="flex gap-2">
-          <input
-            type="text"
+    <div className="space-y-6 max-w-5xl mx-auto">
+      <div>
+        <h2 className="text-2xl font-bold text-gray-800">Histórico de Conversas</h2>
+        <p className="text-sm text-gray-500 mt-1">Pesquise conversas por número de telefone.</p>
+      </div>
+
+      <Card className="p-6">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <Input
             placeholder="Tenant ID (UUID)"
-            className="w-1/3 border border-gray-300 rounded-md px-4 py-2"
             value={tenantId}
             onChange={(e) => setTenantId(e.target.value)}
+            className="sm:w-1/3"
           />
-          <input
-            type="text"
-            placeholder="Número (ex: 55...)"
-            className="flex-1 border border-gray-300 rounded-md px-4 py-2"
+          <Input
+            placeholder="Número (ex: 5511...)"
             value={phoneNumber}
             onChange={(e) => setPhoneNumber(e.target.value)}
+            className="flex-1"
           />
-          <button
+          <Button
             onClick={fetchHistory}
-            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition"
             disabled={loading}
           >
             {loading ? "Buscando..." : "Buscar"}
-          </button>
+          </Button>
         </div>
-      </div>
+      </Card>
 
-      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 min-h-[400px]">
+      <Card className="p-6 min-h-[400px]">
         {history.length > 0 ? (
           <div className="space-y-4">
-            {history.map((msg, i) => (
-              <div
-                key={i}
-                className={`p-3 rounded-lg max-w-[80%] ${
-                  msg.sender === "user"
-                    ? "bg-blue-50 ml-auto border border-blue-100"
-                    : "bg-gray-50 mr-auto border border-gray-100"
-                }`}
-              >
-                <p className="text-sm font-medium text-gray-500 mb-1">
-                  {msg.sender === "user" ? "Cliente" : "IA"} - {new Date(msg.timestamp).toLocaleString()}
-                </p>
-                <p className="text-gray-800">{msg.message_text}</p>
-              </div>
-            ))}
+            {history.map((msg: any, i: number) => {
+              const isUser = msg.sender === "user";
+              return (
+                <div
+                  key={i}
+                  className={`flex ${isUser ? 'justify-start' : 'justify-end'}`}
+                >
+                  <div
+                    className={`max-w-[75%] px-5 py-3 rounded-2xl shadow-sm ${
+                      isUser
+                        ? "bg-white border border-gray-100 rounded-tl-sm"
+                        : "bg-indigo-600 text-white rounded-tr-sm"
+                    }`}
+                  >
+                    <p className={`text-xs mb-1.5 tracking-wide font-medium ${isUser ? 'text-gray-400' : 'text-indigo-200'}`}>
+                      {isUser ? "CLIENTE" : "IA"} — {new Date(msg.timestamp).toLocaleString([], { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
+                    </p>
+                    <p className={`text-[15px] leading-relaxed ${isUser ? 'text-gray-800' : 'text-white'}`}>{msg.message_text}</p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         ) : (
-          <div className="flex items-center justify-center h-full text-gray-500 italic">
-            Nenhuma conversa encontrada ou número não pesquisado.
+          <div className="flex flex-col items-center justify-center h-full text-gray-400 py-16">
+            <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mb-4 border border-gray-200">
+              <span className="text-2xl">🔍</span>
+            </div>
+            <p className="text-sm text-gray-500">Nenhuma conversa encontrada. Insira um Tenant ID e número de telefone para buscar.</p>
           </div>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

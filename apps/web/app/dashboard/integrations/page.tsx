@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
 
 export default function IntegrationsPage() {
   const [tenantId, setTenantId] = useState("");
@@ -116,49 +119,48 @@ export default function IntegrationsPage() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-gray-50 p-8">
-      <div className="max-w-3xl mx-auto w-full bg-white rounded-xl shadow-sm border border-gray-100 p-8">
-        <h1 className="text-2xl font-bold text-gray-800 mb-2">Integrações</h1>
-        <p className="text-gray-500 mb-8">Conecte canais de atendimento e outras plataformas ao seu Tenant.</p>
+    <div className="max-w-3xl mx-auto w-full">
+      <Card>
+        <CardHeader className="mb-6">
+          <CardTitle className="text-2xl">Integrações</CardTitle>
+          <CardDescription>Conecte canais de atendimento e outras plataformas ao seu Tenant.</CardDescription>
+        </CardHeader>
 
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Seu Tenant ID (Temporário para contexto)</label>
-          <input 
-            type="text" 
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">Seu Tenant ID (Temporário para contexto)</label>
+          <Input 
             value={tenantId}
             onChange={(e) => setTenantId(e.target.value)}
             placeholder="Cole seu Tenant UUID"
-            className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
           />
         </div>
 
-        <div className="border border-gray-200 rounded-xl p-6 flex items-center justify-between">
+        <div className="border border-gray-200 rounded-xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 transition hover:border-[#4f46e5]/40 hover:bg-gray-50/50">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-2xl">
-              <i className="fab fa-whatsapp"></i> {/* Use whatever icon */}
-              📱
+            <div className="w-12 h-12 bg-green-100 text-[#25D366] rounded-xl flex items-center justify-center text-2xl shadow-sm">
+              <span className="text-2xl">📱</span>
             </div>
             <div>
-              <h3 className="font-semibold text-gray-800 text-lg">WhatsApp Business</h3>
+              <h3 className="font-semibold text-gray-900 text-lg">WhatsApp Business</h3>
               <p className="text-sm text-gray-500">Fluxo Oficial Embedded Signup (Meta)</p>
             </div>
           </div>
           
-          <button
+          <Button
             onClick={handleConnectWhatsApp}
             disabled={!fbLoaded || loading}
-            className="bg-[#25D366] hover:bg-[#1DA851] disabled:opacity-50 text-white px-6 py-2.5 rounded-lg font-medium transition shadow-sm"
+            className="md:w-auto w-full bg-[#25D366] hover:bg-[#1DA851] text-white focus:ring-[#25D366]"
           >
             {loading ? "Conectando..." : "Conectar WhatsApp"}
-          </button>
+          </Button>
         </div>
 
         {message && (
-          <div className={`mt-6 p-4 rounded-lg text-sm font-medium ${message.includes('❌') || message.includes('Falha') ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
+          <div className={`mt-6 px-4 py-3 rounded-lg text-sm font-medium border ${message.includes('❌') || message.includes('Falha') || message.includes('Por favor') ? 'bg-red-50 text-red-700 border-red-200' : 'bg-green-50 text-green-700 border-green-200'}`}>
             {message}
           </div>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

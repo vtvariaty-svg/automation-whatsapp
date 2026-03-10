@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Badge } from "@/components/ui/Badge";
 
 type Conversation = {
   id: string;
@@ -29,7 +32,6 @@ export default function InboxPage() {
   const [loadingChat, setLoadingChat] = useState(false);
   const [sending, setSending] = useState(false);
 
-  // Load conversations
   const loadConversations = async () => {
     if (!tenantId) return;
     setLoadingList(true);
@@ -46,7 +48,6 @@ export default function InboxPage() {
     }
   };
 
-  // Carrega contatos se já tiver tenantId ou atualizar (polling básico opcional)
   useEffect(() => {
     if (tenantId) {
       loadConversations();
@@ -55,7 +56,6 @@ export default function InboxPage() {
     }
   }, [tenantId]);
 
-  // Load selected chat
   const loadMessages = async (phone: string, status: string) => {
     setSelectedPhone(phone);
     setCurrentStatus(status);
@@ -117,31 +117,29 @@ export default function InboxPage() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)]">
+    <div className="flex flex-col h-[calc(100vh-4rem)] max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-4">
       {/* Header Tenant Setup */}
-      <div className="bg-white p-4 border-b border-gray-200 flex items-center gap-4 shrink-0">
-        <label className="font-medium text-gray-700">Seu Tenant ID:</label>
-        <input 
-          type="text" 
+      <div className="bg-white p-4 border border-gray-100 rounded-xl flex items-center gap-4 shrink-0 shadow-sm mb-4">
+        <label className="font-medium text-gray-700 whitespace-nowrap">Seu Tenant ID:</label>
+        <Input 
           value={tenantId}
           onChange={(e) => setTenantId(e.target.value)}
           placeholder="Cole seu Tenant UUID"
-          className="border border-gray-300 rounded-md px-3 py-1.5 w-80 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+          className="max-w-md w-full"
         />
-        <button 
-          onClick={loadConversations}
-          className="bg-blue-600 text-white px-4 py-1.5 rounded-md text-sm font-medium hover:bg-blue-700"
-        >
+        <Button onClick={loadConversations}>
           Carregar Inbox
-        </button>
+        </Button>
       </div>
 
       {/* Main Inbox UI */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden bg-white border border-gray-200 rounded-2xl shadow-sm">
         {/* Sidebar */}
-        <div className="w-1/3 max-w-sm bg-white border-r border-gray-200 flex flex-col">
-          <div className="p-4 bg-gray-50 border-b border-gray-200 font-semibold text-gray-700">Conversas</div>
-          <div className="overflow-y-auto flex-1 p-2 space-y-2">
+        <div className="w-1/3 max-w-sm bg-gray-50/50 border-r border-gray-100 flex flex-col">
+          <div className="px-5 py-4 border-b border-gray-100 bg-white">
+            <h2 className="font-semibold text-gray-900 text-lg">Conversas</h2>
+          </div>
+          <div className="overflow-y-auto flex-1 p-3 space-y-1">
             {loadingList && conversations.length === 0 ? (
               <p className="text-gray-500 text-sm p-4 text-center">Carregando...</p>
             ) : conversations.length === 0 ? (
@@ -151,13 +149,13 @@ export default function InboxPage() {
                 <div 
                   key={conv.phone_number} 
                   onClick={() => loadMessages(conv.phone_number, conv.status)}
-                  className={`p-3 rounded-lg border cursor-pointer hover:bg-gray-50 transition ${selectedPhone === conv.phone_number ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white'}`}
+                  className={`p-4 rounded-xl cursor-pointer transition-all border ${selectedPhone === conv.phone_number ? 'border-primary/30 bg-primary/5 shadow-sm' : 'border-transparent hover:bg-white hover:shadow-sm'}`}
                 >
-                  <div className="flex justify-between items-start mb-1">
-                    <span className="font-semibold text-gray-800">{conv.phone_number}</span>
-                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${conv.status === 'human' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'}`}>
+                  <div className="flex justify-between items-start mb-1.5 gap-2">
+                    <span className="font-semibold text-gray-900 truncate">{conv.phone_number}</span>
+                    <Badge variant={conv.status === 'human' ? 'warning' : 'success'} className="shrink-0 text-[10px] px-2 py-0.5">
                       {conv.status.toUpperCase()}
-                    </span>
+                    </Badge>
                   </div>
                   <p className="text-sm text-gray-500 truncate">{conv.last_message || 'Sem texto.'}</p>
                 </div>
@@ -167,40 +165,63 @@ export default function InboxPage() {
         </div>
 
         {/* Chat Area */}
-        <div className="flex-1 bg-gray-50 flex flex-col">
+        <div className="flex-1 bg-white flex flex-col relative overflow-hidden">
           {selectedPhone ? (
             <>
               {/* Chat Header */}
-              <div className="bg-white p-4 border-b border-gray-200 flex justify-between items-center shrink-0">
+              <div className="bg-white/80 backdrop-blur-md px-6 py-4 border-b border-gray-100 flex justify-between items-center shrink-0 z-10 sticky top-0">
                 <div>
-                  <h3 className="font-bold text-gray-800">{selectedPhone}</h3>
-                  <p className="text-sm text-gray-500">Status atual: <span className="font-medium">{currentStatus}</span></p>
+                  <h3 className="font-bold text-gray-900 text-lg">{selectedPhone}</h3>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="relative flex h-2 w-2">
+                      <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${currentStatus === 'human' ? 'bg-orange-400' : 'bg-green-400'}`}></span>
+                      <span className={`relative inline-flex rounded-full h-2 w-2 ${currentStatus === 'human' ? 'bg-orange-500' : 'bg-green-500'}`}></span>
+                    </span>
+                    <p className="text-xs text-gray-500 font-medium tracking-wide">
+                      ATENDIMENTO {currentStatus === 'human' ? 'HUMANO' : 'IA'}
+                    </p>
+                  </div>
                 </div>
                 {currentStatus !== 'human' && (
-                  <button 
+                  <Button 
+                    variant="warning"
                     onClick={handleTakeover}
-                    className="bg-yellow-500 hover:bg-yellow-600 text-white font-medium px-4 py-2 rounded-md transition drop-shadow-sm"
+                    className="shadow-sm"
                   >
-                    Assumir atendimento (Pausar IA)
-                  </button>
+                    Assumir Atendimento
+                  </Button>
                 )}
               </div>
 
               {/* Chat Messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4 flex flex-col">
+              <div className="flex-1 overflow-y-auto p-6 space-y-6 flex flex-col bg-slate-50/50">
                 {loadingChat && messages.length === 0 ? (
-                  <p className="text-gray-500 text-center text-sm">Carregando histórico...</p>
+                  <p className="text-gray-500 text-center text-sm m-auto">Carregando histórico...</p>
                 ) : (
                   messages.map(msg => {
                     const isUser = msg.sender === 'user';
+                    const isSystemAI = msg.sender === 'ai';
                     const text = msg.message_text || msg.ai_response || '';
+                    
                     return (
                       <div key={msg.id} className={`flex ${isUser ? 'justify-start' : 'justify-end'}`}>
-                        <div className={`max-w-[70%] p-3 rounded-xl shadow-sm ${isUser ? 'bg-white border border-gray-200' : 'bg-blue-600 text-white'}`}>
-                          <p className={`text-sm mb-1 ${isUser ? 'text-blue-600 font-semibold' : 'text-blue-100 font-semibold'}`}>{isUser ? 'Cliente' : msg.sender.toUpperCase()}</p>
-                          <p className={isUser ? 'text-gray-800' : 'text-white'}>{text}</p>
-                          <span className={`text-[10px] block mt-2 text-right opacity-70`}>
-                              {new Date(msg.timestamp).toLocaleTimeString()}
+                        <div 
+                          className={`max-w-[75%] px-5 py-3 rounded-2xl shadow-sm ${
+                            isUser 
+                              ? 'bg-white border border-gray-100 rounded-tl-sm' 
+                              : isSystemAI 
+                                ? 'bg-indigo-600 text-white rounded-tr-sm'
+                                : 'bg-gray-800 text-white rounded-tr-sm'
+                          }`}
+                        >
+                          <p className={`text-xs mb-1.5 tracking-wide ${isUser ? 'text-gray-400 font-medium' : 'text-indigo-200 font-medium'}`}>
+                            {isUser ? 'CLIENTE' : msg.sender.toUpperCase()}
+                          </p>
+                          <p className={`text-[15px] leading-relaxed ${isUser ? 'text-gray-800' : 'text-white'}`}>
+                            {text}
+                          </p>
+                          <span className={`text-[10px] block mt-2 text-right ${isUser ? 'text-gray-400' : 'text-indigo-200/80'}`}>
+                              {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
                       </div>
@@ -211,31 +232,36 @@ export default function InboxPage() {
 
               {/* Chat Input */}
               {currentStatus === 'human' ? (
-                <form onSubmit={handleSendMessage} className="bg-white p-4 border-t border-gray-200 flex gap-4 shrink-0">
-                  <input 
-                    type="text" 
+                <form onSubmit={handleSendMessage} className="bg-white p-4 sm:p-5 border-t border-gray-100 flex gap-3 shrink-0">
+                  <Input 
                     value={replyText}
                     onChange={e => setReplyText(e.target.value)}
-                    placeholder="Digite sua mensagem..."
-                    className="flex-1 border border-gray-300 rounded-md px-4 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Digite sua mensagem para o cliente..."
+                    className="flex-1"
                   />
-                  <button 
+                  <Button 
                     type="submit" 
                     disabled={sending || !replyText.trim()}
-                    className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium px-6 py-2 rounded-md transition"
+                    className="px-8"
                   >
                     {sending ? 'Enviando...' : 'Enviar'}
-                  </button>
+                  </Button>
                 </form>
               ) : (
-                <div className="bg-white p-4 border-t border-gray-200 text-center shrink-0">
-                  <p className="text-sm text-gray-500">A inteligência artificial está atendendo este cliente. Clique em &quot;Assumir atendimento&quot; para enviar mensagens manualmente.</p>
+                <div className="bg-slate-50 p-6 border-t border-gray-100 text-center shrink-0">
+                  <p className="text-sm text-gray-500">
+                    A inteligência artificial está atendendo este cliente. Clique em <strong className="text-gray-700">Assumir atendimento</strong> para enviar mensagens manualmente.
+                  </p>
                 </div>
               )}
             </>
           ) : (
-            <div className="flex-1 flex items-center justify-center">
-              <p className="text-gray-500 text-lg">Selecione uma conversa para iniciar o atendimento.</p>
+            <div className="flex-1 flex flex-col items-center justify-center text-gray-400 p-8 text-center bg-gray-50/30">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4 border border-gray-200 shadow-sm">
+                <span className="text-2xl">💬</span>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-1">Caixa de Entrada</h3>
+              <p className="text-sm text-gray-500 max-w-sm">Selecione uma conversa ao lado para visualizar o histórico ou iniciar o atendimento manual.</p>
             </div>
           )}
         </div>

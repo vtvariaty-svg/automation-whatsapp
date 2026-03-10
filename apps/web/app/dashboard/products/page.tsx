@@ -1,7 +1,12 @@
 'use client';
 
 import { useState, useEffect } from "react";
-import Button from "@/components/Button";
+import { Button } from "@/components/ui/Button";
+import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
+import { Input } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Textarea";
+import { Modal } from "@/components/ui/Modal";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/Table";
 import { authApi } from "@/lib/api/client";
 
 export default function ProductsPage() {
@@ -9,6 +14,7 @@ export default function ProductsPage() {
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [newProduct, setNewProduct] = useState({ name: "", description: "", price: "" });
+  const [saving, setSaving] = useState(false);
 
   const loadProducts = async () => {
     try {
@@ -27,6 +33,7 @@ export default function ProductsPage() {
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSaving(true);
     try {
       await authApi.createProduct({
         ...newProduct,
@@ -37,67 +44,105 @@ export default function ProductsPage() {
       loadProducts();
     } catch (error) {
       alert("Erro ao adicionar produto");
+    } finally {
+      setSaving(false);
     }
   };
 
-  if (loading) return <div>Carregando...</div>;
+  if (loading) return <div className="p-8 text-center text-gray-500">Carregando...</div>;
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Produtos</h2>
-        <Button onClick={() => setShowAdd(!showAdd)}>
-          {showAdd ? "Cancelar" : "Adicionar Produto"}
+    <div className="space-y-6 max-w-6xl mx-auto">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-800">Produtos</h2>
+          <p className="text-sm text-gray-500 mt-1">Gerencie os produtos ou serviços oferecidos pela sua empresa.</p>
+        </div>
+        <Button onClick={() => setShowAdd(true)}>
+          Adicionar Produto
         </Button>
       </div>
 
-      {showAdd && (
-        <form onSubmit={handleAdd} className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 space-y-4 max-w-lg">
+      <Card className="p-0 overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Nome e Descrição</TableHead>
+              <TableHead className="w-48 text-right">Preço</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {products.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={2} className="text-center py-8 text-gray-500">
+                  Nenhum produto cadastrado.
+                </TableCell>
+              </TableRow>
+            ) : (
+              products.map((product: any) => (
+                <TableRow key={product.id}>
+                  <TableCell>
+                    <p className="font-semibold text-gray-900">{product.name}</p>
+                    {product.description && (
+                      <p className="text-sm text-gray-500 truncate max-w-[200px] sm:max-w-md">{product.description}</p>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right font-medium text-gray-900">
+                    R$ {product.price.toFixed(2)}
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </Card>
+
+      <Modal
+        isOpen={showAdd}
+        onClose={() => setShowAdd(false)}
+        title="Novo Produto"
+      >
+        <form onSubmit={handleAdd} className="space-y-4 pt-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nome do Produto</label>
-            <input
-              type="text"
-              className="w-full px-3 py-2 border rounded-md"
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Nome do Produto</label>
+            <Input
               value={newProduct.name}
               onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
               required
+              placeholder="Ex: Cesta de Café da Manhã"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
-            <textarea
-              className="w-full px-3 py-2 border rounded-md"
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Descrição</label>
+            <Textarea
+              rows={3}
               value={newProduct.description}
               onChange={(e) => setNewProduct({ ...newProduct, description: e.target.value })}
+              placeholder="Descreva o produto, ingredientes, etc."
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Preço</label>
-            <input
+            <label className="block text-sm font-medium text-gray-700 mb-1.5">Preço (R$)</label>
+            <Input
               type="number"
               step="0.01"
-              className="w-full px-3 py-2 border rounded-md"
+              min="0"
               value={newProduct.price}
               onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
               required
+              placeholder="Ex: 99.90"
             />
           </div>
-          <Button type="submit" className="w-full">Criar Produto</Button>
-        </form>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {products.map((product: any) => (
-          <div key={product.id} className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-            <h3 className="font-bold text-lg">{product.name}</h3>
-            <p className="text-gray-600 text-sm mb-2">{product.description}</p>
-            <p className="text-blue-600 font-bold">R$ {product.price.toFixed(2)}</p>
+          <div className="pt-4 flex justify-end gap-3 border-t border-gray-100">
+            <Button type="button" variant="secondary" onClick={() => setShowAdd(false)}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={saving}>
+              {saving ? "Salvando..." : "Criar Produto"}
+            </Button>
           </div>
-        ))}
-        {products.length === 0 && !showAdd && (
-          <p className="text-gray-500 italic">Nenhum produto cadastrado.</p>
-        )}
-      </div>
+        </form>
+      </Modal>
     </div>
   );
 }

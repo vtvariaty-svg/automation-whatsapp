@@ -22,6 +22,9 @@ export default function Sidebar() {
         <Link href="/dashboard/ai" className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md">
           Configuração de IA
         </Link>
+        <Link href="/dashboard/integrations" className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md">
+          Integrações (WhatsApp)
+        </Link>
         <Link href="/dashboard/products" className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md">
           Produtos
         </Link>

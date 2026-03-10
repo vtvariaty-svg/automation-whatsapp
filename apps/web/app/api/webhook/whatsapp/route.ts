@@ -58,7 +58,11 @@ export async function POST(req: Request) {
             const history = await getConversationHistory(from, tenant.id);
             if (history.length === 0 && tenant.welcome_message) {
               console.log(`Enviando mensagem de boas-vindas para ${from} no tenant ${tenant.name}`);
-              await sendWhatsAppMessage(from, tenant.welcome_message, tenant.whatsapp_phone_id, tenant.whatsapp_token);
+              
+              const sendPhoneId = tenant.whatsapp_phone_number_id || tenant.whatsapp_phone_id;
+              const sendToken = tenant.whatsapp_access_token || tenant.whatsapp_token;
+
+              await sendWhatsAppMessage(from, tenant.welcome_message, sendPhoneId, sendToken);
               // Opcional: Salvar a mensagem de boas vindas no histórico
               await saveAIMessage(from, tenant.welcome_message, tenant.id);
             }
@@ -85,8 +89,12 @@ export async function POST(req: Request) {
           // Etapa 9/Multi-tenant: salvar resposta da IA no banco com tenant_id
           await saveAIMessage(from, aiResponse, tenant.id, status);
 
+          // Resolve quais credenciais WhatsApp usar no envio (priorizar nova do embedded)
+          const replyPhoneId = tenant.whatsapp_phone_number_id || tenant.whatsapp_phone_id;
+          const replyToken = tenant.whatsapp_access_token || tenant.whatsapp_token;
+
           // Fluxo: enviar resposta via whatsappService com credenciais do tenant
-          await sendWhatsAppMessage(from, aiResponse, tenant.whatsapp_phone_id, tenant.whatsapp_token);
+          await sendWhatsAppMessage(from, aiResponse, replyPhoneId, replyToken);
         }
       }
     }

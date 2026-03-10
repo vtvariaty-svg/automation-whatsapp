@@ -24,8 +24,11 @@ export async function POST(
       return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
     }
 
+    const sendPhoneId = tenant.whatsapp_phone_number_id || tenant.whatsapp_phone_id;
+    const sendToken = tenant.whatsapp_access_token || tenant.whatsapp_token;
+
     // Send message via WhatsApp API (from tenant)
-    await sendWhatsAppMessage(phone, message, tenant.whatsapp_phone_id, tenant.whatsapp_token);
+    await sendWhatsAppMessage(phone, message, sendPhoneId, sendToken);
 
     // Save as human response
     await saveAIMessage(phone, message, tenantId, 'human');

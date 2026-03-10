@@ -6,7 +6,8 @@ import { v4 as uuidv4 } from 'uuid';
  * @param {string} phoneId 
  */
 export async function getTenantByPhoneId(phoneId) {
-  const query = 'SELECT * FROM tenants WHERE whatsapp_phone_id = $1';
+  // Busca pelo whatsapp_phone_number_id (novo) ou whatsapp_phone_id (velho / manual)
+  const query = 'SELECT * FROM tenants WHERE whatsapp_phone_number_id = $1 OR whatsapp_phone_id = $1';
   try {
     const result = await pool.query(query, [phoneId]);
     return result.rows[0];
@@ -51,6 +52,26 @@ export async function updateTenantAISettings(id, { ai_prompt, welcome_message, b
     return result.rows[0];
   } catch (error) {
     console.error('Erro ao atualizar configurações da IA do tenant:', error);
+    throw error;
+  }
+}
+
+/**
+ * Atualiza as credenciais do WhatsApp obtidas via Embedded Signup.
+ */
+export async function updateTenantWhatsAppCredentials(id, { business_account_id, phone_number_id, access_token }) {
+  const query = `
+    UPDATE tenants
+    SET whatsapp_business_account_id = $1, whatsapp_phone_number_id = $2, whatsapp_access_token = $3
+    WHERE id = $4
+    RETURNING *
+  `;
+  const values = [business_account_id, phone_number_id, access_token, id];
+  try {
+    const result = await pool.query(query, values);
+    return result.rows[0];
+  } catch (error) {
+    console.error('Erro ao salvar credenciais do WhatsApp:', error);
     throw error;
   }
 }

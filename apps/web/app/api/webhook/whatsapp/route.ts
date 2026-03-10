@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 // @ts-ignore - Importing from JS file
 import { generateAIResponse } from "@/src/services/aiService";
 // @ts-ignore - Importing from JS file
+import { sendWhatsAppMessage } from "@/src/services/whatsappService";
+// @ts-ignore - Importing from JS file
 import { saveUserMessage, saveAIMessage, getConversationHistory, getConversationStatus } from "@/src/services/conversationService";
 // @ts-ignore - Importing from JS file
 import { getTenantByPhoneId } from "@/src/services/tenantService";

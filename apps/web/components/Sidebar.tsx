@@ -70,13 +70,13 @@ export default function Sidebar() {
             Conversas
           </div>
         </Link>
-        <Link href="/dashboard/pedidos" className={getLinkClass("/dashboard/pedidos")}>
+        <Link href="/dashboard/orders" className={getLinkClass("/dashboard/orders")}>
           <div className="flex items-center gap-3">
             <span className="text-lg">🛍️</span>
             Pedidos
           </div>
         </Link>
-        <Link href="/dashboard/agenda" className={getLinkClass("/dashboard/agenda")}>
+        <Link href="/dashboard/appointments" className={getLinkClass("/dashboard/appointments")}>
           <div className="flex items-center gap-3">
             <span className="text-lg">📅</span>
             Agenda

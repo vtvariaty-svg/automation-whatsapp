@@ -56,15 +56,15 @@ export async function POST(req: Request) {
           // Verificar mensagem de boas vindas
           try {
             const history = await getConversationHistory(from, tenant.id);
-            if (history.length === 0 && tenant.welcome_message) {
+            if (history.length === 0 && tenant.welcomeMessage) {
               console.log(`Enviando mensagem de boas-vindas para ${from} no tenant ${tenant.name}`);
               
               const sendPhoneId = tenant.whatsappPhoneNumberId || tenant.whatsappPhoneId;
               const sendToken = tenant.whatsappToken;
 
-              await sendWhatsAppMessage(from, tenant.welcome_message, sendPhoneId, sendToken);
+              await sendWhatsAppMessage(from, tenant.welcomeMessage, sendPhoneId, sendToken);
               // Opcional: Salvar a mensagem de boas vindas no histórico
-              await saveAIMessage(from, tenant.welcome_message, tenant.id);
+              await saveAIMessage(from, tenant.welcomeMessage, tenant.id);
             }
           } catch (e) {
             console.error("Erro ao verificar/enviar boas-vindas:", e);

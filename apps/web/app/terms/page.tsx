@@ -1,57 +1,130 @@
+import Link from "next/link";
+
+export const metadata = {
+  title: "Termos de Serviço — Variaty Secretary IA",
+  description: "Termos de serviço da plataforma Variaty Secretary IA.",
+};
+
 export default function TermsPage() {
   return (
-    <div className="max-w-3xl mx-auto px-6 py-16">
-      <h1 className="text-3xl font-bold mb-8 text-gray-900">Termos de Serviço</h1>
+    <div className="min-h-screen bg-white">
+      <nav className="border-b border-gray-100 bg-white/80 backdrop-blur-xl">
+        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#4f46e5] to-[#7c3aed] flex items-center justify-center">
+              <span className="text-white font-bold">V</span>
+            </div>
+            <span className="font-bold text-gray-900">Variaty Secretary IA</span>
+          </Link>
+          <Link href="/" className="text-sm text-[#4f46e5] hover:underline">← Voltar</Link>
+        </div>
+      </nav>
 
-      <div className="prose prose-gray max-w-none space-y-6 text-gray-700 leading-relaxed">
-        <p><strong>Última atualização:</strong> 10 de março de 2026</p>
+      <main className="max-w-4xl mx-auto px-4 py-16">
+        <h1 className="text-4xl font-extrabold text-gray-900 mb-2">Termos de Serviço</h1>
+        <p className="text-gray-500 mb-12">Última atualização: 10 de março de 2026</p>
 
-        <h2 className="text-xl font-semibold text-gray-900 mt-8">1. Aceitação dos Termos</h2>
-        <p>
-          Ao acessar e utilizar a plataforma VTvariaty, você concorda com estes Termos de Serviço.
-          Se não concordar com algum dos termos, não utilize o serviço.
-        </p>
+        <div className="prose prose-gray max-w-none space-y-8 text-gray-600 leading-relaxed">
+          <section>
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">1. Aceitação dos Termos</h2>
+            <p>Ao acessar ou utilizar a plataforma Variaty Secretary IA, você concorda com estes Termos de Serviço. Se você não concordar com qualquer parte destes termos, não utilize a plataforma.</p>
+          </section>
 
-        <h2 className="text-xl font-semibold text-gray-900 mt-8">2. Descrição do Serviço</h2>
-        <p>
-          A VTvariaty oferece uma plataforma de automação de atendimento via WhatsApp Business,
-          incluindo integração com inteligência artificial, gerenciamento de conversas e
-          ferramentas de produtividade para equipes de atendimento.
-        </p>
+          <section>
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">2. Descrição do Serviço</h2>
+            <p>A Variaty Secretary IA é uma plataforma SaaS que oferece:</p>
+            <ul className="list-disc pl-6 space-y-2 mt-3">
+              <li>Automação de atendimento ao cliente via WhatsApp Business API.</li>
+              <li>Inteligência Artificial para respostas automáticas e contextualizada.</li>
+              <li>Gerenciamento de conversas, agendamentos e vendas.</li>
+              <li>Integração com plataformas de e-commerce e redes sociais.</li>
+              <li>Painel de análise e métricas de atendimento.</li>
+            </ul>
+          </section>
 
-        <h2 className="text-xl font-semibold text-gray-900 mt-8">3. Responsabilidades do Usuário</h2>
-        <ul className="list-disc pl-6 space-y-2">
-          <li>Manter a segurança de suas credenciais de acesso</li>
-          <li>Utilizar o serviço em conformidade com as políticas do WhatsApp Business</li>
-          <li>Não utilizar o serviço para envio de spam ou mensagens não solicitadas</li>
-          <li>Respeitar a legislação vigente de proteção de dados (LGPD)</li>
-        </ul>
+          <section>
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">3. Conta e Cadastro</h2>
+            <ul className="list-disc pl-6 space-y-2">
+              <li>Você é responsável por manter a confidencialidade da sua conta e senha.</li>
+              <li>Deve fornecer informações verdadeiras e atualizadas no cadastro.</li>
+              <li>É proibido criar múltiplas contas para burlar limitações de plano.</li>
+              <li>Você é responsável por todas as atividades realizadas em sua conta.</li>
+            </ul>
+          </section>
 
-        <h2 className="text-xl font-semibold text-gray-900 mt-8">4. Integração com WhatsApp</h2>
-        <p>
-          A utilização da API do WhatsApp Business está sujeita às políticas e termos da Meta.
-          O usuário é responsável por garantir que o uso está em conformidade com as
-          diretrizes da plataforma WhatsApp Business.
-        </p>
+          <section>
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">4. Planos e Pagamento</h2>
+            <ul className="list-disc pl-6 space-y-2">
+              <li>Todos os planos incluem um período de teste gratuito de 7 dias.</li>
+              <li>Após o período de teste, a cobrança é mensal e recorrente.</li>
+              <li>Você pode cancelar sua assinatura a qualquer momento.</li>
+              <li>Não há reembolso parcial de períodos já pagos.</li>
+              <li>Reservamo-nos o direito de ajustar os preços com aviso prévio de 30 dias.</li>
+            </ul>
+          </section>
 
-        <h2 className="text-xl font-semibold text-gray-900 mt-8">5. Limitação de Responsabilidade</h2>
-        <p>
-          A VTvariaty não se responsabiliza por interrupções de serviço causadas por terceiros
-          (Meta, provedores de IA ou infraestrutura de hospedagem), nem por perdas decorrentes
-          do uso inadequado da plataforma.
-        </p>
+          <section>
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">5. Uso Aceitável</h2>
+            <p>Você concorda em NÃO utilizar a plataforma para:</p>
+            <ul className="list-disc pl-6 space-y-2 mt-3">
+              <li>Enviar spam, mensagens não solicitadas ou conteúdo ilegal.</li>
+              <li>Violar as Políticas de Negócios do WhatsApp ou termos da Meta.</li>
+              <li>Coletar informações pessoais de terceiros sem consentimento.</li>
+              <li>Interferir no funcionamento da plataforma ou acessar dados de outros usuários.</li>
+              <li>Revender o acesso à plataforma sem autorização prévia.</li>
+            </ul>
+          </section>
 
-        <h2 className="text-xl font-semibold text-gray-900 mt-8">6. Modificações</h2>
-        <p>
-          Reservamo-nos o direito de modificar estes termos a qualquer momento. Notificaremos
-          os usuários sobre alterações significativas por e-mail ou através da plataforma.
-        </p>
+          <section>
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">6. Inteligência Artificial</h2>
+            <ul className="list-disc pl-6 space-y-2">
+              <li>A IA gera respostas com base na configuração fornecida pelo usuário.</li>
+              <li>Não garantimos 100% de precisão nas respostas da IA.</li>
+              <li>O usuário é responsável por configurar e supervisionar a IA adequadamente.</li>
+              <li>Recomendamos revisão periódica das respostas automatizadas.</li>
+            </ul>
+          </section>
 
-        <h2 className="text-xl font-semibold text-gray-900 mt-8">7. Contato</h2>
-        <p>
-          Para dúvidas sobre estes termos, entre em contato pelo e-mail: suporte@vtvariaty.com
-        </p>
-      </div>
+          <section>
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">7. Propriedade Intelectual</h2>
+            <p>Todo o conteúdo, design, código e funcionalidades da plataforma são propriedade da Variaty Secretary IA. É proibida a reprodução, cópia ou distribuição sem autorização prévia.</p>
+          </section>
+
+          <section>
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">8. Limitação de Responsabilidade</h2>
+            <p>A Variaty Secretary IA não se responsabiliza por:</p>
+            <ul className="list-disc pl-6 space-y-2 mt-3">
+              <li>Perdas causadas por indisponibilidade temporária do serviço.</li>
+              <li>Ações ou decisões tomadas com base nas respostas da IA.</li>
+              <li>Alterações nas políticas ou APIs de terceiros (Meta, OpenAI).</li>
+              <li>Danos indiretos, incidentais ou consequenciais.</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">9. Cancelamento e Encerramento</h2>
+            <ul className="list-disc pl-6 space-y-2">
+              <li>Você pode cancelar sua conta a qualquer momento pelas configurações.</li>
+              <li>Reservamo-nos o direito de suspender contas que violem estes termos.</li>
+              <li>Após cancelamento, seus dados serão retidos por 30 dias e depois excluídos.</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">10. Legislação Aplicável</h2>
+            <p>Estes termos são regidos pela legislação da República Federativa do Brasil. Fica eleito o foro da comarca do domicílio do usuário para dirimir quaisquer dúvidas ou litígios.</p>
+          </section>
+
+          <section>
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">11. Contato</h2>
+            <p>Para dúvidas sobre estes termos: <strong>contato@vtvariaty.com</strong></p>
+          </section>
+        </div>
+      </main>
+
+      <footer className="border-t border-gray-100 py-8 text-center text-sm text-gray-400">
+        © 2026 Variaty Secretary IA. Todos os direitos reservados.
+      </footer>
     </div>
   );
 }

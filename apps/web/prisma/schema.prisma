@@ -25,6 +25,8 @@ model Tenant {
   users               User[]
   conversations       Conversation[]
   products            Product[]
+  orders              Order[]
+  appointments        Appointment[]
   businessConfig      BusinessConfig?
   subscription        Subscription?
 }
@@ -90,4 +92,29 @@ model Subscription {
   currentPeriodEnd      DateTime?
   createdAt             DateTime  @default(now())
   tenant                Tenant    @relation(fields: [tenantId], references: [id])
+}
+
+model Order {
+  id            String   @id @default(uuid())
+  tenantId      String
+  customerPhone String
+  customerName  String?
+  product       String?
+  price         Float    @default(0.0)
+  status        String   @default("novo") // novo, confirmado, preparando, enviado, finalizado
+  createdAt     DateTime @default(now())
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+}
+
+model Appointment {
+  id            String   @id @default(uuid())
+  tenantId      String
+  customerPhone String
+  customerName  String?
+  service       String?
+  date          String?  // YYYY-MM-DD
+  time          String?  // HH:MM
+  status        String   @default("agendado") // agendado, confirmado, cancelado, concluido
+  createdAt     DateTime @default(now())
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
 }

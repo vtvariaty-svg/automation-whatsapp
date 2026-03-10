@@ -63,3 +63,15 @@ export const authApi = {
     });
   }
 };
+
+export const billingApi = {
+  getSubscription: async () => {
+    return apiClient('/billing/subscription');
+  },
+  createCheckout: async (plan: string) => {
+    return apiClient('/billing/checkout', {
+      method: 'POST',
+      body: JSON.stringify({ plan })
+    });
+  },
+};

@@ -1,6 +1,7 @@
 import { prisma } from '../prisma';
 import { generateResponse } from './aiService';
 import { sendMessage } from '../integrations/whatsapp/whatsappClient';
+import { checkUsageLimit, incrementUsage } from './subscriptionService';
 
 export const routeMessage = async (from: string, text: string) => {
   let tenant = await prisma.tenant.findFirst();
@@ -9,6 +10,13 @@ export const routeMessage = async (from: string, text: string) => {
     tenant = await prisma.tenant.create({
       data: { name: 'Default Tenant' }
     });
+  }
+
+  // Check usage limit before processing
+  const usageCheck = await checkUsageLimit(tenant.id);
+  if (!usageCheck.allowed) {
+    await sendMessage(from, usageCheck.message || 'Limite de mensagens atingido.');
+    return;
   }
 
   let conversation = await prisma.conversation.findFirst({
@@ -35,6 +43,9 @@ export const routeMessage = async (from: string, text: string) => {
   const aiText = await generateResponse(tenant.id, text);
   
   if (!aiText) return;
+
+  // Increment usage after successful AI response
+  await incrementUsage(tenant.id);
 
   await prisma.message.create({
     data: {

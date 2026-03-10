@@ -86,6 +86,12 @@ export default function Sidebar() {
             Produtos
           </div>
         </Link>
+        <Link href="/dashboard/billing" className={getLinkClass("/dashboard/billing")}>
+          <div className="flex items-center gap-3">
+            <span className="text-lg">💳</span>
+            Billing
+          </div>
+        </Link>
         <Link href="/dashboard/settings" className={getLinkClass("/dashboard/settings")}>
           <div className="flex items-center gap-3">
             <span className="text-lg">⚙️</span>

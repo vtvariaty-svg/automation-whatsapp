@@ -2,9 +2,7 @@ import { NextResponse } from 'next/server';
 // @ts-ignore - Importing from JS file
 import { generateAIResponse } from "@/src/services/aiService";
 // @ts-ignore - Importing from JS file
-import { sendWhatsAppMessage } from "@/src/services/whatsappService";
-// @ts-ignore - Importing from JS file
-import { saveUserMessage, saveAIMessage, getConversationHistory } from "@/src/services/conversationService";
+import { saveUserMessage, saveAIMessage, getConversationHistory, getConversationStatus } from "@/src/services/conversationService";
 // @ts-ignore - Importing from JS file
 import { getTenantByPhoneId } from "@/src/services/tenantService";
 
@@ -66,15 +64,24 @@ export async function POST(req: Request) {
             console.error("Erro ao verificar/enviar boas-vindas:", e);
           }
 
-          // Etapa 9/Multi-tenant: salvar mensagem do usuário no banco com tenant_id
-          await saveUserMessage(from, textBody, tenant.id);
+          // Check status of conversation
+          const status = await getConversationStatus(from, tenant.id);
+
+          // Etapa 9/Multi-tenant: salvar mensagem do usuário no banco com tenant_id (e o status atual)
+          await saveUserMessage(from, textBody, tenant.id, status);
+
+          if (status === 'human') {
+            console.log(`Conversa com ${from} está com atendimento humano. Ignorando IA.`);
+            // Apenas retorna OK, o humano é responsável a partir daqui
+            return new Response('OK', { status: 200 });
+          }
 
           // Fluxo: enviar texto para aiService com configurações do tenant
           const aiResponse = await generateAIResponse(textBody, tenant.openai_key, tenant.ai_prompt, tenant.business_hours);
           console.log(`Resposta da IA para ${from} (Tenant ${tenant.name}): ${aiResponse}`);
 
           // Etapa 9/Multi-tenant: salvar resposta da IA no banco com tenant_id
-          await saveAIMessage(from, aiResponse, tenant.id);
+          await saveAIMessage(from, aiResponse, tenant.id, status);
 
           // Fluxo: enviar resposta via whatsappService com credenciais do tenant
           await sendWhatsAppMessage(from, aiResponse, tenant.whatsapp_phone_id, tenant.whatsapp_token);

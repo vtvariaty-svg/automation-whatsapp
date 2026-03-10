@@ -7,8 +7,8 @@ export default function Sidebar() {
         <Link href="/dashboard" className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md">
           Dashboard
         </Link>
-        <Link href="/dashboard/conversas" className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md">
-          Conversas
+        <Link href="/dashboard/conversations" className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md">
+          Inbox / Conversas
         </Link>
         <Link href="/dashboard/pedidos" className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md">
           Pedidos

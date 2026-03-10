@@ -46,6 +46,9 @@ export const loginUser = async (email: string, passwordPlain: string) => {
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) throw new Error('Invalid credentials');
 
+  // Social login users don't have a password
+  if (!user.passwordHash) throw new Error('Use social login for this account');
+
   const isValid = await verifyPassword(passwordPlain, user.passwordHash);
   if (!isValid) throw new Error('Invalid credentials');
 

@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+
+export const dynamic = "force-dynamic";
 
 interface WhatsAppStatus {
   connected: boolean;
@@ -11,7 +13,7 @@ interface WhatsAppStatus {
   whatsappPhoneNumberId: string | null;
 }
 
-export default function IntegrationsPage() {
+function IntegrationsContent() {
   const [status, setStatus] = useState<WhatsAppStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [disconnecting, setDisconnecting] = useState(false);
@@ -198,5 +200,22 @@ export default function IntegrationsPage() {
         )}
       </Card>
     </div>
+  );
+}
+
+export default function IntegrationsPage() {
+  return (
+    <Suspense fallback={
+      <div className="max-w-3xl mx-auto w-full">
+        <Card>
+          <CardHeader className="mb-6">
+            <CardTitle className="text-2xl">Integrações</CardTitle>
+            <CardDescription>Carregando...</CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    }>
+      <IntegrationsContent />
+    </Suspense>
   );
 }

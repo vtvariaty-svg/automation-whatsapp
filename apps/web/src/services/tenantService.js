@@ -19,18 +19,38 @@ export async function getTenantByPhoneId(phoneId) {
 /**
  * Cria um novo tenant.
  */
-export async function createTenant({ name, whatsapp_phone_id, whatsapp_token, openai_key, ai_prompt }) {
+export async function createTenant({ name, whatsapp_phone_id, whatsapp_token, openai_key, ai_prompt, welcome_message, business_hours }) {
   const query = `
-    INSERT INTO tenants (id, name, whatsapp_phone_id, whatsapp_token, openai_key, ai_prompt)
-    VALUES ($1, $2, $3, $4, $5, $6)
+    INSERT INTO tenants (id, name, whatsapp_phone_id, whatsapp_token, openai_key, ai_prompt, welcome_message, business_hours)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
     RETURNING *
   `;
-  const values = [uuidv4(), name, whatsapp_phone_id, whatsapp_token, openai_key, ai_prompt];
+  const values = [uuidv4(), name, whatsapp_phone_id, whatsapp_token, openai_key, ai_prompt, welcome_message, business_hours];
   try {
     const result = await pool.query(query, values);
     return result.rows[0];
   } catch (error) {
     console.error('Erro ao criar tenant:', error);
+    throw error;
+  }
+}
+
+/**
+ * Atualiza configurações da IA do tenant.
+ */
+export async function updateTenantAISettings(id, { ai_prompt, welcome_message, business_hours }) {
+  const query = `
+    UPDATE tenants
+    SET ai_prompt = $1, welcome_message = $2, business_hours = $3
+    WHERE id = $4
+    RETURNING *
+  `;
+  const values = [ai_prompt, welcome_message, business_hours, id];
+  try {
+    const result = await pool.query(query, values);
+    return result.rows[0];
+  } catch (error) {
+    console.error('Erro ao atualizar configurações da IA do tenant:', error);
     throw error;
   }
 }

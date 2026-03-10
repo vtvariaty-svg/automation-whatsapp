@@ -19,6 +19,9 @@ export default function Sidebar() {
         <Link href="/dashboard/ai-test" className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md">
           Teste IA
         </Link>
+        <Link href="/dashboard/ai" className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md">
+          Configuração de IA
+        </Link>
         <Link href="/dashboard/products" className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md">
           Produtos
         </Link>

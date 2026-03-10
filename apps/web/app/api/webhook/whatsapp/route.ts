@@ -4,7 +4,7 @@ import { generateAIResponse } from "@/src/services/aiService";
 // @ts-ignore - Importing from JS file
 import { sendWhatsAppMessage } from "@/src/services/whatsappService";
 // @ts-ignore - Importing from JS file
-import { saveUserMessage, saveAIMessage } from "@/src/services/conversationService";
+import { saveUserMessage, saveAIMessage, getConversationHistory } from "@/src/services/conversationService";
 // @ts-ignore - Importing from JS file
 import { getTenantByPhoneId } from "@/src/services/tenantService";
 
@@ -53,11 +53,24 @@ export async function POST(req: Request) {
         if (textBody) {
           console.log(`Mensagem recebida de ${from} para o tenant ${tenant.name}: ${textBody}`);
 
+          // Verificar mensagem de boas vindas
+          try {
+            const history = await getConversationHistory(from, tenant.id);
+            if (history.length === 0 && tenant.welcome_message) {
+              console.log(`Enviando mensagem de boas-vindas para ${from} no tenant ${tenant.name}`);
+              await sendWhatsAppMessage(from, tenant.welcome_message, tenant.whatsapp_phone_id, tenant.whatsapp_token);
+              // Opcional: Salvar a mensagem de boas vindas no histórico
+              await saveAIMessage(from, tenant.welcome_message, tenant.id);
+            }
+          } catch (e) {
+            console.error("Erro ao verificar/enviar boas-vindas:", e);
+          }
+
           // Etapa 9/Multi-tenant: salvar mensagem do usuário no banco com tenant_id
           await saveUserMessage(from, textBody, tenant.id);
 
           // Fluxo: enviar texto para aiService com configurações do tenant
-          const aiResponse = await generateAIResponse(textBody, tenant.openai_key, tenant.ai_prompt);
+          const aiResponse = await generateAIResponse(textBody, tenant.openai_key, tenant.ai_prompt, tenant.business_hours);
           console.log(`Resposta da IA para ${from} (Tenant ${tenant.name}): ${aiResponse}`);
 
           // Etapa 9/Multi-tenant: salvar resposta da IA no banco com tenant_id

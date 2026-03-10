@@ -9,17 +9,24 @@ const openai = new OpenAI({
  * @param {string} messageText 
  * @returns {Promise<string>}
  */
-export async function generateAIResponse(messageText, apiKey, systemPrompt) {
+export async function generateAIResponse(messageText, apiKey, aiPrompt, businessHours) {
   const openai = new OpenAI({
     apiKey: apiKey || process.env.OPENAI_API_KEY,
   });
+
+  const systemMessage = `Você é assistente da empresa.
+
+Instruções:
+${aiPrompt || 'Responda cordialmente.'}
+
+${businessHours ? `Horário de atendimento: ${businessHours}` : ''}`;
 
   try {
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
-        { role: "system", content: systemPrompt || "Você é um assistente útil e educado." },
-        { role: "user", content: messageText },
+        { role: "system", content: systemMessage.trim() },
+        { role: "user", content: `Mensagem do cliente:\n${messageText}` },
       ],
     });
 

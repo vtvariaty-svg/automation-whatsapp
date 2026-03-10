@@ -4,9 +4,9 @@ import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'secret_fallback_key';
 
-export const generateToken = (userId: string, tenantId: string) => {
+export const generateToken = (userId: string, tenantId: string, role: string) => {
   return jwt.sign(
-    { userId, tenantId },
+    { userId, tenantId, role },
     JWT_SECRET,
     { expiresIn: '1d' }
   );
@@ -16,7 +16,7 @@ export const verifyPassword = async (password: string, hash: string) => {
   return await bcrypt.compare(password, hash);
 };
 
-export const registerUser = async (name: string, email: string, passwordPlain: string) => {
+export const registerUser = async (name: string, email: string, passwordPlain: string, role: string = 'user') => {
   const existingUser = await prisma.user.findUnique({ where: { email } });
   if (existingUser) throw new Error('User already exists');
 
@@ -32,13 +32,14 @@ export const registerUser = async (name: string, email: string, passwordPlain: s
     data: {
       email,
       passwordHash,
-      tenantId: tenant.id
+      tenantId: tenant.id,
+      role
     }
   });
 
-  const token = generateToken(user.id, user.tenantId);
+  const token = generateToken(user.id, user.tenantId, user.role);
 
-  return { user: { id: user.id, email: user.email, tenantId: user.tenantId }, token };
+  return { user: { id: user.id, email: user.email, tenantId: user.tenantId, role: user.role }, token };
 };
 
 export const loginUser = async (email: string, passwordPlain: string) => {
@@ -48,7 +49,20 @@ export const loginUser = async (email: string, passwordPlain: string) => {
   const isValid = await verifyPassword(passwordPlain, user.passwordHash);
   if (!isValid) throw new Error('Invalid credentials');
 
-  const token = generateToken(user.id, user.tenantId);
+  const token = generateToken(user.id, user.tenantId, user.role);
 
-  return { user: { id: user.id, email: user.email, tenantId: user.tenantId }, token };
+  return { user: { id: user.id, email: user.email, tenantId: user.tenantId, role: user.role }, token };
+};
+
+export const verifyToken = (token: string) => {
+  try {
+    return jwt.verify(token, JWT_SECRET) as { userId: string, tenantId: string, role: string };
+  } catch (error) {
+    return null;
+  }
+};
+
+export const isAdmin = (token: string) => {
+  const payload = verifyToken(token);
+  return payload?.role === 'admin';
 };

@@ -4,7 +4,7 @@ import { getConversationHistory } from '@/src/services/conversationService';
 
 export async function GET(
   request: Request,
-  { params }: { params: { phone: string } }
+  { params }: { params: Promise<{ phone: string }> }
 ) {
   try {
     const { phone } = await params;

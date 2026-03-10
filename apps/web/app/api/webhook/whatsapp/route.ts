@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
-import { routeMessage } from '@/lib/services/messageRouter';
+// @ts-ignore - Importing from JS file
+import { generateAIResponse } from "@/src/services/aiService";
+// @ts-ignore - Importing from JS file
+import { sendWhatsAppMessage } from "@/src/services/whatsappService";
 
 const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
 
@@ -21,29 +24,32 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
 
+    // Tarefa 4 - Log Mensagem recebida
     console.log("Webhook recebido:", JSON.stringify(body, null, 2));
 
-    if (body.object) {
-      if (
-        body.entry &&
-        body.entry[0].changes &&
-        body.entry[0].changes[0].value.messages &&
-        body.entry[0].changes[0].value.messages[0]
-      ) {
-        const message = body.entry[0].changes[0].value.messages[0];
-        const from = message.from;
-        const text = message.text?.body;
+    if (body.object && body.entry && body.entry[0].changes && body.entry[0].changes[0].value.messages) {
+      const message = body.entry[0].changes[0].value.messages[0];
+      const from = message.from; // Tarefa 4 - Número do cliente
+      const textBody = message.text?.body;
 
-        if (text) {
-          console.log(`Received message from ${from}: ${text}`);
-          // We fire and forget to respond quickly to WhatsApp
-          routeMessage(from, text).catch(err => console.error('Error routing message:', err));
-        }
+      // Tarefa 3 - Ignorar mensagens sem texto
+      if (textBody) {
+        console.log(`Mensagem recebida de ${from}: ${textBody}`);
+
+        // Fluxo: 2 enviar texto para aiService -> 3 receber resposta
+        const aiResponse = await generateAIResponse(textBody);
+        console.log(`Resposta da IA para ${from}: ${aiResponse}`);
+
+        // Fluxo: 4 enviar resposta para usuário via whatsappService
+        await sendWhatsAppMessage(from, aiResponse);
       }
-      return new Response('OK', { status: 200 });
     }
-    return new Response('Not Found', { status: 404 });
+
+    // Tarefa 5 - Sempre retorna 200
+    return new Response('OK', { status: 200 });
   } catch (error) {
-    return new Response('Server Error', { status: 500 });
+    console.error("Erro no processamento do webhook:", error);
+    // Tarefa 5 - Mesmo se falhar, retorna 200 para a Meta
+    return new Response('OK', { status: 200 });
   }
 }

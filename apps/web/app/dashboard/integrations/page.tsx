@@ -1,145 +1,95 @@
 "use client";
 
-declare global {
-  interface Window {
-    FB: any;
-    fbAsyncInit: () => void;
-  }
-}
-
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { useAuth } from "@/hooks/useAuth";
+
+interface WhatsAppStatus {
+  connected: boolean;
+  whatsappBusinessAccountId: string | null;
+  whatsappPhoneNumberId: string | null;
+}
 
 export default function IntegrationsPage() {
-  const { user } = useAuth();
-  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState<WhatsAppStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [disconnecting, setDisconnecting] = useState(false);
   const [message, setMessage] = useState("");
-  const [fbLoaded, setFbLoaded] = useState(false);
+  const searchParams = useSearchParams();
 
   useEffect(() => {
-    // Inject Facebook SDK if not present
-    if (document.getElementById('facebook-jssdk')) {
-      if (window.FB) setFbLoaded(true);
-      return;
-    }
+    // Check URL params for success/error from OAuth callback
+    const success = searchParams.get("success");
+    const error = searchParams.get("error");
+    const phone = searchParams.get("phone");
 
-    // define fbAsyncInit before script loads
-    window.fbAsyncInit = function() {
-      window.FB.init({
-        appId: process.env.NEXT_PUBLIC_FB_APP_ID || '', // Requer variável de ambiente configurada no Build
-        autoLogAppEvents: true,
-        xfbml: true,
-        version: 'v22.0'
-      });
-      setFbLoaded(true);
-    };
-
-    const script = document.createElement('script');
-    script.id = 'facebook-jssdk';
-    script.src = "https://connect.facebook.net/en_US/sdk.js";
-    script.async = true;
-    script.defer = true;
-    script.crossOrigin = "anonymous";
-    document.body.appendChild(script);
-  }, []);
-
-  const handleConnectWhatsApp = () => {
-    const tenantId = user?.tenantId;
-    if (!tenantId) {
-      setMessage("Erro: Usuário não autenticado no Tenant corretamente.");
-      return;
-    }
-
-    setMessage("");
-    // @ts-ignore
-    if (!window.FB) {
-      setMessage("Erro: SDK do Facebook não carregado. Tente recarregar a página.");
-      return;
-    }
-
-      const fbAppId = process.env.NEXT_PUBLIC_FB_APP_ID;
-      if (!fbAppId) {
-        setMessage("Erro: A variável NEXT_PUBLIC_FB_APP_ID não foi configurada no Render. Configure-a e refaça o deploy.");
-        return;
-      }
-
-      try {
-        // @ts-ignore
-        // Força o init antes do login no SPA caso a navegação cliente tenha limpado o escopo
-        window.FB.init({
-          appId: fbAppId,
-          autoLogAppEvents: true,
-          xfbml: true,
-          version: 'v22.0'
-        });
-      } catch(e) {
-      console.warn("FB.init called again or failed", e);
-    }
-
-    // @ts-ignore
-    window.FB.login((response) => {
-      if (response.authResponse) {
-        const accessToken = response.authResponse.accessToken;
-        
-        // Em um fluxo Meta real de Embedded Signup, a Graph API deve retornar os dados abaixo
-        // Aqui estamos mapeando pelo Graph API v22 endpoint simulado após o redirect
-        // O escopo pedido foi para whatsapp_business_management
-        fetchGraphData(accessToken);
-      } else {
-        setMessage("Autorização cancelada ou falhou.");
-      }
-    }, {
-      config_id: process.env.NEXT_PUBLIC_FB_CONFIG_ID || 'SEU_CONFIG_ID', 
-      response_type: 'code',
-      override_default_response_type: true,
-      extras: {
-        setup: {
-          // Additional setup payload se necessário pela doc
-        }
-      }
-    });
-  };
-
-  const fetchGraphData = async (accessToken: string) => {
-    setLoading(true);
-    setMessage("Buscando dados da conta vinculada...");
-    
-    // NOTA: Em app real, backend deveria usar o Token ou "code" para extrair os dados.
-    // Como a Meta mudou fluxos com o Code (oauth), deixaremos o callback aceitar os campos para simularmos ou integrarmos de verdade.
-    // Por simplicidade aqui, vamos simular que pegamos os IDs e já mandamos pro nosso endpoint de callback.
-    
-    try {
-      // Neste MVP, vamos simular a extração do fluxo "Embedded Signup" onde a Meta nos daria WhatsApp Business Config 
-      // Em produção, deve-se chamar a Graph API usando o accessToken retornado ou realizar server-side oauth.
-      // Substitua pela chamada real Graph API "GET /debug_token" ou "GET /v22.0/me/accounts"
-      const fakeWabaId = `waba_${Math.floor(Math.random() * 100000)}`;
-      const fakePhoneId = `phone_${Math.floor(Math.random() * 100000)}`;
-      
-      const payload = {
-        tenantId: user?.tenantId,
-        business_account_id: fakeWabaId, // Replace com GraphData WABA ID Real
-        phone_number_id: fakePhoneId, // Replace com GraphData Phone ID Real
-        access_token: accessToken
+    if (success === "true") {
+      setMessage(phone
+        ? `✅ WhatsApp conectado com sucesso! Número: ${phone}`
+        : "✅ WhatsApp conectado com sucesso!"
+      );
+      // Clean URL params
+      window.history.replaceState({}, "", "/dashboard/integrations");
+    } else if (error) {
+      const errorMessages: Record<string, string> = {
+        oauth_cancelled: "Autorização cancelada pelo usuário.",
+        missing_params: "Parâmetros ausentes no retorno do Facebook.",
+        invalid_state: "Estado inválido no retorno do Facebook.",
+        missing_tenant: "Tenant não identificado.",
+        server_config: "Configuração do servidor incompleta. Verifique FB_APP_SECRET no Render.",
+        token_exchange: "Falha ao trocar código por token. Verifique as configurações do app no Facebook.",
+        server_error: "Erro interno do servidor.",
       };
+      setMessage("❌ " + (errorMessages[error] || `Erro desconhecido: ${error}`));
+      window.history.replaceState({}, "", "/dashboard/integrations");
+    }
 
-      const res = await fetch("/api/integrations/whatsapp/callback", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+    fetchStatus();
+  }, [searchParams]);
+
+  const fetchStatus = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/integrations/whatsapp/status", {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
-
       if (res.ok) {
-        setMessage("✅ WhatsApp conectado com sucesso!");
-      } else {
-        const err = await res.json();
-        setMessage("❌ Falha ao salvar: " + err.error);
+        const data = await res.json();
+        setStatus(data);
       }
-    } catch (e: any) {
-      setMessage("Erro: " + e.message);
+    } catch (err) {
+      console.error("Error fetching status:", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleConnect = () => {
+    // Redirect to the server-side OAuth connect route
+    window.location.href = "/api/integrations/whatsapp/connect";
+  };
+
+  const handleDisconnect = async () => {
+    if (!confirm("Tem certeza que deseja desconectar o WhatsApp?")) return;
+
+    setDisconnecting(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/integrations/whatsapp/disconnect", {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (res.ok) {
+        setStatus({ connected: false, whatsappBusinessAccountId: null, whatsappPhoneNumberId: null });
+        setMessage("WhatsApp desconectado.");
+      } else {
+        setMessage("❌ Erro ao desconectar.");
+      }
+    } catch (err: any) {
+      setMessage("❌ Erro: " + err.message);
+    } finally {
+      setDisconnecting(false);
     }
   };
 
@@ -151,29 +101,99 @@ export default function IntegrationsPage() {
           <CardDescription>Conecte canais de atendimento e outras plataformas ao seu Workspace.</CardDescription>
         </CardHeader>
 
-        <div className="border border-gray-200 rounded-xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 transition hover:border-[#4f46e5]/40 hover:bg-gray-50/50">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-green-100 text-[#25D366] rounded-xl flex items-center justify-center text-2xl shadow-sm">
-              <span className="text-2xl">📱</span>
+        {/* WhatsApp Integration Card */}
+        <div className={`border rounded-xl p-6 transition ${
+          status?.connected
+            ? "border-green-300 bg-green-50/50"
+            : "border-gray-200 hover:border-[#4f46e5]/40 hover:bg-gray-50/50"
+        }`}>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl shadow-sm ${
+                status?.connected
+                  ? "bg-green-100 text-[#25D366]"
+                  : "bg-gray-100 text-gray-400"
+              }`}>
+                <span className="text-2xl">📱</span>
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold text-gray-900 text-lg">WhatsApp Business</h3>
+                  {!loading && (
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      status?.connected
+                        ? "bg-green-100 text-green-800"
+                        : "bg-gray-100 text-gray-600"
+                    }`}>
+                      {status?.connected ? "● Conectado" : "○ Desconectado"}
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-gray-500">
+                  {status?.connected
+                    ? "Sua conta WhatsApp Business está conectada e pronta para uso."
+                    : "Conecte via Facebook para habilitar o envio e recebimento de mensagens."
+                  }
+                </p>
+              </div>
             </div>
-            <div>
-              <h3 className="font-semibold text-gray-900 text-lg">WhatsApp Business</h3>
-              <p className="text-sm text-gray-500">Fluxo Oficial Embedded Signup (Meta)</p>
-            </div>
+
+            {!loading && (
+              status?.connected ? (
+                <Button
+                  onClick={handleDisconnect}
+                  disabled={disconnecting}
+                  className="md:w-auto w-full bg-red-500 hover:bg-red-600 text-white focus:ring-red-500"
+                >
+                  {disconnecting ? "Desconectando..." : "Desconectar"}
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleConnect}
+                  className="md:w-auto w-full bg-[#1877F2] hover:bg-[#166FE5] text-white focus:ring-[#1877F2]"
+                >
+                  🔗 Conectar com Facebook
+                </Button>
+              )
+            )}
           </div>
-          
-          <Button
-            onClick={handleConnectWhatsApp}
-            disabled={!fbLoaded || loading}
-            className="md:w-auto w-full bg-[#25D366] hover:bg-[#1DA851] text-white focus:ring-[#25D366]"
-          >
-            {loading ? "Conectando..." : "Conectar WhatsApp"}
-          </Button>
+
+          {/* Connection details */}
+          {status?.connected && (
+            <div className="mt-4 pt-4 border-t border-green-200 grid grid-cols-1 md:grid-cols-2 gap-3">
+              {status.whatsappBusinessAccountId && (
+                <div className="bg-white rounded-lg px-3 py-2 border border-green-200">
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">WABA ID</p>
+                  <p className="text-sm font-mono text-gray-800">{status.whatsappBusinessAccountId}</p>
+                </div>
+              )}
+              {status.whatsappPhoneNumberId && (
+                <div className="bg-white rounded-lg px-3 py-2 border border-green-200">
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Phone Number ID</p>
+                  <p className="text-sm font-mono text-gray-800">{status.whatsappPhoneNumberId}</p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
+        {/* Status messages */}
         {message && (
-          <div className={`mt-6 px-4 py-3 rounded-lg text-sm font-medium border ${message.includes('Erro') || message.includes('❌') || message.includes('Falha') || message.includes('Por favor') ? 'bg-red-50 text-red-700 border-red-200' : 'bg-green-50 text-green-700 border-green-200'}`}>
+          <div className={`mt-6 px-4 py-3 rounded-lg text-sm font-medium border ${
+            message.includes("❌") || message.includes("Erro")
+              ? "bg-red-50 text-red-700 border-red-200"
+              : message.includes("✅")
+                ? "bg-green-50 text-green-700 border-green-200"
+                : "bg-blue-50 text-blue-700 border-blue-200"
+          }`}>
             {message}
+          </div>
+        )}
+
+        {loading && (
+          <div className="mt-6 flex items-center gap-2 text-gray-500 text-sm">
+            <div className="w-4 h-4 border-2 border-gray-300 border-t-[#4f46e5] rounded-full animate-spin"></div>
+            Verificando status da integração...
           </div>
         )}
       </Card>

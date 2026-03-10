@@ -4,14 +4,15 @@ import { useState } from "react";
 
 export default function ConversasPage() {
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [tenantId, setTenantId] = useState("");
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   async function fetchHistory() {
-    if (!phoneNumber) return;
+    if (!phoneNumber || !tenantId) return;
     setLoading(true);
     try {
-      const resp = await fetch(`/api/conversations/${phoneNumber}`);
+      const resp = await fetch(`/api/conversations/${phoneNumber}?tenantId=${tenantId}`);
       const data = await resp.json();
       setHistory(data);
     } catch (err) {
@@ -28,7 +29,14 @@ export default function ConversasPage() {
         <div className="flex gap-2">
           <input
             type="text"
-            placeholder="Digite o número (ex: 55...)"
+            placeholder="Tenant ID (UUID)"
+            className="w-1/3 border border-gray-300 rounded-md px-4 py-2"
+            value={tenantId}
+            onChange={(e) => setTenantId(e.target.value)}
+          />
+          <input
+            type="text"
+            placeholder="Número (ex: 55...)"
             className="flex-1 border border-gray-300 rounded-md px-4 py-2"
             value={phoneNumber}
             onChange={(e) => setPhoneNumber(e.target.value)}

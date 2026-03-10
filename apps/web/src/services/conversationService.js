@@ -6,12 +6,12 @@ import { v4 as uuidv4 } from 'uuid';
  * @param {string} phone 
  * @param {string} message 
  */
-export async function saveUserMessage(phone, message) {
+export async function saveUserMessage(phone, message, tenantId) {
   const query = `
-    INSERT INTO conversations (id, phone_number, message_text, sender, timestamp)
-    VALUES ($1, $2, $3, $4, NOW())
+    INSERT INTO conversations (id, phone_number, message_text, sender, tenant_id, timestamp)
+    VALUES ($1, $2, $3, $4, $5, NOW())
   `;
-  const values = [uuidv4(), phone, message, 'user'];
+  const values = [uuidv4(), phone, message, 'user', tenantId];
 
   try {
     await pool.query(query, values);
@@ -26,12 +26,12 @@ export async function saveUserMessage(phone, message) {
  * @param {string} phone 
  * @param {string} response 
  */
-export async function saveAIMessage(phone, response) {
+export async function saveAIMessage(phone, response, tenantId) {
   const query = `
-    INSERT INTO conversations (id, phone_number, message_text, sender, timestamp)
-    VALUES ($1, $2, $3, $4, NOW())
+    INSERT INTO conversations (id, phone_number, message_text, sender, tenant_id, timestamp)
+    VALUES ($1, $2, $3, $4, $5, NOW())
   `;
-  const values = [uuidv4(), phone, response, 'assistant'];
+  const values = [uuidv4(), phone, response, 'assistant', tenantId];
 
   try {
     await pool.query(query, values);
@@ -45,16 +45,16 @@ export async function saveAIMessage(phone, response) {
  * Retorna o histórico de conversas de um número específico.
  * @param {string} phone 
  */
-export async function getConversationHistory(phone) {
+export async function getConversationHistory(phone, tenantId) {
   const query = `
     SELECT phone_number, sender, message_text, timestamp
     FROM conversations
-    WHERE phone_number = $1
+    WHERE phone_number = $1 AND tenant_id = $2
     ORDER BY timestamp ASC
   `;
   
   try {
-    const result = await pool.query(query, [phone]);
+    const result = await pool.query(query, [phone, tenantId]);
     return result.rows;
   } catch (error) {
     console.error('Erro ao buscar histórico de conversas:', error);

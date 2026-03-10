@@ -8,7 +8,14 @@ export async function GET(
 ) {
   try {
     const { phone } = await params;
-    const history = await getConversationHistory(phone);
+    const { searchParams } = new URL(request.url);
+    const tenantId = searchParams.get('tenantId');
+
+    if (!tenantId) {
+      return NextResponse.json({ error: 'tenantId is required' }, { status: 400 });
+    }
+
+    const history = await getConversationHistory(phone, tenantId);
     
     return NextResponse.json(history);
   } catch (error: any) {

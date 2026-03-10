@@ -8,8 +8,10 @@ const WHATSAPP_PHONE_ID = process.env.WHATSAPP_PHONE_ID;
  * @param {string} to 
  * @param {string} text 
  */
-export async function sendWhatsAppMessage(to, text) {
-  const url = `https://graph.facebook.com/v22.0/${WHATSAPP_PHONE_ID}/messages`;
+export async function sendWhatsAppMessage(to, text, tenantPhoneId, tenantToken) {
+  const phoneId = tenantPhoneId || WHATSAPP_PHONE_ID;
+  const token = tenantToken || WHATSAPP_TOKEN;
+  const url = `https://graph.facebook.com/v22.0/${phoneId}/messages`;
 
   try {
     const response = await axios.post(
@@ -22,7 +24,7 @@ export async function sendWhatsAppMessage(to, text) {
       },
       {
         headers: {
-          Authorization: `Bearer ${WHATSAPP_TOKEN}`,
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
       }

@@ -5,6 +5,8 @@ import { generateAIResponse } from "@/src/services/aiService";
 import { sendWhatsAppMessage } from "@/src/services/whatsappService";
 // @ts-ignore - Importing from JS file
 import { saveUserMessage, saveAIMessage } from "@/src/services/conversationService";
+// @ts-ignore - Importing from JS file
+import { getTenantByPhoneId } from "@/src/services/tenantService";
 
 const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
 
@@ -26,30 +28,44 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    // Tarefa 4 - Log Mensagem recebida
+    // Log Mensagem recebida
     console.log("Webhook recebido:", JSON.stringify(body, null, 2));
 
-    if (body.object && body.entry && body.entry[0].changes && body.entry[0].changes[0].value.messages) {
-      const message = body.entry[0].changes[0].value.messages[0];
-      const from = message.from; // Tarefa 4 (Etapa 8/9) - Número do cliente
-      const textBody = message.text?.body;
+    if (body.object && body.entry && body.entry[0].changes && body.entry[0].changes[0].value.metadata) {
+      const metadata = body.entry[0].changes[0].value.metadata;
+      const phoneId = metadata.phone_number_id; // Tarefa 3 - Identificar tenant
 
-      // Tarefa 3 - Ignorar mensagens sem texto
-      if (textBody) {
-        console.log(`Mensagem recebida de ${from}: ${textBody}`);
+      // Buscar Tenant
+      const tenant = await getTenantByPhoneId(phoneId);
+      
+      if (!tenant) {
+        console.error(`Tenant não encontrado para o phoneId: ${phoneId}`);
+        return new Response('Tenant not found', { status: 200 }); // Retorna 200 para a Meta não reenviar
+      }
 
-        // Etapa 9: Fluxo 2 - salvar mensagem do usuário no banco
-        await saveUserMessage(from, textBody);
+      const messages = body.entry[0].changes[0].value.messages;
 
-        // Fluxo: 3 enviar texto para aiService -> 4 receber resposta
-        const aiResponse = await generateAIResponse(textBody);
-        console.log(`Resposta da IA para ${from}: ${aiResponse}`);
+      if (messages && messages[0]) {
+        const message = messages[0];
+        const from = message.from;
+        const textBody = message.text?.body;
 
-        // Etapa 9: Fluxo 5 - salvar resposta da IA no banco
-        await saveAIMessage(from, aiResponse);
+        if (textBody) {
+          console.log(`Mensagem recebida de ${from} para o tenant ${tenant.name}: ${textBody}`);
 
-        // Fluxo: 6 enviar resposta para usuário via whatsappService
-        await sendWhatsAppMessage(from, aiResponse);
+          // Etapa 9/Multi-tenant: salvar mensagem do usuário no banco com tenant_id
+          await saveUserMessage(from, textBody, tenant.id);
+
+          // Fluxo: enviar texto para aiService com configurações do tenant
+          const aiResponse = await generateAIResponse(textBody, tenant.openai_key, tenant.ai_prompt);
+          console.log(`Resposta da IA para ${from} (Tenant ${tenant.name}): ${aiResponse}`);
+
+          // Etapa 9/Multi-tenant: salvar resposta da IA no banco com tenant_id
+          await saveAIMessage(from, aiResponse, tenant.id);
+
+          // Fluxo: enviar resposta via whatsappService com credenciais do tenant
+          await sendWhatsAppMessage(from, aiResponse, tenant.whatsapp_phone_id, tenant.whatsapp_token);
+        }
       }
     }
 
@@ -57,7 +73,6 @@ export async function POST(req: Request) {
     return new Response('OK', { status: 200 });
   } catch (error) {
     console.error("Erro no processamento do webhook:", error);
-    // Tarefa 5 - Mesmo se falhar, retorna 200 para a Meta
     return new Response('OK', { status: 200 });
   }
 }

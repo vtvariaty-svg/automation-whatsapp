@@ -9,12 +9,16 @@ const openai = new OpenAI({
  * @param {string} messageText 
  * @returns {Promise<string>}
  */
-export async function generateAIResponse(messageText) {
+export async function generateAIResponse(messageText, apiKey, systemPrompt) {
+  const openai = new OpenAI({
+    apiKey: apiKey || process.env.OPENAI_API_KEY,
+  });
+
   try {
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
-        { role: "system", content: "Você é um assistente útil e educado que responde mensagens de clientes no WhatsApp." },
+        { role: "system", content: systemPrompt || "Você é um assistente útil e educado." },
         { role: "user", content: messageText },
       ],
     });

@@ -1,5 +1,12 @@
 "use client";
 
+declare global {
+  interface Window {
+    FB: any;
+    fbAsyncInit: () => void;
+  }
+}
+
 import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -12,11 +19,22 @@ export default function IntegrationsPage() {
   const [fbLoaded, setFbLoaded] = useState(false);
 
   useEffect(() => {
-    // Inject Facebook SDK
+    // Inject Facebook SDK if not present
     if (document.getElementById('facebook-jssdk')) {
-      setFbLoaded(true);
+      if (window.FB) setFbLoaded(true);
       return;
     }
+
+    // define fbAsyncInit before script loads
+    window.fbAsyncInit = function() {
+      window.FB.init({
+        appId: process.env.NEXT_PUBLIC_FB_APP_ID || 'SEU_APP_ID_AQUI',
+        autoLogAppEvents: true,
+        xfbml: true,
+        version: 'v22.0'
+      });
+      setFbLoaded(true);
+    };
 
     const script = document.createElement('script');
     script.id = 'facebook-jssdk';
@@ -24,19 +42,6 @@ export default function IntegrationsPage() {
     script.async = true;
     script.defer = true;
     script.crossOrigin = "anonymous";
-    script.onload = () => {
-      // @ts-ignore
-      if (window.FB) {
-         // @ts-ignore
-        window.FB.init({
-          appId: process.env.NEXT_PUBLIC_FB_APP_ID || 'SEU_APP_ID_AQUI',
-          autoLogAppEvents: true,
-          xfbml: true,
-          version: 'v22.0'
-        });
-        setFbLoaded(true);
-      }
-    };
     document.body.appendChild(script);
   }, []);
 

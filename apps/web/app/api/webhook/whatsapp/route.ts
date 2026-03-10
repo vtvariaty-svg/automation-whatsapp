@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 import { generateAIResponse } from "@/src/services/aiService";
 // @ts-ignore - Importing from JS file
 import { sendWhatsAppMessage } from "@/src/services/whatsappService";
+// @ts-ignore - Importing from JS file
+import { saveUserMessage, saveAIMessage } from "@/src/services/conversationService";
 
 const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
 
@@ -29,18 +31,24 @@ export async function POST(req: Request) {
 
     if (body.object && body.entry && body.entry[0].changes && body.entry[0].changes[0].value.messages) {
       const message = body.entry[0].changes[0].value.messages[0];
-      const from = message.from; // Tarefa 4 - Número do cliente
+      const from = message.from; // Tarefa 4 (Etapa 8/9) - Número do cliente
       const textBody = message.text?.body;
 
       // Tarefa 3 - Ignorar mensagens sem texto
       if (textBody) {
         console.log(`Mensagem recebida de ${from}: ${textBody}`);
 
-        // Fluxo: 2 enviar texto para aiService -> 3 receber resposta
+        // Etapa 9: Fluxo 2 - salvar mensagem do usuário no banco
+        await saveUserMessage(from, textBody);
+
+        // Fluxo: 3 enviar texto para aiService -> 4 receber resposta
         const aiResponse = await generateAIResponse(textBody);
         console.log(`Resposta da IA para ${from}: ${aiResponse}`);
 
-        // Fluxo: 4 enviar resposta para usuário via whatsappService
+        // Etapa 9: Fluxo 5 - salvar resposta da IA no banco
+        await saveAIMessage(from, aiResponse);
+
+        // Fluxo: 6 enviar resposta para usuário via whatsappService
         await sendWhatsAppMessage(from, aiResponse);
       }
     }

@@ -1,28 +1,16 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import jwt from 'jsonwebtoken';
 import { prisma } from '@/lib/prisma';
+import { getAuthTenant } from '@/lib/getAuthTenant';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'secret_fallback_key';
-
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const cookieStore = await cookies();
-    const authToken = cookieStore.get('auth_token')?.value;
-    if (!authToken) {
+    const auth = await getAuthTenant(request);
+    if (!auth) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
-    let tenantId: string;
-    try {
-      const decoded = jwt.verify(authToken, JWT_SECRET) as { tenantId: string };
-      tenantId = decoded.tenantId;
-    } catch {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
-
     const tenant = await prisma.tenant.findUnique({
-      where: { id: tenantId },
+      where: { id: auth.tenantId },
       select: {
         whatsappToken: true,
         whatsappBusinessAccountId: true,
@@ -35,10 +23,13 @@ export async function GET() {
       return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
     }
 
-    const connected = !!(tenant.whatsappToken && (tenant.whatsappPhoneNumberId || tenant.whatsappPhoneId));
+    // Connected if we have at least a token saved
+    const connected = !!tenant.whatsappToken;
+    const hasFullConfig = !!(tenant.whatsappToken && (tenant.whatsappPhoneNumberId || tenant.whatsappPhoneId));
 
     return NextResponse.json({
       connected,
+      hasFullConfig,
       whatsappBusinessAccountId: tenant.whatsappBusinessAccountId || null,
       whatsappPhoneNumberId: tenant.whatsappPhoneNumberId || tenant.whatsappPhoneId || null,
     });

@@ -4,11 +4,13 @@ import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 
 export const dynamic = "force-dynamic";
 
 interface WhatsAppStatus {
   connected: boolean;
+  hasFullConfig: boolean;
   whatsappBusinessAccountId: string | null;
   whatsappPhoneNumberId: string | null;
 }
@@ -18,10 +20,14 @@ function IntegrationsContent() {
   const [loading, setLoading] = useState(true);
   const [disconnecting, setDisconnecting] = useState(false);
   const [message, setMessage] = useState("");
+  const [showManualForm, setShowManualForm] = useState(false);
+  const [manualWabaId, setManualWabaId] = useState("");
+  const [manualPhoneId, setManualPhoneId] = useState("");
+  const [manualToken, setManualToken] = useState("");
+  const [savingManual, setSavingManual] = useState(false);
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    // Check URL params for success/error from OAuth callback
     const success = searchParams.get("success");
     const error = searchParams.get("error");
     const phone = searchParams.get("phone");
@@ -31,19 +37,18 @@ function IntegrationsContent() {
         ? `✅ WhatsApp conectado com sucesso! Número: ${phone}`
         : "✅ WhatsApp conectado com sucesso!"
       );
-      // Clean URL params
       window.history.replaceState({}, "", "/dashboard/integrations");
     } else if (error) {
       const errorMessages: Record<string, string> = {
         oauth_cancelled: "Autorização cancelada pelo usuário.",
-        missing_params: "Parâmetros ausentes no retorno do Facebook.",
-        invalid_state: "Estado inválido no retorno do Facebook.",
-        missing_tenant: "Tenant não identificado.",
-        server_config: "Configuração do servidor incompleta. Verifique FB_APP_SECRET no Render.",
-        token_exchange: "Falha ao trocar código por token. Verifique as configurações do app no Facebook.",
+        no_token: "Token não recebido do Facebook. Tente novamente.",
+        no_tenant: "Sessão expirada. Faça login novamente.",
+        process_failed: "Falha ao processar conexão. Tente conectar manualmente.",
+        network: "Erro de rede. Verifique sua conexão.",
+        missing_app_id: "NEXT_PUBLIC_FB_APP_ID não configurada no servidor.",
         server_error: "Erro interno do servidor.",
       };
-      setMessage("❌ " + (errorMessages[error] || `Erro desconhecido: ${error}`));
+      setMessage("❌ " + (errorMessages[error] || `Erro: ${error}`));
       window.history.replaceState({}, "", "/dashboard/integrations");
     }
 
@@ -53,9 +58,10 @@ function IntegrationsContent() {
   const fetchStatus = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("/api/integrations/whatsapp/status", {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const res = await fetch("/api/integrations/whatsapp/status", { headers });
       if (res.ok) {
         const data = await res.json();
         setStatus(data);
@@ -68,7 +74,6 @@ function IntegrationsContent() {
   };
 
   const handleConnect = () => {
-    // Redirect to the server-side OAuth connect route
     window.location.href = "/api/integrations/whatsapp/connect";
   };
 
@@ -78,12 +83,15 @@ function IntegrationsContent() {
     setDisconnecting(true);
     try {
       const token = localStorage.getItem("token");
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
       const res = await fetch("/api/integrations/whatsapp/disconnect", {
         method: "POST",
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        headers,
       });
       if (res.ok) {
-        setStatus({ connected: false, whatsappBusinessAccountId: null, whatsappPhoneNumberId: null });
+        setStatus({ connected: false, hasFullConfig: false, whatsappBusinessAccountId: null, whatsappPhoneNumberId: null });
         setMessage("WhatsApp desconectado.");
       } else {
         setMessage("❌ Erro ao desconectar.");
@@ -92,6 +100,44 @@ function IntegrationsContent() {
       setMessage("❌ Erro: " + err.message);
     } finally {
       setDisconnecting(false);
+    }
+  };
+
+  const handleManualSave = async () => {
+    if (!manualToken) {
+      setMessage("❌ O Token de acesso é obrigatório.");
+      return;
+    }
+    setSavingManual(true);
+    setMessage("");
+
+    try {
+      const token = localStorage.getItem("token");
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const res = await fetch("/api/integrations/whatsapp/callback", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          accessToken: manualToken,
+          wabaId: manualWabaId || undefined,
+          phoneNumberId: manualPhoneId || undefined,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setMessage("✅ WhatsApp configurado com sucesso!");
+        setShowManualForm(false);
+        fetchStatus();
+      } else {
+        setMessage("❌ Erro: " + (data.error || "Falha ao salvar"));
+      }
+    } catch (err: any) {
+      setMessage("❌ Erro: " + err.message);
+    } finally {
+      setSavingManual(false);
     }
   };
 
@@ -112,20 +158,16 @@ function IntegrationsContent() {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl shadow-sm ${
-                status?.connected
-                  ? "bg-green-100 text-[#25D366]"
-                  : "bg-gray-100 text-gray-400"
+                status?.connected ? "bg-green-100 text-[#25D366]" : "bg-gray-100 text-gray-400"
               }`}>
-                <span className="text-2xl">📱</span>
+                <span>📱</span>
               </div>
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className="font-semibold text-gray-900 text-lg">WhatsApp Business</h3>
                   {!loading && (
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      status?.connected
-                        ? "bg-green-100 text-green-800"
-                        : "bg-gray-100 text-gray-600"
+                      status?.connected ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"
                     }`}>
                       {status?.connected ? "● Conectado" : "○ Desconectado"}
                     </span>
@@ -133,30 +175,42 @@ function IntegrationsContent() {
                 </div>
                 <p className="text-sm text-gray-500">
                   {status?.connected
-                    ? "Sua conta WhatsApp Business está conectada e pronta para uso."
-                    : "Conecte via Facebook para habilitar o envio e recebimento de mensagens."
+                    ? status.hasFullConfig
+                      ? "Conta WhatsApp Business conectada e pronta para uso."
+                      : "Token salvo. Configure WABA ID e Phone ID abaixo para completar."
+                    : "Conecte via Facebook ou configure manualmente."
                   }
                 </p>
               </div>
             </div>
 
             {!loading && (
-              status?.connected ? (
-                <Button
-                  onClick={handleDisconnect}
-                  disabled={disconnecting}
-                  className="md:w-auto w-full bg-red-500 hover:bg-red-600 text-white focus:ring-red-500"
-                >
-                  {disconnecting ? "Desconectando..." : "Desconectar"}
-                </Button>
-              ) : (
-                <Button
-                  onClick={handleConnect}
-                  className="md:w-auto w-full bg-[#1877F2] hover:bg-[#166FE5] text-white focus:ring-[#1877F2]"
-                >
-                  🔗 Conectar com Facebook
-                </Button>
-              )
+              <div className="flex gap-2">
+                {status?.connected ? (
+                  <Button
+                    onClick={handleDisconnect}
+                    disabled={disconnecting}
+                    className="md:w-auto w-full bg-red-500 hover:bg-red-600 text-white focus:ring-red-500"
+                  >
+                    {disconnecting ? "..." : "Desconectar"}
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      onClick={handleConnect}
+                      className="md:w-auto w-full bg-[#1877F2] hover:bg-[#166FE5] text-white focus:ring-[#1877F2]"
+                    >
+                      🔗 Facebook
+                    </Button>
+                    <Button
+                      onClick={() => setShowManualForm(!showManualForm)}
+                      className="md:w-auto w-full bg-gray-600 hover:bg-gray-700 text-white"
+                    >
+                      ⚙️ Manual
+                    </Button>
+                  </>
+                )}
+              </div>
             )}
           </div>
 
@@ -175,9 +229,86 @@ function IntegrationsContent() {
                   <p className="text-sm font-mono text-gray-800">{status.whatsappPhoneNumberId}</p>
                 </div>
               )}
+              {!status.hasFullConfig && (
+                <div className="md:col-span-2">
+                  <Button
+                    onClick={() => setShowManualForm(!showManualForm)}
+                    className="text-sm bg-yellow-500 hover:bg-yellow-600 text-white"
+                  >
+                    ⚙️ Completar configuração manualmente
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </div>
+
+        {/* Manual Configuration Form */}
+        {showManualForm && (
+          <div className="mt-4 border border-gray-200 rounded-xl p-6 bg-gray-50">
+            <h4 className="font-semibold text-gray-900 mb-1">Configuração Manual</h4>
+            <p className="text-sm text-gray-500 mb-4">
+              Insira os dados do WhatsApp Business API. Encontre no{" "}
+              <a href="https://developers.facebook.com" target="_blank" className="text-[#4f46e5] underline">
+                Facebook Developer Console
+              </a>.
+            </p>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Token de Acesso Permanente <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  type="password"
+                  value={manualToken}
+                  onChange={(e) => setManualToken(e.target.value)}
+                  placeholder="EAAx..."
+                  className="w-full"
+                />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    WABA ID <span className="text-gray-400">(opcional)</span>
+                  </label>
+                  <Input
+                    value={manualWabaId}
+                    onChange={(e) => setManualWabaId(e.target.value)}
+                    placeholder="Ex: 123456789"
+                    className="w-full"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Phone Number ID <span className="text-gray-400">(opcional)</span>
+                  </label>
+                  <Input
+                    value={manualPhoneId}
+                    onChange={(e) => setManualPhoneId(e.target.value)}
+                    placeholder="Ex: 123456789"
+                    className="w-full"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <Button
+                  onClick={handleManualSave}
+                  disabled={savingManual}
+                  className="bg-[#25D366] hover:bg-[#1DA851] text-white"
+                >
+                  {savingManual ? "Salvando..." : "💾 Salvar Configuração"}
+                </Button>
+                <Button
+                  onClick={() => setShowManualForm(false)}
+                  className="bg-gray-200 hover:bg-gray-300 text-gray-700"
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Status messages */}
         {message && (

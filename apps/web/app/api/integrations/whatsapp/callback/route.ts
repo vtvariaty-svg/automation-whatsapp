@@ -1,10 +1,18 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getAuthTenant } from '@/lib/getAuthTenant';
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { tenantId, accessToken } = body;
+    const { accessToken, wabaId, phoneNumberId } = body;
+
+    // Get tenantId from request body OR from auth
+    let tenantId = body.tenantId;
+    if (!tenantId) {
+      const auth = await getAuthTenant(request);
+      if (auth) tenantId = auth.tenantId;
+    }
 
     if (!tenantId || !accessToken) {
       return NextResponse.json({ error: 'Missing tenantId or accessToken' }, { status: 400 });
@@ -16,92 +24,88 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
     }
 
-    // Use the access token to fetch WhatsApp Business data from Graph API
-    let wabaId: string | null = null;
-    let phoneNumberId: string | null = null;
+    // If manual wabaId/phoneNumberId provided, use them directly
+    let finalWabaId = wabaId || null;
+    let finalPhoneId = phoneNumberId || null;
     let phoneDisplay: string | null = null;
 
-    try {
-      // Try: Get businesses owned by this user
-      const businessRes = await fetch(
-        `https://graph.facebook.com/v22.0/me/businesses?access_token=${accessToken}`
-      );
-      const businessData = await businessRes.json();
-      console.log('Business data:', JSON.stringify(businessData, null, 2));
+    // If not provided manually, try to discover via Graph API
+    if (!finalWabaId || !finalPhoneId) {
+      try {
+        // Try: Get businesses
+        const businessRes = await fetch(
+          `https://graph.facebook.com/v22.0/me/businesses?access_token=${accessToken}`
+        );
+        const businessData = await businessRes.json();
 
-      if (businessData.data && businessData.data.length > 0) {
-        // Try each business to find WhatsApp accounts
-        for (const business of businessData.data) {
-          const wabaRes = await fetch(
-            `https://graph.facebook.com/v22.0/${business.id}/owned_whatsapp_business_accounts?access_token=${accessToken}`
+        if (businessData.data && businessData.data.length > 0) {
+          for (const business of businessData.data) {
+            const wabaRes = await fetch(
+              `https://graph.facebook.com/v22.0/${business.id}/owned_whatsapp_business_accounts?access_token=${accessToken}`
+            );
+            const wabaData = await wabaRes.json();
+
+            if (wabaData.data && wabaData.data.length > 0) {
+              finalWabaId = finalWabaId || wabaData.data[0].id;
+
+              const phoneRes = await fetch(
+                `https://graph.facebook.com/v22.0/${finalWabaId}/phone_numbers?access_token=${accessToken}`
+              );
+              const phoneData = await phoneRes.json();
+
+              if (phoneData.data && phoneData.data.length > 0) {
+                finalPhoneId = finalPhoneId || phoneData.data[0].id;
+                phoneDisplay = phoneData.data[0].display_phone_number || null;
+              }
+              break;
+            }
+          }
+        }
+
+        // Fallback: direct endpoint
+        if (!finalWabaId) {
+          const directRes = await fetch(
+            `https://graph.facebook.com/v22.0/me/whatsapp_business_accounts?access_token=${accessToken}`
           );
-          const wabaData = await wabaRes.json();
-          console.log(`WABA data for business ${business.id}:`, JSON.stringify(wabaData, null, 2));
+          const directData = await directRes.json();
 
-          if (wabaData.data && wabaData.data.length > 0) {
-            wabaId = wabaData.data[0].id;
-
-            // Get phone numbers for this WABA
+          if (directData.data && directData.data.length > 0) {
+            finalWabaId = directData.data[0].id;
             const phoneRes = await fetch(
-              `https://graph.facebook.com/v22.0/${wabaId}/phone_numbers?access_token=${accessToken}`
+              `https://graph.facebook.com/v22.0/${finalWabaId}/phone_numbers?access_token=${accessToken}`
             );
             const phoneData = await phoneRes.json();
-            console.log('Phone data:', JSON.stringify(phoneData, null, 2));
-
             if (phoneData.data && phoneData.data.length > 0) {
-              phoneNumberId = phoneData.data[0].id;
-              phoneDisplay = phoneData.data[0].display_phone_number || phoneData.data[0].verified_name || null;
+              finalPhoneId = finalPhoneId || phoneData.data[0].id;
+              phoneDisplay = phoneData.data[0].display_phone_number || null;
             }
-            break; // Found a WABA, stop searching
           }
         }
+      } catch (graphErr: any) {
+        console.error('Graph API discovery error (non-fatal):', graphErr.message);
       }
-
-      // Fallback: try direct endpoint
-      if (!wabaId) {
-        const directRes = await fetch(
-          `https://graph.facebook.com/v22.0/me/whatsapp_business_accounts?access_token=${accessToken}`
-        );
-        const directData = await directRes.json();
-        console.log('Direct WABA data:', JSON.stringify(directData, null, 2));
-
-        if (directData.data && directData.data.length > 0) {
-          wabaId = directData.data[0].id;
-
-          const phoneRes = await fetch(
-            `https://graph.facebook.com/v22.0/${wabaId}/phone_numbers?access_token=${accessToken}`
-          );
-          const phoneData = await phoneRes.json();
-
-          if (phoneData.data && phoneData.data.length > 0) {
-            phoneNumberId = phoneData.data[0].id;
-            phoneDisplay = phoneData.data[0].display_phone_number || phoneData.data[0].verified_name || null;
-          }
-        }
-      }
-    } catch (graphErr: any) {
-      console.error('Error fetching WhatsApp data from Graph API:', graphErr.message);
     }
 
-    // Save to database
+    // Save to database - always save at least the token
     await prisma.tenant.update({
       where: { id: tenantId },
       data: {
         whatsappToken: accessToken,
-        whatsappBusinessAccountId: wabaId,
-        whatsappPhoneNumberId: phoneNumberId,
-        whatsappPhoneId: phoneNumberId,
+        whatsappBusinessAccountId: finalWabaId,
+        whatsappPhoneNumberId: finalPhoneId,
+        whatsappPhoneId: finalPhoneId,
       }
     });
 
     return NextResponse.json({
       success: true,
-      wabaId,
-      phoneNumberId,
+      wabaId: finalWabaId,
+      phoneNumberId: finalPhoneId,
       phoneDisplay,
+      autoDetected: !wabaId && !phoneNumberId && !!finalWabaId,
     });
   } catch (error: any) {
-    console.error('Error in WhatsApp OAuth callback:', error);
+    console.error('Error in WhatsApp callback:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

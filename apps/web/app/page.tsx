@@ -234,27 +234,27 @@ function PricingSection() {
   const plans = [
     {
       name: "Starter",
-      price: "97",
+      price: "39,90",
       description: "Ideal para profissionais autônomos",
-      features: ["1 número WhatsApp", "500 mensagens/mês", "IA com GPT-4o", "Agendamentos", "Suporte por email"],
+      features: ["1.000 mensagens IA/mês", "WhatsApp integrado", "Painel de conversas", "Suporte por email"],
       popular: false,
-      cta: "Começar Grátis",
+      cta: "Assinar",
     },
     {
-      name: "Professional",
-      price: "197",
+      name: "Pro",
+      price: "79,90",
       description: "Para pequenas empresas em crescimento",
-      features: ["2 números WhatsApp", "2.000 mensagens/mês", "IA com GPT-4o", "Agendamentos + Vendas", "Integração Nuvemshop", "Painel analítico", "Suporte prioritário"],
+      features: ["4.000 mensagens IA/mês", "WhatsApp integrado", "Painel de conversas", "Inbox com atendimento humano", "Suporte prioritário"],
       popular: true,
-      cta: "Começar Grátis",
+      cta: "Assinar",
     },
     {
-      name: "Enterprise",
-      price: "497",
+      name: "Business",
+      price: "149,00",
       description: "Para operações de alto volume",
-      features: ["5 números WhatsApp", "10.000 mensagens/mês", "IA com GPT-4o", "Todas as integrações", "API personalizada", "Múltiplos usuários", "Gerente de sucesso dedicado"],
+      features: ["15.000 mensagens IA/mês", "WhatsApp integrado", "Painel completo", "Inbox com atendimento humano", "Integrações avançadas", "Suporte dedicado"],
       popular: false,
-      cta: "Falar com Vendas",
+      cta: "Assinar",
     },
   ];
 
@@ -283,8 +283,8 @@ function PricingSection() {
               <p className={`text-sm mb-6 ${plan.popular ? "text-indigo-200" : "text-gray-500"}`}>{plan.description}</p>
 
               <div className="flex items-baseline gap-1 mb-8">
-                <span className={`text-sm ${plan.popular ? "text-indigo-200" : "text-gray-400"}`}>R$</span>
-                <span className={`text-5xl font-extrabold ${plan.popular ? "text-white" : "text-gray-900"}`}>{plan.price}</span>
+                <span className={`text-lg font-bold ${plan.popular ? "text-indigo-200" : "text-gray-400"}`}>R$</span>
+                <span className={`text-4xl font-extrabold ${plan.popular ? "text-white" : "text-gray-900"}`}>{plan.price}</span>
                 <span className={`text-sm ${plan.popular ? "text-indigo-200" : "text-gray-400"}`}>/mês</span>
               </div>
 

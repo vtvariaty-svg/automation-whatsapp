@@ -65,17 +65,16 @@ export default function IntegrationsPage() {
         return;
       }
 
-      // @ts-ignore
-      // Força o init antes do login no SPA caso a navegação cliente tenha limpado o escopo
-      window.FB.init({
-        appId: fbAppId,
-        autoLogAppEvents: true,
-        xfbml: true,
-        version: 'v22.0'
-      });
-        version: 'v22.0'
-      });
-    } catch(e) {
+      try {
+        // @ts-ignore
+        // Força o init antes do login no SPA caso a navegação cliente tenha limpado o escopo
+        window.FB.init({
+          appId: fbAppId,
+          autoLogAppEvents: true,
+          xfbml: true,
+          version: 'v22.0'
+        });
+      } catch(e) {
       console.warn("FB.init called again or failed", e);
     }
 

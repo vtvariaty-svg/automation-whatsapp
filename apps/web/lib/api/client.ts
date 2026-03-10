@@ -1,4 +1,5 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+const API_URL = '/api';
+console.log('API_CLIENT: using relative path /api');
 
 export async function apiClient(endpoint: string, options: RequestInit = {}) {
   const token = localStorage.getItem('auth_token');

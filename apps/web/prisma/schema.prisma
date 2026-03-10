@@ -1,0 +1,68 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id                  String          @id @default(uuid())
+  name                String
+  businessDescription String?
+  businessType        String?
+  phone               String?
+  createdAt           DateTime        @default(now())
+  users               User[]
+  conversations       Conversation[]
+  products            Product[]
+  businessConfig      BusinessConfig?
+}
+
+model BusinessConfig {
+  id           String   @id @default(uuid())
+  tenantId     String   @unique
+  openingHours String?
+  address      String?
+  faqJson      String?  @db.Text
+  createdAt    DateTime @default(now())
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  tenantId    String
+  name        String
+  description String?
+  price       Float    @default(0.0)
+  createdAt   DateTime @default(now())
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+}
+
+model User {
+  id           String   @id @default(uuid())
+  tenantId     String
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+}
+
+model Conversation {
+  id            String    @id @default(uuid())
+  tenantId      String
+  customerPhone String
+  createdAt     DateTime  @default(now())
+  tenant        Tenant    @relation(fields: [tenantId], references: [id])
+  messages      Message[]
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  role           String
+  content        String
+  createdAt      DateTime     @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+}

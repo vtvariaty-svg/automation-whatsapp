@@ -55,8 +55,21 @@ export default function IntegrationsPage() {
     setMessage("");
     // @ts-ignore
     if (!window.FB) {
-      setMessage("SDK do Facebook não carregado.");
+      setMessage("Erro: SDK do Facebook não carregado. Tente recarregar a página.");
       return;
+    }
+
+    try {
+      // @ts-ignore
+      // Força o init antes do login no SPA caso a navegação cliente tenha limpado o escopo
+      window.FB.init({
+        appId: process.env.NEXT_PUBLIC_FB_APP_ID || '1146740640523030', // Default fallback
+        autoLogAppEvents: true,
+        xfbml: true,
+        version: 'v22.0'
+      });
+    } catch(e) {
+      console.warn("FB.init called again or failed", e);
     }
 
     // @ts-ignore

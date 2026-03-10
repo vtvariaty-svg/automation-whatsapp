@@ -13,6 +13,14 @@ model Tenant {
   businessDescription String?
   businessType        String?
   phone               String?
+  whatsappPhoneNumberId String?
+  whatsappPhoneId     String?
+  whatsappBusinessAccountId String?
+  whatsappToken       String?
+  openaiKey           String?
+  aiPrompt            String? @db.Text
+  welcomeMessage      String? @db.Text
+  businessHours       String?
   createdAt           DateTime        @default(now())
   users               User[]
   conversations       Conversation[]
@@ -55,6 +63,7 @@ model Conversation {
   id            String    @id @default(uuid())
   tenantId      String
   customerPhone String
+  status        String    @default("ai")
   createdAt     DateTime  @default(now())
   tenant        Tenant    @relation(fields: [tenantId], references: [id])
   messages      Message[]

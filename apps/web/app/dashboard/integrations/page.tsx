@@ -153,7 +153,7 @@ export default function IntegrationsPage() {
         </div>
 
         {message && (
-          <div className={`mt-6 px-4 py-3 rounded-lg text-sm font-medium border ${message.includes('❌') || message.includes('Falha') || message.includes('Por favor') ? 'bg-red-50 text-red-700 border-red-200' : 'bg-green-50 text-green-700 border-green-200'}`}>
+          <div className={`mt-6 px-4 py-3 rounded-lg text-sm font-medium border ${message.includes('Erro') || message.includes('❌') || message.includes('Falha') || message.includes('Por favor') ? 'bg-red-50 text-red-700 border-red-200' : 'bg-green-50 text-green-700 border-green-200'}`}>
             {message}
           </div>
         )}

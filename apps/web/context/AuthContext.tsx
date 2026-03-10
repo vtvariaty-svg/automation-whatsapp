@@ -25,15 +25,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const savedToken = authStorage.getToken();
     if (savedToken) {
-      setToken(savedToken);
       try {
         const base64Url = savedToken.split('.')[1];
+        if (!base64Url) throw new Error("Invalid JWT format (possibly old mock token)");
+        
         const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
         const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
             return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
         }).join(''));
         const payload = JSON.parse(jsonPayload);
         
+        setToken(savedToken);
         setUser({ 
           id: payload.userId, 
           tenantId: payload.tenantId, 
@@ -42,8 +44,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           name: 'Usuário' 
         });
       } catch (e) {
-        // Fallback se não conseguir decodificar
-        setUser({ email: 'user@demo.com', name: 'SaaS User' });
+        console.warn("Token inválido ou antigo. Forçando logout...");
+        authStorage.logout();
+        setToken(null);
+        setUser(null);
       }
     }
     setLoading(false);

@@ -14,9 +14,12 @@ export async function POST(request: Request) {
       if (auth) tenantId = auth.tenantId;
     }
 
-    if (!tenantId || !accessToken) {
-      return NextResponse.json({ error: 'Missing tenantId or accessToken' }, { status: 400 });
+    if (!tenantId || (!accessToken && !wabaId && !phoneNumberId)) {
+      return NextResponse.json({ error: 'Missing tenantId or data' }, { status: 400 });
     }
+
+    // If token is __KEEP_EXISTING__, skip token-related logic and just update IDs
+    const isIdOnlyUpdate = accessToken === '__KEEP_EXISTING__';
 
     // Verify tenant exists
     const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
@@ -86,16 +89,23 @@ export async function POST(request: Request) {
       }
     }
 
-    // Save to database - always save at least the token
-    await prisma.tenant.update({
-      where: { id: tenantId },
-      data: {
-        whatsappToken: accessToken,
-        whatsappBusinessAccountId: finalWabaId,
-        whatsappPhoneNumberId: finalPhoneId,
-        whatsappPhoneId: finalPhoneId,
-      }
-    });
+    // Save to database
+    const updateData: any = {};
+    if (!isIdOnlyUpdate && accessToken) updateData.whatsappToken = accessToken;
+    if (finalWabaId) {
+      updateData.whatsappBusinessAccountId = finalWabaId;
+    }
+    if (finalPhoneId) {
+      updateData.whatsappPhoneNumberId = finalPhoneId;
+      updateData.whatsappPhoneId = finalPhoneId;
+    }
+
+    if (Object.keys(updateData).length > 0) {
+      await prisma.tenant.update({
+        where: { id: tenantId },
+        data: updateData,
+      });
+    }
 
     return NextResponse.json({
       success: true,

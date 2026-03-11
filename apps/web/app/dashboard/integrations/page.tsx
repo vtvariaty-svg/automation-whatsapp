@@ -170,8 +170,13 @@ function IntegrationsContent() {
   };
 
   const handleManualSave = async () => {
-    if (!manualToken) {
+    // When already connected, token is optional (already saved)
+    if (!status?.connected && !manualToken) {
       setMessage("❌ O Token de acesso é obrigatório.");
+      return;
+    }
+    if (!manualWabaId && !manualPhoneId) {
+      setMessage("❌ Insira pelo menos WABA ID ou Phone Number ID.");
       return;
     }
     setSavingManual(true);
@@ -180,14 +185,20 @@ function IntegrationsContent() {
       const token = localStorage.getItem("token");
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
+      
+      const body: any = { wabaId: manualWabaId || undefined, phoneNumberId: manualPhoneId || undefined };
+      if (manualToken) body.accessToken = manualToken;
+      // If already connected but no manual token, we still need to send something
+      if (!body.accessToken) body.accessToken = "__KEEP_EXISTING__";
+      
       const res = await fetch("/api/integrations/whatsapp/callback", {
         method: "POST",
         headers,
-        body: JSON.stringify({ accessToken: manualToken, wabaId: manualWabaId || undefined, phoneNumberId: manualPhoneId || undefined }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setMessage("✅ WhatsApp configurado com sucesso!");
+        setMessage("✅ Configuração atualizada com sucesso!");
         setShowManualForm(false);
         fetchStatus();
       } else {
@@ -296,9 +307,57 @@ function IntegrationsContent() {
               {!status.hasFullConfig && (
                 <div className="p-4 bg-amber-50 rounded-xl border border-amber-100 text-sm text-amber-700">
                   ⚠️ Token salvo, mas WABA ID ou Phone ID não foram detectados.{" "}
-                  <button onClick={() => setShowManualForm(true)} className="font-semibold underline hover:no-underline">
-                    Completar manualmente
+                  <button onClick={() => setShowManualForm(!showManualForm)} className="font-semibold underline hover:no-underline">
+                    {showManualForm ? "Fechar formulário" : "Completar manualmente"}
                   </button>
+                </div>
+              )}
+
+              {/* Inline manual form for completing WABA/Phone IDs */}
+              {showManualForm && (
+                <div className="p-5 bg-gray-50 rounded-xl border border-gray-200 space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">WABA ID</label>
+                      <input
+                        value={manualWabaId}
+                        onChange={(e) => setManualWabaId(e.target.value)}
+                        placeholder="Ex: 123456789012345"
+                        className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20 focus:border-[#4f46e5]/40 font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">Phone Number ID</label>
+                      <input
+                        value={manualPhoneId}
+                        onChange={(e) => setManualPhoneId(e.target.value)}
+                        placeholder="Ex: 123456789012345"
+                        className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20 focus:border-[#4f46e5]/40 font-mono"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleManualSave}
+                      disabled={savingManual || (!manualWabaId && !manualPhoneId)}
+                      className="px-5 py-2 bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] text-white rounded-lg font-semibold text-sm hover:shadow-lg transition-all disabled:opacity-50"
+                    >
+                      {savingManual ? "Salvando..." : "Salvar IDs"}
+                    </button>
+                    <button
+                      onClick={() => setShowManualForm(false)}
+                      className="px-4 py-2 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-100 transition-all"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-400">
+                    Encontre esses IDs no{" "}
+                    <a href="https://developers.facebook.com" target="_blank" className="text-[#4f46e5] underline">
+                      Facebook Developer Console
+                    </a>
+                    {" → WhatsApp → Configuração da API"}
+                  </p>
                 </div>
               )}
 

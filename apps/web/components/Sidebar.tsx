@@ -4,16 +4,27 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 
+const navItems = [
+  { href: "/dashboard", label: "Dashboard", icon: "📊", section: null },
+  { href: "/dashboard/conversations", label: "Conversas", icon: "💬", section: null },
+  { href: "/dashboard/orders", label: "Pedidos", icon: "🛍️", section: null },
+  { href: "/dashboard/appointments", label: "Agenda", icon: "📅", section: null },
+  { href: "/dashboard/ai", label: "Configuração de IA", icon: "🤖", section: "Automação" },
+  { href: "/dashboard/ai-test", label: "Teste IA", icon: "🧪", section: null },
+  { href: "/dashboard/integrations", label: "Integrações", icon: "🔌", section: "Administração" },
+  { href: "/dashboard/products", label: "Produtos", icon: "📦", section: null },
+  { href: "/dashboard/billing", label: "Assinatura", icon: "💳", section: null },
+  { href: "/dashboard/settings", label: "Configurações", icon: "⚙️", section: null },
+];
+
 export default function Sidebar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
 
-  // Close sidebar on route change (mobile)
   useEffect(() => {
     setIsOpen(false);
   }, [pathname]);
 
-  // Close on escape key
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === "Escape") setIsOpen(false);
@@ -27,136 +38,99 @@ export default function Sidebar() {
     };
   }, []);
 
-  const getLinkClass = (path: string) => {
-    const isActive = pathname === path;
-    return `block px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-      isActive 
-        ? "bg-[#1f2937] text-white" 
-        : "text-[#e5e7eb] hover:bg-[#1f2937] hover:text-white"
-    }`;
-  };
-
   const navContent = (
     <>
-      <div className="h-16 flex items-center px-6 border-b border-[#1f2937] shrink-0">
+      {/* Logo */}
+      <div className="h-16 flex items-center px-6 border-b border-white/[0.06] shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#4f46e5] to-[#4338ca] flex items-center justify-center shadow-lg">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#4f46e5] to-[#7c3aed] flex items-center justify-center shadow-lg shadow-indigo-500/20">
             <span className="text-white font-bold text-lg">V</span>
           </div>
-          <span className="text-white font-bold text-lg tracking-tight">VTvariaty</span>
+          <div>
+            <span className="text-white font-bold text-[15px] tracking-tight block leading-tight">Variaty</span>
+            <span className="text-indigo-300 text-[10px] font-medium tracking-wider uppercase">Secretary IA</span>
+          </div>
         </div>
-        {/* Close button - mobile only */}
         <button
           onClick={() => setIsOpen(false)}
-          className="ml-auto lg:hidden text-gray-400 hover:text-white p-1"
+          className="ml-auto lg:hidden text-gray-500 hover:text-white p-1 rounded-lg hover:bg-white/5 transition-all"
           aria-label="Fechar menu"
         >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
 
-      <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-1.5">
-        <Link href="/dashboard" className={getLinkClass("/dashboard")}>
-          <div className="flex items-center gap-3">
-            <span className="text-lg">📊</span>
-            Dashboard
-          </div>
-        </Link>
-        <Link href="/dashboard/conversations" className={getLinkClass("/dashboard/conversations")}>
-          <div className="flex items-center gap-3">
-            <span className="text-lg">💬</span>
-            Conversas
-          </div>
-        </Link>
-        <Link href="/dashboard/orders" className={getLinkClass("/dashboard/orders")}>
-          <div className="flex items-center gap-3">
-            <span className="text-lg">🛍️</span>
-            Pedidos
-          </div>
-        </Link>
-        <Link href="/dashboard/appointments" className={getLinkClass("/dashboard/appointments")}>
-          <div className="flex items-center gap-3">
-            <span className="text-lg">📅</span>
-            Agenda
-          </div>
-        </Link>
-        <div className="pt-4 pb-2">
-          <p className="px-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-            Automação
-          </p>
-        </div>
-        <Link href="/dashboard/ai" className={getLinkClass("/dashboard/ai")}>
-          <div className="flex items-center gap-3">
-            <span className="text-lg">🤖</span>
-            Configuração de IA
-          </div>
-        </Link>
-        <Link href="/dashboard/ai-test" className={getLinkClass("/dashboard/ai-test")}>
-          <div className="flex items-center gap-3">
-            <span className="text-lg">🧪</span>
-            Teste IA
-          </div>
-        </Link>
-        <div className="pt-4 pb-2">
-          <p className="px-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-            Administração
-          </p>
-        </div>
-        <Link href="/dashboard/integrations" className={getLinkClass("/dashboard/integrations")}>
-          <div className="flex items-center gap-3">
-            <span className="text-lg">🔌</span>
-            Integrações
-          </div>
-        </Link>
-        <Link href="/dashboard/products" className={getLinkClass("/dashboard/products")}>
-          <div className="flex items-center gap-3">
-            <span className="text-lg">📦</span>
-            Produtos
-          </div>
-        </Link>
-        <Link href="/dashboard/billing" className={getLinkClass("/dashboard/billing")}>
-          <div className="flex items-center gap-3">
-            <span className="text-lg">💳</span>
-            Billing
-          </div>
-        </Link>
-        <Link href="/dashboard/settings" className={getLinkClass("/dashboard/settings")}>
-          <div className="flex items-center gap-3">
-            <span className="text-lg">⚙️</span>
-            Configurações
-          </div>
-        </Link>
+      {/* Navigation */}
+      <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-0.5">
+        {navItems.map((item, i) => {
+          const isActive = pathname === item.href;
+          return (
+            <div key={item.href}>
+              {item.section && (
+                <div className="pt-5 pb-2 px-3">
+                  <p className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.15em]">
+                    {item.section}
+                  </p>
+                </div>
+              )}
+              <Link
+                href={item.href}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
+                  isActive
+                    ? "bg-gradient-to-r from-[#4f46e5]/20 to-[#7c3aed]/10 text-white border border-indigo-500/20 shadow-sm shadow-indigo-500/10"
+                    : "text-gray-400 hover:text-white hover:bg-white/[0.05]"
+                }`}
+              >
+                <span className={`text-base ${isActive ? "scale-110" : ""} transition-transform`}>{item.icon}</span>
+                <span>{item.label}</span>
+                {isActive && (
+                  <div className="ml-auto w-1.5 h-1.5 rounded-full bg-indigo-400 shadow-sm shadow-indigo-400"></div>
+                )}
+              </Link>
+            </div>
+          );
+        })}
       </nav>
+
+      {/* Bottom section */}
+      <div className="p-4 border-t border-white/[0.06]">
+        <div className="bg-gradient-to-r from-indigo-500/10 to-purple-500/10 rounded-xl p-4 border border-indigo-500/10">
+          <p className="text-xs text-indigo-300 font-semibold mb-1">Plano Atual</p>
+          <p className="text-white font-bold text-sm">Starter</p>
+          <Link href="/dashboard/billing" className="inline-flex items-center gap-1 text-[11px] text-indigo-400 hover:text-indigo-300 font-medium mt-2 transition-colors">
+            Fazer upgrade →
+          </Link>
+        </div>
+      </div>
     </>
   );
 
   return (
     <>
-      {/* Desktop sidebar - always visible */}
-      <aside className="hidden lg:flex w-[240px] bg-[#111827] flex-col h-full shrink-0 border-r border-[#1f2937]">
+      {/* Desktop sidebar */}
+      <aside className="hidden lg:flex w-[260px] bg-[#0c1120] flex-col h-full shrink-0 border-r border-white/[0.06]">
         {navContent}
       </aside>
 
       {/* Mobile overlay */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
           onClick={() => setIsOpen(false)}
         />
       )}
 
-      {/* Mobile sidebar - slide in from left */}
+      {/* Mobile sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-[280px] bg-[#111827] flex flex-col transition-transform duration-300 ease-in-out lg:hidden ${
+        className={`fixed inset-y-0 left-0 z-50 w-[280px] bg-[#0c1120] flex flex-col transition-transform duration-300 ease-in-out lg:hidden ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         {navContent}
       </aside>
 
-      {/* Hamburger button - accessible from Header */}
       <button
         id="sidebar-toggle"
         onClick={() => setIsOpen(true)}

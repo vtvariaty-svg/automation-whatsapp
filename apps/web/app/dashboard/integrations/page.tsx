@@ -75,6 +75,39 @@ function IntegrationsContent() {
     }
   }, [appId]);
 
+  // Save token to our API (separate async function)
+  const saveWhatsAppToken = async (accessToken: string) => {
+    try {
+      const jwtToken = localStorage.getItem("token");
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (jwtToken) headers["Authorization"] = `Bearer ${jwtToken}`;
+
+      const res = await fetch("/api/integrations/whatsapp/callback", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ accessToken }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setMessage(
+          data.phoneDisplay
+            ? `✅ WhatsApp conectado! Número: ${data.phoneDisplay}`
+            : data.wabaId
+              ? "✅ WhatsApp conectado com sucesso!"
+              : "✅ Token salvo! Configure WABA ID e Phone ID manualmente se necessário."
+        );
+        fetchStatus();
+      } else {
+        setMessage("❌ " + (data.error || "Falha ao conectar"));
+      }
+    } catch (err: any) {
+      setMessage("❌ Erro: " + err.message);
+    } finally {
+      setEmbeddedLoading(false);
+    }
+  };
+
   // Embedded Signup handler - uses direct token flow
   const handleEmbeddedSignup = () => {
     if (!appId || !(window as any).FB) {
@@ -83,7 +116,6 @@ function IntegrationsContent() {
     }
 
     if (embeddedLoading) {
-      // If already loading, allow click to cancel
       setEmbeddedLoading(false);
       return;
     }
@@ -91,44 +123,16 @@ function IntegrationsContent() {
     setEmbeddedLoading(true);
     setMessage("");
 
-    // Safety timeout - reset loading if popup closed without callback
+    // Safety timeout
     const timeout = setTimeout(() => {
       setEmbeddedLoading(false);
     }, 60000);
 
     (window as any).FB.login(
-      async (response: any) => {
+      function(response: any) {
         clearTimeout(timeout);
-        if (response.authResponse?.accessToken) {
-          try {
-            const jwtToken = localStorage.getItem("token");
-            const headers: Record<string, string> = { "Content-Type": "application/json" };
-            if (jwtToken) headers["Authorization"] = `Bearer ${jwtToken}`;
-
-            const res = await fetch("/api/integrations/whatsapp/callback", {
-              method: "POST",
-              headers,
-              body: JSON.stringify({ accessToken: response.authResponse.accessToken }),
-            });
-
-            const data = await res.json();
-            if (res.ok && data.success) {
-              setMessage(
-                data.phoneDisplay
-                  ? `✅ WhatsApp conectado! Número: ${data.phoneDisplay}`
-                  : data.wabaId
-                    ? "✅ WhatsApp conectado com sucesso!"
-                    : "✅ Token salvo! Configure WABA ID e Phone ID manualmente se necessário."
-              );
-              fetchStatus();
-            } else {
-              setMessage("❌ " + (data.error || "Falha ao conectar"));
-            }
-          } catch (err: any) {
-            setMessage("❌ Erro: " + err.message);
-          } finally {
-            setEmbeddedLoading(false);
-          }
+        if (response.authResponse && response.authResponse.accessToken) {
+          saveWhatsAppToken(response.authResponse.accessToken);
         } else {
           setEmbeddedLoading(false);
           setMessage("❌ Autorização cancelada.");

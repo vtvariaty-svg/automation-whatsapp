@@ -147,6 +147,7 @@ function IntegrationsContent() {
   const handleDisconnect = async () => {
     if (!confirm("Tem certeza que deseja desconectar o WhatsApp?")) return;
     setDisconnecting(true);
+    setMessage("");
     try {
       const token = localStorage.getItem("token");
       const headers: Record<string, string> = {};
@@ -154,11 +155,14 @@ function IntegrationsContent() {
       const res = await fetch("/api/integrations/whatsapp/disconnect", { method: "POST", headers });
       if (res.ok) {
         setStatus({ connected: false, hasFullConfig: false, whatsappBusinessAccountId: null, whatsappPhoneNumberId: null });
-        setMessage("WhatsApp desconectado.");
+        setMessage("✅ WhatsApp desconectado com sucesso.");
       } else {
-        setMessage("❌ Erro ao desconectar.");
+        const data = await res.json().catch(() => ({}));
+        console.error("Disconnect error:", res.status, data);
+        setMessage("❌ Erro ao desconectar: " + (data.error || `Status ${res.status}`));
       }
     } catch (err: any) {
+      console.error("Disconnect exception:", err);
       setMessage("❌ Erro: " + err.message);
     } finally {
       setDisconnecting(false);

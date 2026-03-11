@@ -19,9 +19,9 @@ export default function AISettingsPage() {
       const res = await fetch(`/api/tenant/settings?tenantId=${user.tenantId}`);
       if (res.ok) {
         const data = await res.json();
-        setAiPrompt(data.ai_prompt || "");
-        setWelcomeMessage(data.welcome_message || "");
-        setBusinessHours(data.business_hours || "");
+        setAiPrompt(data.aiPrompt || data.ai_prompt || "");
+        setWelcomeMessage(data.welcomeMessage || data.welcome_message || "");
+        setBusinessHours(data.businessHours || data.business_hours || "");
       }
     } catch {
       setMessage("Erro ao carregar configurações.");

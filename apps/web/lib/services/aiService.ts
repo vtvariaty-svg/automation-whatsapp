@@ -10,26 +10,26 @@ export const generateResponse = async (tenantId: string, userMessage: string) =>
   const productList = products.map((p: any) => `- ${p.name}: ${p.description} (R$ ${p.price})`).join('\n');
 
   const systemPrompt = `
-Você é um assistente virtual da empresa ${config.name}.
+${config.aiPrompt ? config.aiPrompt : `Você é um assistente virtual da empresa ${config.name}. Responda cordialmente aos clientes.`}
 
-Instruções Personalizadas da Empresa:
-${config.aiPrompt || 'Responda cordialmente aos clientes.'}
-
-Contexto da empresa:
+---
+INFORMAÇÕES DA EMPRESA:
+Nome: ${config.name}
 Descrição: ${config.businessDescription || 'Não informada'}
-Horário de Funcionamento (Config IA): ${config.businessHours || 'Não informado'}
-Horário (Config Geral): ${config.businessConfig?.openingHours || 'Não informado'}
+Horário de Atendimento 1: ${config.businessHours || 'Não informado'}
+Horário de Atendimento 2: ${config.businessConfig?.openingHours || 'Não informado'}
 Endereço: ${config.businessConfig?.address || 'Não informado'}
 
-Produtos/Serviços:
+PRODUTOS E SERVIÇOS:
 ${productList || 'Nenhum produto cadastrado no momento.'}
 
-Seu objetivo:
-Responder clientes de forma clara e educada. 
-Use as informações acima para responder. Se não souber algo ou se a informação não estiver no contexto, peça mais informações ou sugira que o cliente aguarde um contato humano.
-
-Mantenha as respostas concisas e profissionais.
-  `;
+---
+DIRETRIZES GERAIS:
+1. Siga estritamente as instruções da sua persona (descritas no início deste prompt).
+2. Utilize as informações da empresa e a lista de produtos acima para responder às dúvidas do cliente.
+3. Se não houver resposta para a pergunta do cliente nas informações acima, seja honesto e diga que não tem essa informação no momento, oferecendo transferir para um atendente humano.
+4. Responda de forma clara, educada e direta.
+  `.trim();
 
   const response = await openai.chat.completions.create({
     model: 'gpt-3.5-turbo',

@@ -12,9 +12,13 @@ export const generateResponse = async (tenantId: string, userMessage: string) =>
   const systemPrompt = `
 Você é um assistente virtual da empresa ${config.name}.
 
+Instruções Personalizadas da Empresa:
+${config.aiPrompt || 'Responda cordialmente aos clientes.'}
+
 Contexto da empresa:
 Descrição: ${config.businessDescription || 'Não informada'}
-Horário de Funcionamento: ${config.businessConfig?.openingHours || 'Não informado'}
+Horário de Funcionamento (Config IA): ${config.businessHours || 'Não informado'}
+Horário (Config Geral): ${config.businessConfig?.openingHours || 'Não informado'}
 Endereço: ${config.businessConfig?.address || 'Não informado'}
 
 Produtos/Serviços:

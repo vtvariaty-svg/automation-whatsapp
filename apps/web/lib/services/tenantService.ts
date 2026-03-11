@@ -12,6 +12,8 @@ export const getTenantConfig = async (tenantId: string) => {
     businessDescription: tenant.businessDescription,
     businessType: tenant.businessType,
     phone: tenant.phone,
+    aiPrompt: tenant.aiPrompt,
+    businessHours: tenant.businessHours,
     businessConfig: tenant.businessConfig
   };
 };

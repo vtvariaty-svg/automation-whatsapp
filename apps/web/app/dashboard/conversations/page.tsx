@@ -1,9 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
-import { Badge } from "@/components/ui/Badge";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 
 type Conversation = {
@@ -16,7 +13,7 @@ type Conversation = {
 
 type Message = {
   id: string;
-  sender: 'user' | 'ai' | 'human';
+  sender: "user" | "ai" | "human";
   message_text?: string;
   ai_response?: string;
   timestamp: string;
@@ -33,6 +30,16 @@ export default function InboxPage() {
   const [loadingList, setLoadingList] = useState(false);
   const [loadingChat, setLoadingChat] = useState(false);
   const [sending, setSending] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   const loadConversations = async () => {
     if (!tenantId) return;
@@ -53,7 +60,7 @@ export default function InboxPage() {
   useEffect(() => {
     if (tenantId) {
       loadConversations();
-      const interval = setInterval(loadConversations, 10000); // Atualiza a lista a cada 10s
+      const interval = setInterval(loadConversations, 10000);
       return () => clearInterval(interval);
     }
   }, [tenantId]);
@@ -77,7 +84,7 @@ export default function InboxPage() {
 
   useEffect(() => {
     if (tenantId && selectedPhone) {
-      const interval = setInterval(() => loadMessages(selectedPhone, currentStatus), 5000); // Poll msgs a cada 5s
+      const interval = setInterval(() => loadMessages(selectedPhone, currentStatus), 5000);
       return () => clearInterval(interval);
     }
   }, [tenantId, selectedPhone, currentStatus]);
@@ -85,15 +92,13 @@ export default function InboxPage() {
   const handleTakeover = async () => {
     if (!selectedPhone || !tenantId) return;
     try {
-      const res = await fetch(`/api/conversations/${selectedPhone}/takeover?tenantId=${tenantId}`, {
-        method: 'POST'
-      });
+      const res = await fetch(`/api/conversations/${selectedPhone}/takeover?tenantId=${tenantId}`, { method: "POST" });
       if (res.ok) {
-        setCurrentStatus('human');
+        setCurrentStatus("human");
         loadConversations();
       }
     } catch (err) {
-      console.error("Takeover error:", err);
+      console.error(err);
     }
   };
 
@@ -103,154 +108,300 @@ export default function InboxPage() {
     setSending(true);
     try {
       const res = await fetch(`/api/conversations/${selectedPhone}/send`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tenantId, message: replyText })
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tenantId, message: replyText }),
       });
       if (res.ok) {
         setReplyText("");
         loadMessages(selectedPhone, currentStatus);
       }
     } catch (err) {
-      console.error("Send message error:", err);
+      console.error(err);
     } finally {
       setSending(false);
     }
   };
 
-  return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-4">
+  const filteredConversations = conversations.filter(
+    (c) => c.phone_number.includes(searchTerm) || c.last_message?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-      {/* Main Inbox UI */}
-      <div className="flex flex-1 overflow-hidden bg-white border border-gray-200 rounded-2xl shadow-sm mt-4">
-        {/* Sidebar */}
-        <div className="w-1/3 max-w-sm bg-gray-50/50 border-r border-gray-100 flex flex-col">
-          <div className="px-5 py-4 border-b border-gray-100 bg-white">
-            <h2 className="font-semibold text-gray-900 text-lg">Conversas</h2>
+  const formatPhone = (phone: string) => {
+    if (phone.length >= 11) {
+      return `(${phone.slice(-11, -9)}) ${phone.slice(-9, -4)}-${phone.slice(-4)}`;
+    }
+    return phone;
+  };
+
+  return (
+    <div className="flex flex-col h-[calc(100vh-4rem)]">
+      {/* Page header */}
+      <div className="flex items-center justify-between mb-4 shrink-0">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Caixa de Entrada</h1>
+          <p className="text-sm text-gray-500 mt-0.5">
+            {conversations.length} conversa{conversations.length !== 1 ? "s" : ""} 
+            {conversations.filter(c => c.status === "human").length > 0 && (
+              <span className="text-orange-500 font-medium"> · {conversations.filter(c => c.status === "human").length} em atendimento humano</span>
+            )}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="relative flex h-2.5 w-2.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+          </span>
+          <span className="text-xs font-medium text-gray-500">Atualização automática</span>
+        </div>
+      </div>
+
+      {/* Main container */}
+      <div className="flex flex-1 overflow-hidden bg-white rounded-2xl border border-gray-200/60 shadow-sm">
+        {/* Conversation list */}
+        <div className="w-[340px] bg-gray-50/30 border-r border-gray-100 flex flex-col shrink-0">
+          {/* Search */}
+          <div className="p-4 border-b border-gray-100">
+            <div className="relative">
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                type="text"
+                placeholder="Buscar conversa..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20 focus:border-[#4f46e5]/40 transition-all placeholder:text-gray-400"
+              />
+            </div>
           </div>
-          <div className="overflow-y-auto flex-1 p-3 space-y-1">
+
+          {/* List */}
+          <div className="overflow-y-auto flex-1 p-2 space-y-0.5">
             {loadingList && conversations.length === 0 ? (
-              <p className="text-gray-500 text-sm p-4 text-center">Carregando...</p>
-            ) : conversations.length === 0 ? (
-              <p className="text-gray-500 text-sm p-4 text-center">Nenhuma conversa encontrada.</p>
-            ) : (
-              conversations.map(conv => (
-                <div 
-                  key={conv.phone_number} 
-                  onClick={() => loadMessages(conv.phone_number, conv.status)}
-                  className={`p-4 rounded-xl cursor-pointer transition-all border ${selectedPhone === conv.phone_number ? 'border-primary/30 bg-[#4f46e5]/5 shadow-sm' : 'border-transparent hover:bg-white hover:shadow-sm'}`}
-                >
-                  <div className="flex justify-between items-start mb-1.5 gap-2">
-                    <span className="font-semibold text-gray-900 truncate">{conv.phone_number}</span>
-                    <Badge variant={conv.status === 'human' ? 'warning' : 'success'} className="shrink-0 text-[10px] px-2 py-0.5">
-                      {conv.status.toUpperCase()}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-gray-500 truncate">{conv.last_message || 'Sem texto.'}</p>
+              <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                <div className="w-8 h-8 border-2 border-gray-200 border-t-[#4f46e5] rounded-full animate-spin mb-3"></div>
+                <p className="text-sm">Carregando...</p>
+              </div>
+            ) : filteredConversations.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center mb-3">
+                  <span className="text-2xl">💬</span>
                 </div>
-              ))
+                <p className="text-sm font-medium text-gray-500">Nenhuma conversa</p>
+                <p className="text-xs text-gray-400 mt-1 text-center px-4">
+                  {searchTerm ? "Nenhum resultado para a busca" : "As conversas aparecerão quando clientes enviarem mensagens"}
+                </p>
+              </div>
+            ) : (
+              filteredConversations.map((conv) => {
+                const isSelected = selectedPhone === conv.phone_number;
+                const isHuman = conv.status === "human";
+                return (
+                  <div
+                    key={conv.phone_number}
+                    onClick={() => loadMessages(conv.phone_number, conv.status)}
+                    className={`flex items-start gap-3 p-3.5 rounded-xl cursor-pointer transition-all duration-200 ${
+                      isSelected
+                        ? "bg-[#4f46e5]/[0.08] border border-[#4f46e5]/15"
+                        : "hover:bg-white hover:shadow-sm border border-transparent"
+                    }`}
+                  >
+                    {/* Avatar */}
+                    <div className="relative shrink-0">
+                      <div className={`w-11 h-11 rounded-full flex items-center justify-center text-white font-bold text-sm ${
+                        isSelected ? "bg-gradient-to-br from-[#4f46e5] to-[#7c3aed]" : "bg-gray-300"
+                      }`}>
+                        {conv.phone_number.slice(-2)}
+                      </div>
+                      <span className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white ${
+                        isHuman ? "bg-orange-400" : "bg-green-400"
+                      }`}></span>
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2 mb-0.5">
+                        <span className={`font-semibold text-sm truncate ${isSelected ? "text-[#4f46e5]" : "text-gray-900"}`}>
+                          {formatPhone(conv.phone_number)}
+                        </span>
+                        <span className="text-[10px] text-gray-400 shrink-0">
+                          {conv.timestamp ? new Date(conv.timestamp).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : ""}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500 truncate">{conv.last_message || "Sem mensagem"}</p>
+                      <div className="flex items-center gap-1.5 mt-1.5">
+                        <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                          isHuman
+                            ? "bg-orange-50 text-orange-600"
+                            : "bg-emerald-50 text-emerald-600"
+                        }`}>
+                          {isHuman ? "👤 Humano" : "🤖 IA"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
             )}
           </div>
         </div>
 
-        {/* Chat Area */}
-        <div className="flex-1 bg-white flex flex-col relative overflow-hidden">
+        {/* Chat area */}
+        <div className="flex-1 flex flex-col bg-white overflow-hidden">
           {selectedPhone ? (
             <>
-              {/* Chat Header */}
-              <div className="bg-white/80 backdrop-blur-md px-6 py-4 border-b border-gray-100 flex justify-between items-center shrink-0 z-10 sticky top-0">
-                <div>
-                  <h3 className="font-bold text-gray-900 text-lg">{selectedPhone}</h3>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="relative flex h-2 w-2">
-                      <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${currentStatus === 'human' ? 'bg-orange-400' : 'bg-green-400'}`}></span>
-                      <span className={`relative inline-flex rounded-full h-2 w-2 ${currentStatus === 'human' ? 'bg-orange-500' : 'bg-green-500'}`}></span>
-                    </span>
-                    <p className="text-xs text-gray-500 font-medium tracking-wide">
-                      ATENDIMENTO {currentStatus === 'human' ? 'HUMANO' : 'IA'}
-                    </p>
+              {/* Chat header */}
+              <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#4f46e5] to-[#7c3aed] flex items-center justify-center text-white font-bold text-sm">
+                    {selectedPhone.slice(-2)}
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-gray-900">{formatPhone(selectedPhone)}</h3>
+                    <div className="flex items-center gap-2">
+                      <span className="relative flex h-2 w-2">
+                        <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                          currentStatus === "human" ? "bg-orange-400" : "bg-green-400"
+                        }`}></span>
+                        <span className={`relative inline-flex rounded-full h-2 w-2 ${
+                          currentStatus === "human" ? "bg-orange-500" : "bg-green-500"
+                        }`}></span>
+                      </span>
+                      <p className="text-xs text-gray-500 font-medium">
+                        {currentStatus === "human" ? "Atendimento Humano" : "Atendimento IA"}
+                      </p>
+                    </div>
                   </div>
                 </div>
-                {currentStatus !== 'human' && (
-                  <Button 
-                    variant="warning"
-                    onClick={handleTakeover}
-                    className="shadow-sm"
-                  >
-                    Assumir Atendimento
-                  </Button>
-                )}
+                <div className="flex items-center gap-2">
+                  {currentStatus !== "human" && (
+                    <button
+                      onClick={handleTakeover}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-orange-50 text-orange-600 rounded-xl text-sm font-semibold hover:bg-orange-100 transition-all border border-orange-100"
+                    >
+                      <span>👤</span> Assumir
+                    </button>
+                  )}
+                </div>
               </div>
 
-              {/* Chat Messages */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-6 flex flex-col bg-slate-50/50">
+              {/* Messages */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gradient-to-b from-slate-50/50 to-white">
                 {loadingChat && messages.length === 0 ? (
-                  <p className="text-gray-500 text-center text-sm m-auto">Carregando histórico...</p>
+                  <div className="flex items-center justify-center h-full">
+                    <div className="text-center text-gray-400">
+                      <div className="w-8 h-8 border-2 border-gray-200 border-t-[#4f46e5] rounded-full animate-spin mx-auto mb-3"></div>
+                      <p className="text-sm">Carregando histórico...</p>
+                    </div>
+                  </div>
+                ) : messages.length === 0 ? (
+                  <div className="flex items-center justify-center h-full">
+                    <div className="text-center text-gray-400">
+                      <p className="text-3xl mb-2">🕊️</p>
+                      <p className="text-sm">Nenhuma mensagem ainda</p>
+                    </div>
+                  </div>
                 ) : (
-                  messages.map(msg => {
-                    const isUser = msg.sender === 'user';
-                    const isSystemAI = msg.sender === 'ai';
-                    const text = msg.message_text || msg.ai_response || '';
-                    
+                  messages.map((msg) => {
+                    const isUser = msg.sender === "user";
+                    const isAI = msg.sender === "ai";
+                    const text = msg.message_text || msg.ai_response || "";
+
                     return (
-                      <div key={msg.id} className={`flex ${isUser ? 'justify-start' : 'justify-end'}`}>
-                        <div 
-                          className={`max-w-[75%] px-5 py-3 rounded-2xl shadow-sm ${
-                            isUser 
-                              ? 'bg-white border border-gray-100 rounded-tl-sm' 
-                              : isSystemAI 
-                                ? 'bg-indigo-600 text-white rounded-tr-sm'
-                                : 'bg-gray-800 text-white rounded-tr-sm'
+                      <div key={msg.id} className={`flex ${isUser ? "justify-start" : "justify-end"}`}>
+                        <div
+                          className={`max-w-[70%] px-4 py-3 rounded-2xl shadow-sm ${
+                            isUser
+                              ? "bg-white border border-gray-100 rounded-bl-sm"
+                              : isAI
+                              ? "bg-gradient-to-r from-[#4f46e5] to-[#5b51e0] text-white rounded-br-sm"
+                              : "bg-gray-800 text-white rounded-br-sm"
                           }`}
                         >
-                          <p className={`text-xs mb-1.5 tracking-wide ${isUser ? 'text-gray-400 font-medium' : 'text-indigo-200 font-medium'}`}>
-                            {isUser ? 'CLIENTE' : msg.sender.toUpperCase()}
-                          </p>
-                          <p className={`text-[15px] leading-relaxed ${isUser ? 'text-gray-800' : 'text-white'}`}>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className={`text-[10px] font-bold tracking-wider uppercase ${
+                              isUser ? "text-gray-400" : isAI ? "text-indigo-200" : "text-gray-400"
+                            }`}>
+                              {isUser ? "Cliente" : isAI ? "🤖 IA" : "👤 Você"}
+                            </span>
+                          </div>
+                          <p className={`text-[14px] leading-relaxed ${isUser ? "text-gray-800" : "text-white"}`}>
                             {text}
                           </p>
-                          <span className={`text-[10px] block mt-2 text-right ${isUser ? 'text-gray-400' : 'text-indigo-200/80'}`}>
-                              {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          <span className={`text-[10px] block mt-1.5 text-right ${
+                            isUser ? "text-gray-300" : "text-white/50"
+                          }`}>
+                            {new Date(msg.timestamp).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                           </span>
                         </div>
                       </div>
                     );
                   })
                 )}
+                <div ref={messagesEndRef} />
               </div>
 
-              {/* Chat Input */}
-              {currentStatus === 'human' ? (
-                <form onSubmit={handleSendMessage} className="bg-white p-4 sm:p-5 border-t border-gray-100 flex gap-3 shrink-0">
-                  <Input 
-                    value={replyText}
-                    onChange={e => setReplyText(e.target.value)}
-                    placeholder="Digite sua mensagem para o cliente..."
-                    className="flex-1"
-                  />
-                  <Button 
-                    type="submit" 
+              {/* Input area */}
+              {currentStatus === "human" ? (
+                <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-100 bg-white flex items-center gap-3 shrink-0">
+                  <div className="flex-1 relative">
+                    <input
+                      value={replyText}
+                      onChange={(e) => setReplyText(e.target.value)}
+                      placeholder="Digite sua mensagem..."
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20 focus:border-[#4f46e5]/40 transition-all placeholder:text-gray-400"
+                    />
+                  </div>
+                  <button
+                    type="submit"
                     disabled={sending || !replyText.trim()}
-                    className="px-8"
+                    className="px-6 py-3 bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] text-white rounded-xl font-semibold text-sm hover:shadow-lg hover:shadow-indigo-200/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
-                    {sending ? 'Enviando...' : 'Enviar'}
-                  </Button>
+                    {sending ? (
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    ) : (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                      </svg>
+                    )}
+                    Enviar
+                  </button>
                 </form>
               ) : (
-                <div className="bg-slate-50 p-6 border-t border-gray-100 text-center shrink-0">
-                  <p className="text-sm text-gray-500">
-                    A inteligência artificial está atendendo este cliente. Clique em <strong className="text-gray-700">Assumir atendimento</strong> para enviar mensagens manualmente.
-                  </p>
+                <div className="p-5 border-t border-gray-100 bg-gradient-to-r from-indigo-50/50 to-purple-50/50 text-center shrink-0">
+                  <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
+                    <span className="text-lg">🤖</span>
+                    <p>
+                      A <strong className="text-[#4f46e5]">IA</strong> está atendendo este cliente.{" "}
+                      <button onClick={handleTakeover} className="text-[#4f46e5] font-semibold hover:underline">
+                        Assumir manualmente →
+                      </button>
+                    </p>
+                  </div>
                 </div>
               )}
             </>
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center text-gray-400 p-8 text-center bg-gray-50/30">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4 border border-gray-200 shadow-sm">
-                <span className="text-2xl">💬</span>
+            /* Empty state */
+            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-gradient-to-b from-gray-50/30 to-white">
+              <div className="w-20 h-20 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-3xl flex items-center justify-center mb-5 border border-indigo-100/50">
+                <span className="text-4xl">💬</span>
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-1">Caixa de Entrada</h3>
-              <p className="text-sm text-gray-500 max-w-sm">Selecione uma conversa ao lado para visualizar o histórico ou iniciar o atendimento manual.</p>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Caixa de Entrada</h3>
+              <p className="text-sm text-gray-500 max-w-sm leading-relaxed">
+                Selecione uma conversa ao lado para visualizar o histórico de mensagens ou iniciar o atendimento manual.
+              </p>
+              <div className="mt-6 flex items-center gap-4 text-xs text-gray-400">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-green-400"></span>
+                  IA ativo
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-orange-400"></span>
+                  Humano
+                </div>
+              </div>
             </div>
           )}
         </div>

@@ -71,18 +71,19 @@ export default function OrdersPage() {
     <div className="max-w-6xl mx-auto w-full space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900">Gestão de Pedidos</h1>
-          <p className="text-gray-500">Acompanhe as vendas e orçamentos do seu negócio.</p>
+          <h1 className="text-2xl font-bold text-gray-900">Gestão de Pedidos</h1>
+          <p className="text-sm text-gray-500 mt-1">{orders.length} pedido{orders.length !== 1 ? 's' : ''}</p>
         </div>
-        <Button 
+        <button 
           onClick={() => setIsModalOpen(true)}
-          className="bg-[#4f46e5] hover:bg-[#4338ca] text-white shadow-sm"
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] text-white rounded-xl font-semibold text-sm hover:shadow-lg hover:shadow-indigo-200/50 transition-all"
         >
-          + Novo Pedido
-        </Button>
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+          Novo Pedido
+        </button>
       </div>
 
-      <Card className="border shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-200/60 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
             <thead className="bg-gray-50/50 text-gray-600 font-medium border-b border-gray-100">
@@ -97,14 +98,17 @@ export default function OrdersPage() {
             <tbody className="divide-y divide-gray-100">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-gray-400">
-                    Carregando pedidos...
+                  <td colSpan={5} className="px-6 py-16 text-center">
+                    <div className="w-8 h-8 border-2 border-gray-200 border-t-[#4f46e5] rounded-full animate-spin mx-auto mb-3"></div>
+                    <p className="text-sm text-gray-400">Carregando pedidos...</p>
                   </td>
                 </tr>
               ) : orders.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-gray-400">
-                    Nenhum pedido encontrado.
+                  <td colSpan={5} className="px-6 py-16 text-center">
+                    <div className="w-14 h-14 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl flex items-center justify-center mx-auto mb-3"><span className="text-2xl">🛍️</span></div>
+                    <p className="text-sm font-medium text-gray-500">Nenhum pedido</p>
+                    <p className="text-xs text-gray-400 mt-1">Os pedidos dos clientes aparecerão aqui</p>
                   </td>
                 </tr>
               ) : (
@@ -143,7 +147,7 @@ export default function OrdersPage() {
             </tbody>
           </table>
         </div>
-      </Card>
+      </div>
 
       <OrderFormDialog 
         isOpen={isModalOpen} 

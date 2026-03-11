@@ -99,7 +99,7 @@ export default function BillingPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#4f46e5]"></div>
+        <div className="w-8 h-8 border-2 border-gray-200 border-t-[#4f46e5] rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -107,13 +107,13 @@ export default function BillingPage() {
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
       <div>
-        <h2 className="text-2xl font-bold text-gray-800">Billing</h2>
+        <h1 className="text-2xl font-bold text-gray-900">Assinatura</h1>
         <p className="text-sm text-gray-500 mt-1">Gerencie seu plano e acompanhe seu uso.</p>
       </div>
 
       {/* Current plan overview */}
       {subscription?.hasSubscription && (
-        <Card className="p-6">
+        <div className="bg-white rounded-2xl border border-gray-200/60 shadow-sm p-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="space-y-2">
               <div className="flex items-center gap-3">
@@ -164,7 +164,7 @@ export default function BillingPage() {
                 : `${(100 - usagePercent).toFixed(0)}% restante`}
             </p>
           </div>
-        </Card>
+        </div>
       )}
 
       {/* Plans grid */}

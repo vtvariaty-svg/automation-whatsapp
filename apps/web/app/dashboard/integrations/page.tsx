@@ -1,10 +1,8 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
-import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
+import Script from "next/script";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +23,10 @@ function IntegrationsContent() {
   const [manualPhoneId, setManualPhoneId] = useState("");
   const [manualToken, setManualToken] = useState("");
   const [savingManual, setSavingManual] = useState(false);
+  const [embeddedLoading, setEmbeddedLoading] = useState(false);
+  const [sdkReady, setSdkReady] = useState(false);
   const searchParams = useSearchParams();
+  const appId = process.env.NEXT_PUBLIC_FB_APP_ID;
 
   useEffect(() => {
     const success = searchParams.get("success");
@@ -33,25 +34,18 @@ function IntegrationsContent() {
     const phone = searchParams.get("phone");
 
     if (success === "true") {
-      setMessage(phone
-        ? `✅ WhatsApp conectado com sucesso! Número: ${phone}`
-        : "✅ WhatsApp conectado com sucesso!"
-      );
+      setMessage(phone ? `✅ WhatsApp conectado! Número: ${phone}` : "✅ WhatsApp conectado!");
       window.history.replaceState({}, "", "/dashboard/integrations");
     } else if (error) {
       const errorMessages: Record<string, string> = {
-        oauth_cancelled: "Autorização cancelada pelo usuário.",
-        no_token: "Token não recebido do Facebook. Tente novamente.",
+        oauth_cancelled: "Autorização cancelada.",
+        no_token: "Token não recebido. Tente novamente.",
         no_tenant: "Sessão expirada. Faça login novamente.",
-        process_failed: "Falha ao processar conexão. Tente conectar manualmente.",
-        network: "Erro de rede. Verifique sua conexão.",
-        missing_app_id: "NEXT_PUBLIC_FB_APP_ID não configurada no servidor.",
-        server_error: "Erro interno do servidor.",
+        process_failed: "Falha na conexão.",
       };
       setMessage("❌ " + (errorMessages[error] || `Erro: ${error}`));
       window.history.replaceState({}, "", "/dashboard/integrations");
     }
-
     fetchStatus();
   }, [searchParams]);
 
@@ -60,36 +54,103 @@ function IntegrationsContent() {
       const token = localStorage.getItem("token");
       const headers: Record<string, string> = {};
       if (token) headers["Authorization"] = `Bearer ${token}`;
-
       const res = await fetch("/api/integrations/whatsapp/status", { headers });
-      if (res.ok) {
-        const data = await res.json();
-        setStatus(data);
-      }
-    } catch (err) {
-      console.error("Error fetching status:", err);
-    } finally {
+      if (res.ok) setStatus(await res.json());
+    } catch {} finally {
       setLoading(false);
     }
   };
 
-  const handleConnect = () => {
-    window.location.href = "/api/integrations/whatsapp/connect";
+  // Initialize Facebook SDK
+  const initFbSdk = useCallback(() => {
+    if (!appId) return;
+    if ((window as any).FB) {
+      (window as any).FB.init({
+        appId,
+        autoLogAppEvents: true,
+        xfbml: true,
+        version: "v22.0",
+      });
+      setSdkReady(true);
+    }
+  }, [appId]);
+
+  // Embedded Signup handler
+  const handleEmbeddedSignup = () => {
+    if (!appId || !(window as any).FB) {
+      setMessage("❌ Facebook SDK não carregado. Recarregue a página.");
+      return;
+    }
+
+    setEmbeddedLoading(true);
+    setMessage("");
+
+    (window as any).FB.login(
+      (response: any) => {
+        if (response.authResponse) {
+          const code = response.authResponse.code;
+          // Extract WABA ID from the response if available
+          exchangeCodeForToken(code);
+        } else {
+          setEmbeddedLoading(false);
+          setMessage("❌ Autorização cancelada.");
+        }
+      },
+      {
+        config_id: "", // We use scope-based approach
+        response_type: "code",
+        override_default_response_type: true,
+        scope: "whatsapp_business_management,whatsapp_business_messaging",
+        extras: {
+          setup: {
+            // Embedded Signup specific params
+            solutionID: appId,
+          },
+          featureType: "",
+          sessionInfoVersion: 2,
+        },
+      }
+    );
+  };
+
+  const exchangeCodeForToken = async (code: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const res = await fetch("/api/integrations/whatsapp/embedded-signup", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ code }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setMessage(
+          data.phoneDisplay
+            ? `✅ WhatsApp conectado com sucesso! Número: ${data.phoneDisplay}`
+            : "✅ WhatsApp conectado com sucesso!"
+        );
+        fetchStatus();
+      } else {
+        setMessage("❌ " + (data.error || "Falha ao conectar"));
+      }
+    } catch (err: any) {
+      setMessage("❌ Erro: " + err.message);
+    } finally {
+      setEmbeddedLoading(false);
+    }
   };
 
   const handleDisconnect = async () => {
     if (!confirm("Tem certeza que deseja desconectar o WhatsApp?")) return;
-
     setDisconnecting(true);
     try {
       const token = localStorage.getItem("token");
       const headers: Record<string, string> = {};
       if (token) headers["Authorization"] = `Bearer ${token}`;
-
-      const res = await fetch("/api/integrations/whatsapp/disconnect", {
-        method: "POST",
-        headers,
-      });
+      const res = await fetch("/api/integrations/whatsapp/disconnect", { method: "POST", headers });
       if (res.ok) {
         setStatus({ connected: false, hasFullConfig: false, whatsappBusinessAccountId: null, whatsappPhoneNumberId: null });
         setMessage("WhatsApp desconectado.");
@@ -110,22 +171,15 @@ function IntegrationsContent() {
     }
     setSavingManual(true);
     setMessage("");
-
     try {
       const token = localStorage.getItem("token");
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
-
       const res = await fetch("/api/integrations/whatsapp/callback", {
         method: "POST",
         headers,
-        body: JSON.stringify({
-          accessToken: manualToken,
-          wabaId: manualWabaId || undefined,
-          phoneNumberId: manualPhoneId || undefined,
-        }),
+        body: JSON.stringify({ accessToken: manualToken, wabaId: manualWabaId || undefined, phoneNumberId: manualPhoneId || undefined }),
       });
-
       const data = await res.json();
       if (res.ok && data.success) {
         setMessage("✅ WhatsApp configurado com sucesso!");
@@ -142,210 +196,290 @@ function IntegrationsContent() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto w-full">
-      <Card>
-        <CardHeader className="mb-6">
-          <CardTitle className="text-2xl">Integrações</CardTitle>
-          <CardDescription>Conecte canais de atendimento e outras plataformas ao seu Workspace.</CardDescription>
-        </CardHeader>
+    <div className="max-w-3xl mx-auto space-y-6">
+      {/* Facebook SDK */}
+      {appId && (
+        <Script
+          src="https://connect.facebook.net/pt_BR/sdk.js"
+          strategy="lazyOnload"
+          onLoad={initFbSdk}
+        />
+      )}
 
-        {/* WhatsApp Integration Card */}
-        <div className={`border rounded-xl p-6 transition ${
-          status?.connected
-            ? "border-green-300 bg-green-50/50"
-            : "border-gray-200 hover:border-[#4f46e5]/40 hover:bg-gray-50/50"
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Integrações</h1>
+        <p className="text-sm text-gray-500 mt-1">Conecte canais de atendimento ao seu workspace</p>
+      </div>
+
+      {/* Messages */}
+      {message && (
+        <div className={`p-4 rounded-xl text-sm font-medium border ${
+          message.includes("❌") ? "bg-red-50 text-red-700 border-red-100"
+            : message.includes("✅") ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+            : "bg-blue-50 text-blue-700 border-blue-100"
         }`}>
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          {message}
+        </div>
+      )}
+
+      {/* WhatsApp Card */}
+      <div className={`bg-white rounded-2xl border shadow-sm overflow-hidden ${
+        status?.connected ? "border-emerald-200" : "border-gray-200/60"
+      }`}>
+        {/* Card header */}
+        <div className={`px-6 py-5 border-b ${
+          status?.connected
+            ? "bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-100"
+            : "bg-gradient-to-r from-green-50/50 to-emerald-50/50 border-gray-100"
+        }`}>
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl shadow-sm ${
-                status?.connected ? "bg-green-100 text-[#25D366]" : "bg-gray-100 text-gray-400"
+                status?.connected ? "bg-[#25D366] text-white" : "bg-white border border-gray-200"
               }`}>
-                <span>📱</span>
+                {status?.connected ? "✅" : "💬"}
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="font-semibold text-gray-900 text-lg">WhatsApp Business</h3>
+                  <h3 className="font-bold text-gray-900 text-lg">WhatsApp Business</h3>
                   {!loading && (
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      status?.connected ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"
+                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                      status?.connected ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"
                     }`}>
-                      {status?.connected ? "● Conectado" : "○ Desconectado"}
+                      <span className={`w-1.5 h-1.5 rounded-full ${status?.connected ? "bg-emerald-500" : "bg-gray-400"}`}></span>
+                      {status?.connected ? "Conectado" : "Desconectado"}
                     </span>
                   )}
                 </div>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-gray-500 mt-0.5">
                   {status?.connected
-                    ? status.hasFullConfig
-                      ? "Conta WhatsApp Business conectada e pronta para uso."
-                      : "Token salvo. Configure WABA ID e Phone ID abaixo para completar."
-                    : "Conecte via Facebook ou configure manualmente."
+                    ? "Sua conta WhatsApp Business está ativa e pronta"
+                    : "Conecte seu WhatsApp Business para automação"
                   }
                 </p>
               </div>
             </div>
+          </div>
+        </div>
 
-            {!loading && (
-              <div className="flex gap-2">
-                {status?.connected ? (
-                  <Button
-                    onClick={handleDisconnect}
-                    disabled={disconnecting}
-                    className="md:w-auto w-full bg-red-500 hover:bg-red-600 text-white focus:ring-red-500"
-                  >
-                    {disconnecting ? "..." : "Desconectar"}
-                  </Button>
-                ) : (
-                  <>
-                    <Button
-                      onClick={handleConnect}
-                      className="md:w-auto w-full bg-[#1877F2] hover:bg-[#166FE5] text-white focus:ring-[#1877F2]"
-                    >
-                      🔗 Facebook
-                    </Button>
-                    <Button
-                      onClick={() => setShowManualForm(!showManualForm)}
-                      className="md:w-auto w-full bg-gray-600 hover:bg-gray-700 text-white"
-                    >
-                      ⚙️ Manual
-                    </Button>
-                  </>
+        {/* Card body */}
+        <div className="p-6">
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="w-8 h-8 border-2 border-gray-200 border-t-[#4f46e5] rounded-full animate-spin"></div>
+            </div>
+          ) : status?.connected ? (
+            /* Connected state */
+            <div className="space-y-4">
+              {/* Connection details */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {status.whatsappBusinessAccountId && (
+                  <div className="bg-gray-50 rounded-xl px-4 py-3 border border-gray-100">
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">WABA ID</p>
+                    <p className="text-sm font-mono text-gray-800">{status.whatsappBusinessAccountId}</p>
+                  </div>
+                )}
+                {status.whatsappPhoneNumberId && (
+                  <div className="bg-gray-50 rounded-xl px-4 py-3 border border-gray-100">
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Phone Number ID</p>
+                    <p className="text-sm font-mono text-gray-800">{status.whatsappPhoneNumberId}</p>
+                  </div>
                 )}
               </div>
-            )}
-          </div>
 
-          {/* Connection details */}
-          {status?.connected && (
-            <div className="mt-4 pt-4 border-t border-green-200 grid grid-cols-1 md:grid-cols-2 gap-3">
-              {status.whatsappBusinessAccountId && (
-                <div className="bg-white rounded-lg px-3 py-2 border border-green-200">
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">WABA ID</p>
-                  <p className="text-sm font-mono text-gray-800">{status.whatsappBusinessAccountId}</p>
-                </div>
-              )}
-              {status.whatsappPhoneNumberId && (
-                <div className="bg-white rounded-lg px-3 py-2 border border-green-200">
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">Phone Number ID</p>
-                  <p className="text-sm font-mono text-gray-800">{status.whatsappPhoneNumberId}</p>
-                </div>
-              )}
               {!status.hasFullConfig && (
-                <div className="md:col-span-2">
-                  <Button
-                    onClick={() => setShowManualForm(!showManualForm)}
-                    className="text-sm bg-yellow-500 hover:bg-yellow-600 text-white"
-                  >
-                    ⚙️ Completar configuração manualmente
-                  </Button>
+                <div className="p-4 bg-amber-50 rounded-xl border border-amber-100 text-sm text-amber-700">
+                  ⚠️ Token salvo, mas WABA ID ou Phone ID não foram detectados.{" "}
+                  <button onClick={() => setShowManualForm(true)} className="font-semibold underline hover:no-underline">
+                    Completar manualmente
+                  </button>
                 </div>
               )}
+
+              <div className="flex items-center justify-end pt-2">
+                <button
+                  onClick={handleDisconnect}
+                  disabled={disconnecting}
+                  className="px-5 py-2.5 text-sm font-medium text-red-600 bg-red-50 rounded-xl hover:bg-red-100 transition-all border border-red-100 disabled:opacity-50"
+                >
+                  {disconnecting ? "Desconectando..." : "Desconectar WhatsApp"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* Not connected - show connection options */
+            <div className="space-y-4">
+              {/* Primary: Embedded Signup */}
+              <div className="p-5 bg-gradient-to-r from-[#25D366]/5 to-emerald-50/50 rounded-xl border border-[#25D366]/20">
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 bg-[#25D366] rounded-xl flex items-center justify-center text-white text-lg shrink-0 shadow-sm">
+                    📱
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-bold text-gray-900 mb-1">Conexão Automática</h4>
+                    <p className="text-sm text-gray-500 mb-4">
+                      Conecte com 1 clique via Facebook. Detectamos automaticamente sua conta WhatsApp Business.
+                    </p>
+                    <button
+                      onClick={handleEmbeddedSignup}
+                      disabled={embeddedLoading || !appId}
+                      className="inline-flex items-center gap-3 px-6 py-3 bg-[#25D366] text-white rounded-xl font-semibold text-sm hover:bg-[#1DA851] hover:shadow-lg hover:shadow-green-200/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {embeddedLoading ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                          Conectando...
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                            <path d="M12 0C5.373 0 0 5.373 0 12c0 2.115.549 4.104 1.511 5.833L0 24l6.335-1.466A11.947 11.947 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.819a9.782 9.782 0 01-5.292-1.542l-.38-.226-3.933.912.992-3.635-.248-.395A9.787 9.787 0 012.181 12c0-5.414 4.406-9.819 9.819-9.819S21.819 6.586 21.819 12s-4.405 9.819-9.819 9.819z"/>
+                          </svg>
+                          Conectar WhatsApp
+                        </>
+                      )}
+                    </button>
+                    {!appId && (
+                      <p className="text-xs text-red-500 mt-2">⚠️ NEXT_PUBLIC_FB_APP_ID não configurado.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div className="flex items-center gap-4 py-1">
+                <div className="flex-1 h-px bg-gray-200"></div>
+                <span className="text-xs text-gray-400 font-medium">ou</span>
+                <div className="flex-1 h-px bg-gray-200"></div>
+              </div>
+
+              {/* Secondary: Manual config */}
+              <div>
+                <button
+                  onClick={() => setShowManualForm(!showManualForm)}
+                  className="w-full flex items-center justify-between p-4 rounded-xl bg-gray-50 border border-gray-200 hover:bg-gray-100 transition-all text-left"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-lg">⚙️</span>
+                    <div>
+                      <p className="font-semibold text-gray-900 text-sm">Configuração Manual</p>
+                      <p className="text-xs text-gray-500">Insira token e IDs do Facebook Developer Console</p>
+                    </div>
+                  </div>
+                  <svg className={`w-4 h-4 text-gray-400 transition-transform ${showManualForm ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+              </div>
             </div>
           )}
         </div>
+      </div>
 
-        {/* Manual Configuration Form */}
-        {showManualForm && (
-          <div className="mt-4 border border-gray-200 rounded-xl p-6 bg-gray-50">
-            <h4 className="font-semibold text-gray-900 mb-1">Configuração Manual</h4>
-            <p className="text-sm text-gray-500 mb-4">
-              Insira os dados do WhatsApp Business API. Encontre no{" "}
+      {/* Manual Configuration Form (expandable) */}
+      {showManualForm && !status?.connected && (
+        <div className="bg-white rounded-2xl border border-gray-200/60 shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+            <h4 className="font-bold text-gray-900">Configuração Manual</h4>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Dados do{" "}
               <a href="https://developers.facebook.com" target="_blank" className="text-[#4f46e5] underline">
                 Facebook Developer Console
-              </a>.
+              </a>
             </p>
-
-            <div className="space-y-3">
+          </div>
+          <div className="p-6 space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Token de Acesso Permanente <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="password"
+                value={manualToken}
+                onChange={(e) => setManualToken(e.target.value)}
+                placeholder="EAAx..."
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20 focus:border-[#4f46e5]/40 transition-all font-mono"
+              />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Token de Acesso Permanente <span className="text-red-500">*</span>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  WABA ID <span className="text-gray-400 font-normal">(opcional)</span>
                 </label>
-                <Input
-                  type="password"
-                  value={manualToken}
-                  onChange={(e) => setManualToken(e.target.value)}
-                  placeholder="EAAx..."
-                  className="w-full"
+                <input
+                  value={manualWabaId}
+                  onChange={(e) => setManualWabaId(e.target.value)}
+                  placeholder="123456789"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20 focus:border-[#4f46e5]/40 transition-all font-mono"
                 />
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    WABA ID <span className="text-gray-400">(opcional)</span>
-                  </label>
-                  <Input
-                    value={manualWabaId}
-                    onChange={(e) => setManualWabaId(e.target.value)}
-                    placeholder="Ex: 123456789"
-                    className="w-full"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Phone Number ID <span className="text-gray-400">(opcional)</span>
-                  </label>
-                  <Input
-                    value={manualPhoneId}
-                    onChange={(e) => setManualPhoneId(e.target.value)}
-                    placeholder="Ex: 123456789"
-                    className="w-full"
-                  />
-                </div>
-              </div>
-              <div className="flex gap-2 pt-2">
-                <Button
-                  onClick={handleManualSave}
-                  disabled={savingManual}
-                  className="bg-[#25D366] hover:bg-[#1DA851] text-white"
-                >
-                  {savingManual ? "Salvando..." : "💾 Salvar Configuração"}
-                </Button>
-                <Button
-                  onClick={() => setShowManualForm(false)}
-                  className="bg-gray-200 hover:bg-gray-300 text-gray-700"
-                >
-                  Cancelar
-                </Button>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Phone Number ID <span className="text-gray-400 font-normal">(opcional)</span>
+                </label>
+                <input
+                  value={manualPhoneId}
+                  onChange={(e) => setManualPhoneId(e.target.value)}
+                  placeholder="123456789"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20 focus:border-[#4f46e5]/40 transition-all font-mono"
+                />
               </div>
             </div>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={handleManualSave}
+                disabled={savingManual}
+                className="inline-flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] text-white rounded-xl font-semibold text-sm hover:shadow-lg transition-all disabled:opacity-50"
+              >
+                {savingManual ? "Salvando..." : "Salvar Configuração"}
+              </button>
+              <button
+                onClick={() => setShowManualForm(false)}
+                className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all"
+              >
+                Cancelar
+              </button>
+            </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Status messages */}
-        {message && (
-          <div className={`mt-6 px-4 py-3 rounded-lg text-sm font-medium border ${
-            message.includes("❌") || message.includes("Erro")
-              ? "bg-red-50 text-red-700 border-red-200"
-              : message.includes("✅")
-                ? "bg-green-50 text-green-700 border-green-200"
-                : "bg-blue-50 text-blue-700 border-blue-200"
-          }`}>
-            {message}
+      {/* Help section */}
+      <div className="bg-white rounded-2xl border border-gray-200/60 shadow-sm p-6">
+        <h3 className="font-bold text-gray-900 mb-4">Como funciona?</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="text-center p-4">
+            <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center mx-auto mb-3 text-xl">1️⃣</div>
+            <p className="text-sm font-semibold text-gray-900 mb-1">Conecte</p>
+            <p className="text-xs text-gray-500">Clique em "Conectar WhatsApp" e faça login no Facebook</p>
           </div>
-        )}
-
-        {loading && (
-          <div className="mt-6 flex items-center gap-2 text-gray-500 text-sm">
-            <div className="w-4 h-4 border-2 border-gray-300 border-t-[#4f46e5] rounded-full animate-spin"></div>
-            Verificando status da integração...
+          <div className="text-center p-4">
+            <div className="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center mx-auto mb-3 text-xl">2️⃣</div>
+            <p className="text-sm font-semibold text-gray-900 mb-1">Autorize</p>
+            <p className="text-xs text-gray-500">Selecione sua conta WhatsApp Business</p>
           </div>
-        )}
-      </Card>
+          <div className="text-center p-4">
+            <div className="w-12 h-12 bg-amber-50 rounded-xl flex items-center justify-center mx-auto mb-3 text-xl">3️⃣</div>
+            <p className="text-sm font-semibold text-gray-900 mb-1">Pronto!</p>
+            <p className="text-xs text-gray-500">A IA começa a atender seus clientes automaticamente</p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
 
 export default function IntegrationsPage() {
   return (
-    <Suspense fallback={
-      <div className="max-w-3xl mx-auto w-full">
-        <Card>
-          <CardHeader className="mb-6">
-            <CardTitle className="text-2xl">Integrações</CardTitle>
-            <CardDescription>Carregando...</CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="max-w-3xl mx-auto flex items-center justify-center py-32">
+          <div className="w-8 h-8 border-2 border-gray-200 border-t-[#4f46e5] rounded-full animate-spin"></div>
+        </div>
+      }
+    >
       <IntegrationsContent />
     </Suspense>
   );

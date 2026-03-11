@@ -82,13 +82,24 @@ function IntegrationsContent() {
       return;
     }
 
+    if (embeddedLoading) {
+      // If already loading, allow click to cancel
+      setEmbeddedLoading(false);
+      return;
+    }
+
     setEmbeddedLoading(true);
     setMessage("");
 
+    // Safety timeout - reset loading if popup closed without callback
+    const timeout = setTimeout(() => {
+      setEmbeddedLoading(false);
+    }, 60000);
+
     (window as any).FB.login(
       async (response: any) => {
+        clearTimeout(timeout);
         if (response.authResponse?.accessToken) {
-          // Got token directly - send to our callback API
           try {
             const jwtToken = localStorage.getItem("token");
             const headers: Record<string, string> = { "Content-Type": "application/json" };

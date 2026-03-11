@@ -32,11 +32,21 @@ export async function POST(request: Request) {
     }
 
     // Exchange code for access token
-    const tokenRes = await fetch(
-      `https://graph.facebook.com/v22.0/oauth/access_token?` +
-      `client_id=${appId}&client_secret=${appSecret}&code=${code}`
-    );
+    // The redirect_uri must match what the JS SDK used (the page origin)
+    const redirectUri = body.redirectUri || '';
+    
+    const tokenUrl = new URL('https://graph.facebook.com/v22.0/oauth/access_token');
+    tokenUrl.searchParams.set('client_id', appId);
+    tokenUrl.searchParams.set('client_secret', appSecret);
+    tokenUrl.searchParams.set('code', code);
+    if (redirectUri) {
+      tokenUrl.searchParams.set('redirect_uri', redirectUri);
+    }
+    
+    const tokenRes = await fetch(tokenUrl.toString());
     const tokenData = await tokenRes.json();
+    
+    console.log('Token exchange response:', JSON.stringify(tokenData).slice(0, 200));
 
     if (tokenData.error || !tokenData.access_token) {
       console.error('Token exchange failed:', tokenData.error);

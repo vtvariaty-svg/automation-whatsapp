@@ -97,18 +97,9 @@ function IntegrationsContent() {
         }
       },
       {
-        config_id: "", // We use scope-based approach
         response_type: "code",
         override_default_response_type: true,
         scope: "whatsapp_business_management,whatsapp_business_messaging",
-        extras: {
-          setup: {
-            // Embedded Signup specific params
-            solutionID: appId,
-          },
-          featureType: "",
-          sessionInfoVersion: 2,
-        },
       }
     );
   };
@@ -122,7 +113,7 @@ function IntegrationsContent() {
       const res = await fetch("/api/integrations/whatsapp/embedded-signup", {
         method: "POST",
         headers,
-        body: JSON.stringify({ code }),
+        body: JSON.stringify({ code, redirectUri: window.location.origin }),
       });
 
       const data = await res.json();

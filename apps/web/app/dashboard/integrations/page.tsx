@@ -75,7 +75,7 @@ function IntegrationsContent() {
     }
   }, [appId]);
 
-  // Embedded Signup handler
+  // Embedded Signup handler - uses direct token flow
   const handleEmbeddedSignup = () => {
     if (!appId || !(window as any).FB) {
       setMessage("❌ Facebook SDK não carregado. Recarregue a página.");
@@ -86,52 +86,47 @@ function IntegrationsContent() {
     setMessage("");
 
     (window as any).FB.login(
-      (response: any) => {
-        if (response.authResponse) {
-          const code = response.authResponse.code;
-          // Extract WABA ID from the response if available
-          exchangeCodeForToken(code);
+      async (response: any) => {
+        if (response.authResponse?.accessToken) {
+          // Got token directly - send to our callback API
+          try {
+            const jwtToken = localStorage.getItem("token");
+            const headers: Record<string, string> = { "Content-Type": "application/json" };
+            if (jwtToken) headers["Authorization"] = `Bearer ${jwtToken}`;
+
+            const res = await fetch("/api/integrations/whatsapp/callback", {
+              method: "POST",
+              headers,
+              body: JSON.stringify({ accessToken: response.authResponse.accessToken }),
+            });
+
+            const data = await res.json();
+            if (res.ok && data.success) {
+              setMessage(
+                data.phoneDisplay
+                  ? `✅ WhatsApp conectado! Número: ${data.phoneDisplay}`
+                  : data.wabaId
+                    ? "✅ WhatsApp conectado com sucesso!"
+                    : "✅ Token salvo! Configure WABA ID e Phone ID manualmente se necessário."
+              );
+              fetchStatus();
+            } else {
+              setMessage("❌ " + (data.error || "Falha ao conectar"));
+            }
+          } catch (err: any) {
+            setMessage("❌ Erro: " + err.message);
+          } finally {
+            setEmbeddedLoading(false);
+          }
         } else {
           setEmbeddedLoading(false);
           setMessage("❌ Autorização cancelada.");
         }
       },
       {
-        response_type: "code",
-        override_default_response_type: true,
         scope: "whatsapp_business_management,whatsapp_business_messaging",
       }
     );
-  };
-
-  const exchangeCodeForToken = async (code: string) => {
-    try {
-      const token = localStorage.getItem("token");
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-
-      const res = await fetch("/api/integrations/whatsapp/embedded-signup", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ code, redirectUri: window.location.origin }),
-      });
-
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setMessage(
-          data.phoneDisplay
-            ? `✅ WhatsApp conectado com sucesso! Número: ${data.phoneDisplay}`
-            : "✅ WhatsApp conectado com sucesso!"
-        );
-        fetchStatus();
-      } else {
-        setMessage("❌ " + (data.error || "Falha ao conectar"));
-      }
-    } catch (err: any) {
-      setMessage("❌ Erro: " + err.message);
-    } finally {
-      setEmbeddedLoading(false);
-    }
   };
 
   const handleDisconnect = async () => {

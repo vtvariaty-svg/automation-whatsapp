@@ -14,12 +14,15 @@ export async function generateAIResponse(messageText, apiKey, aiPrompt, business
     apiKey: apiKey || process.env.OPENAI_API_KEY,
   });
 
-  const systemMessage = `Você é assistente da empresa.
+  const systemMessage = `
+${aiPrompt || 'Você é um assistente virtual da empresa. Responda cordialmente aos clientes.'}
 
-Instruções:
-${aiPrompt || 'Responda cordialmente.'}
-
-${businessHours ? `Horário de atendimento: ${businessHours}` : ''}`;
+---
+DIRETRIZES TÉCNICAS E REGRAS:
+1. Siga estritamente as instruções da sua persona (descritas no início deste prompt).
+2. Se não houver resposta para a pergunta do cliente nas informações acima, seja honesto e diga que não tem essa informação no momento.
+${businessHours ? `\nINFORMAÇÕES DE ATENDIMENTO:\nHorário de atendimento: ${businessHours}` : ''}
+  `.trim();
 
   try {
     const response = await openai.chat.completions.create({

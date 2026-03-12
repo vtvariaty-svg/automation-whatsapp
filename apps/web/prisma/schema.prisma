@@ -125,3 +125,18 @@ model Appointment {
   createdAt     DateTime @default(now())
   tenant        Tenant   @relation(fields: [tenantId], references: [id])
 }
+
+model AutomationRule {
+  id            String   @id @default(uuid())
+  tenantId      String
+  name          String
+  triggerType   String   // keyword, contains
+  triggerValue  String
+  matchType     String   // exact, contains
+  responseType  String   // text, template
+  responseText  String   @db.Text
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+}

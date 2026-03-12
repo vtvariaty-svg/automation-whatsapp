@@ -444,7 +444,10 @@ function Footer() {
         </div>
 
         <div className="border-t border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-sm text-gray-600">&copy; {new Date().getFullYear()} Variaty Secretary IA. Todos os direitos reservados.</p>
+          <div className="flex flex-col gap-1">
+            <p className="text-sm text-gray-600">&copy; {new Date().getFullYear()} Variaty Secretary IA. Todos os direitos reservados.</p>
+            <p className="text-xs text-gray-700">Contamei Tecnologia e Sistemas Digitais LTDA - CNPJ 64.790.325/0001-06</p>
+          </div>
           <p className="text-xs text-gray-700">Powered by VTvariaty • API Oficial Meta WhatsApp Business</p>
         </div>
       </div>

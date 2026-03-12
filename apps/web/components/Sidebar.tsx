@@ -97,13 +97,17 @@ export default function Sidebar() {
       </nav>
 
       {/* Bottom section */}
-      <div className="p-4 border-t border-white/[0.06]">
+      <div className="p-4 border-t border-white/[0.06] flex flex-col gap-3">
         <div className="bg-gradient-to-r from-indigo-500/10 to-purple-500/10 rounded-xl p-4 border border-indigo-500/10">
           <p className="text-xs text-indigo-300 font-semibold mb-1">Plano Atual</p>
           <p className="text-white font-bold text-sm">Starter</p>
           <Link href="/dashboard/billing" className="inline-flex items-center gap-1 text-[11px] text-indigo-400 hover:text-indigo-300 font-medium mt-2 transition-colors">
             Fazer upgrade →
           </Link>
+        </div>
+        <div className="text-[10px] text-gray-500 leading-tight px-1">
+          <p className="font-semibold text-gray-400">Contamei Tecnologia e Sistemas Digitais LTDA</p>
+          <p>CNPJ: 64.790.325/0001-06</p>
         </div>
       </div>
     </>

@@ -7,6 +7,7 @@ import { sendWhatsAppMessage } from "@/src/services/whatsappService";
 import { saveUserMessage, saveAIMessage, getConversationHistory, getConversationStatus } from "@/src/services/conversationService";
 // @ts-ignore - Importing from JS file
 import { getTenantByPhoneId } from "@/src/services/tenantService";
+import { checkAutomationMatch } from "@/src/services/automationService";
 
 const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
 
@@ -83,6 +84,26 @@ export async function POST(req: Request) {
           if (status !== 'open') {
             console.log(`Conversa com ${from} está com status: ${status}. Ignorando IA.`);
             // Apenas retorna OK, o humano é responsável a partir daqui
+            return new Response('OK', { status: 200 });
+          }
+
+          // ** [NOVO] VERIFICAR AUTOMAÇÃO POR PALAVRA-CHAVE **
+          const automation = await checkAutomationMatch(textBody, tenant.id);
+          
+          if (automation) {
+            console.log(`Regra de automação acionada para ${from}: "${automation.name}"`);
+            
+            const replyPhoneId = tenant.whatsappPhoneNumberId || tenant.whatsappPhoneId;
+            const replyToken = tenant.whatsappToken;
+
+            // Envia resposta da automação
+            await sendWhatsAppMessage(from, automation.responseText, replyPhoneId, replyToken);
+            
+            // Salva a resposta no banco, garantindo que aiGenerated = false (é uma automação hardcoded)
+            // (from, text, tenantId, status, aiGenerated)
+            await saveAIMessage(from, automation.responseText, tenant.id, status, false);
+            
+            // Encerra, não chama OpenAI
             return new Response('OK', { status: 200 });
           }
 

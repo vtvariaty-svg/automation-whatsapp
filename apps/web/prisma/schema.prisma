@@ -29,6 +29,7 @@ model Tenant {
   appointments        Appointment[]
   businessConfig      BusinessConfig?
   subscription        Subscription?
+  automationRules     AutomationRule[]
 }
 
 model BusinessConfig {

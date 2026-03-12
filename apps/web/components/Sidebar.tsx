@@ -10,7 +10,7 @@ const navItems = [
   { href: "/dashboard/orders", label: "Pedidos", icon: "🛍️", section: null },
   { href: "/dashboard/appointments", label: "Agenda", icon: "📅", section: null },
   { href: "/dashboard/ai", label: "Configuração de IA", icon: "🤖", section: "Automação" },
-  { href: "/dashboard/ai-test", label: "Teste IA", icon: "🧪", section: null },
+  { href: "/dashboard/automations", label: "Respostas Rápidas", icon: "⚡", section: null },
   { href: "/dashboard/integrations", label: "Integrações", icon: "🔌", section: "Administração" },
   { href: "/dashboard/products", label: "Produtos", icon: "📦", section: null },
   { href: "/dashboard/billing", label: "Assinatura", icon: "💳", section: null },

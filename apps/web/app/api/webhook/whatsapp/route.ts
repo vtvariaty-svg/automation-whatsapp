@@ -81,7 +81,7 @@ export async function POST(req: Request) {
           // Salvar mensagem do usuário no banco com tenant_id (e o status atualizado)
           await saveUserMessage(from, textBody, tenant.id, status);
 
-          if (status !== 'open') {
+          if (status !== 'open' && status !== 'ai') {
             console.log(`Conversa com ${from} está com status: ${status}. Ignorando IA.`);
             // Apenas retorna OK, o humano é responsável a partir daqui
             return new Response('OK', { status: 200 });

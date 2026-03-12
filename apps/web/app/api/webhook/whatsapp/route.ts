@@ -108,7 +108,7 @@ export async function POST(req: Request) {
           }
 
           // Fluxo: enviar texto para aiService com configurações do tenant
-          const aiResponse = await generateAIResponse(textBody, tenant.openaiKey, tenant.aiPrompt, tenant.businessHours);
+          const aiResponse = await generateAIResponse(textBody, tenant.openaiKey || '', tenant.aiPrompt || '', tenant.businessHours || '', tenant.id, from);
           console.log(`Resposta da IA para ${from} (Tenant ${tenant.name}): ${aiResponse}`);
 
           // Etapa 9/Multi-tenant: salvar resposta da IA no banco com tenant_id

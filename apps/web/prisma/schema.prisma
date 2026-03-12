@@ -30,6 +30,7 @@ model Tenant {
   businessConfig      BusinessConfig?
   subscription        Subscription?
   automationRules     AutomationRule[]
+  services            Service[]
 }
 
 model BusinessConfig {
@@ -140,4 +141,15 @@ model AutomationRule {
   createdAt     DateTime @default(now())
   
   tenant        Tenant   @relation(fields: [tenantId], references: [id])
+}
+
+model Service {
+  id              String   @id @default(uuid())
+  tenantId        String
+  name            String
+  durationMinutes Int      @default(30)
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
 }

@@ -62,72 +62,103 @@ export async function POST(request: Request) {
     let finalPhoneId = embeddedPhoneId || null;
     let phoneDisplay: string | null = null;
 
-    // If not provided by SDK, try to discover via Graph API
+    // Auto-discover WABA ID and Phone Number ID via Graph API
     if (!finalWabaId || !finalPhoneId) {
+      console.log('[whatsapp_discovery_start] Starting auto-discovery for tenant:', tenantId);
+
       try {
-        // Try shared WABA accounts first (Embedded Signup creates shared accounts)
-        const sharedRes = await fetch(
-          `https://graph.facebook.com/v22.0/me/businesses?access_token=${accessToken}`
-        );
-        const sharedData = await sharedRes.json();
+        // === ATTEMPT 1: GET /me?fields=whatsapp_business_account (preferred) ===
+        if (!finalWabaId) {
+          console.log('[whatsapp_discovery] Trying GET /me?fields=whatsapp_business_account');
+          const meRes = await fetch(
+            `https://graph.facebook.com/v22.0/me?fields=whatsapp_business_account&access_token=${accessToken}`
+          );
+          const meData = await meRes.json();
+          console.log('[whatsapp_discovery] /me response:', JSON.stringify(meData).slice(0, 300));
 
-        if (sharedData.data?.length > 0) {
-          for (const business of sharedData.data) {
-            const wabaRes = await fetch(
-              `https://graph.facebook.com/v22.0/${business.id}/owned_whatsapp_business_accounts?access_token=${accessToken}`
-            );
-            const wabaData = await wabaRes.json();
+          if (meData.whatsapp_business_account?.id) {
+            finalWabaId = meData.whatsapp_business_account.id;
+            console.log('[whatsapp_discovery] Found WABA ID via /me:', finalWabaId);
+          }
+        }
 
-            if (wabaData.data?.length > 0) {
-              finalWabaId = finalWabaId || wabaData.data[0].id;
-              
-              const phoneRes = await fetch(
-                `https://graph.facebook.com/v22.0/${finalWabaId}/phone_numbers?access_token=${accessToken}`
-              );
-              const phoneData = await phoneRes.json();
-              
-              if (phoneData.data?.length > 0) {
-                finalPhoneId = finalPhoneId || phoneData.data[0].id;
-                phoneDisplay = phoneData.data[0].display_phone_number || null;
-              }
+        // === ATTEMPT 2: GET /debug_token to find WABA from token granular scopes ===
+        if (!finalWabaId && appId && appSecret) {
+          console.log('[whatsapp_discovery] Trying GET /debug_token');
+          const debugRes = await fetch(
+            `https://graph.facebook.com/v22.0/debug_token?input_token=${accessToken}&access_token=${appId}|${appSecret}`
+          );
+          const debugData = await debugRes.json();
+          console.log('[whatsapp_discovery] debug_token response:', JSON.stringify(debugData).slice(0, 500));
+
+          const granularScopes = debugData.data?.granular_scopes || [];
+          for (const scope of granularScopes) {
+            if (scope.scope === 'whatsapp_business_management' && scope.target_ids?.length > 0) {
+              finalWabaId = scope.target_ids[0];
+              console.log('[whatsapp_discovery] Found WABA ID via debug_token:', finalWabaId);
               break;
             }
           }
         }
 
-        // Direct endpoint fallback
+        // === ATTEMPT 3: GET /me/businesses fallback ===
         if (!finalWabaId) {
-          const directRes = await fetch(
-            `https://graph.facebook.com/v22.0/me/whatsapp_business_accounts?access_token=${accessToken}`
+          console.log('[whatsapp_discovery] Trying GET /me/businesses fallback');
+          const businessRes = await fetch(
+            `https://graph.facebook.com/v22.0/me/businesses?access_token=${accessToken}`
           );
-          const directData = await directRes.json();
-          
-          if (directData.data?.length > 0) {
-            finalWabaId = directData.data[0].id;
-            const phoneRes = await fetch(
-              `https://graph.facebook.com/v22.0/${finalWabaId}/phone_numbers?access_token=${accessToken}`
-            );
-            const phoneData = await phoneRes.json();
-            if (phoneData.data?.length > 0) {
-              finalPhoneId = finalPhoneId || phoneData.data[0].id;
-              phoneDisplay = phoneData.data[0].display_phone_number || null;
+          const businessData = await businessRes.json();
+
+          if (businessData.data?.length > 0) {
+            for (const business of businessData.data) {
+              const wabaRes = await fetch(
+                `https://graph.facebook.com/v22.0/${business.id}/owned_whatsapp_business_accounts?access_token=${accessToken}`
+              );
+              const wabaData = await wabaRes.json();
+              if (wabaData.data?.length > 0) {
+                finalWabaId = wabaData.data[0].id;
+                console.log('[whatsapp_discovery] Found WABA ID via businesses fallback:', finalWabaId);
+                break;
+              }
             }
           }
         }
-      } catch (graphErr: any) {
-        console.error('Graph API discovery error (non-fatal):', graphErr.message);
-      }
-    }
 
-    // If we have WABA ID but no phone display, fetch it
-    if (finalWabaId && finalPhoneId && !phoneDisplay) {
-      try {
-        const phoneRes = await fetch(
-          `https://graph.facebook.com/v22.0/${finalPhoneId}?fields=display_phone_number&access_token=${accessToken}`
-        );
-        const phoneData = await phoneRes.json();
-        phoneDisplay = phoneData.display_phone_number || null;
-      } catch {}
+        // === DISCOVER PHONE NUMBER ID from WABA ===
+        if (finalWabaId && !finalPhoneId) {
+          console.log('[whatsapp_discovery] Fetching phone numbers for WABA:', finalWabaId);
+          const phoneRes = await fetch(
+            `https://graph.facebook.com/v22.0/${finalWabaId}/phone_numbers?access_token=${accessToken}`
+          );
+          const phoneData = await phoneRes.json();
+          console.log('[whatsapp_discovery] phone_numbers response:', JSON.stringify(phoneData).slice(0, 300));
+
+          if (phoneData.data?.length > 0) {
+            finalPhoneId = phoneData.data[0].id;
+            phoneDisplay = phoneData.data[0].display_phone_number || null;
+            console.log('[whatsapp_discovery] Found Phone ID:', finalPhoneId, 'Display:', phoneDisplay);
+          }
+        }
+
+        // === Fetch display phone if missing ===
+        if (finalPhoneId && !phoneDisplay) {
+          try {
+            const dpRes = await fetch(
+              `https://graph.facebook.com/v22.0/${finalPhoneId}?fields=display_phone_number&access_token=${accessToken}`
+            );
+            const dpData = await dpRes.json();
+            phoneDisplay = dpData.display_phone_number || null;
+          } catch {}
+        }
+
+        if (finalWabaId && finalPhoneId) {
+          console.log('[whatsapp_discovery_success] WABA:', finalWabaId, 'Phone:', finalPhoneId, 'Display:', phoneDisplay);
+        } else {
+          console.log('[whatsapp_discovery_failed] Could not auto-discover. WABA:', finalWabaId, 'Phone:', finalPhoneId);
+        }
+      } catch (graphErr: any) {
+        console.error('[whatsapp_discovery_failed] Exception:', graphErr.message);
+      }
     }
 
     // Save to Database (Tenant for fallback webhook support)

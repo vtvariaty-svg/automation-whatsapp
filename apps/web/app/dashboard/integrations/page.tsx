@@ -419,7 +419,31 @@ function IntegrationsContent() {
                 </div>
               </div>
 
-              {/* Removed manual config section for new connections to enforce Embedded Signup */}
+              {/* Divider */}
+              <div className="flex items-center gap-4 py-1">
+                <div className="flex-1 h-px bg-gray-200"></div>
+                <span className="text-xs text-gray-400 font-medium">ou</span>
+                <div className="flex-1 h-px bg-gray-200"></div>
+              </div>
+
+              {/* Secondary: Manual config (fallback) */}
+              <div>
+                <button
+                  onClick={() => setShowManualForm(!showManualForm)}
+                  className="w-full flex items-center justify-between p-4 rounded-xl bg-gray-50 border border-gray-200 hover:bg-gray-100 transition-all text-left"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-lg">⚙️</span>
+                    <div>
+                      <p className="font-semibold text-gray-900 text-sm">Configuração Manual</p>
+                      <p className="text-xs text-gray-500">Insira token e IDs do Facebook Developer Console</p>
+                    </div>
+                  </div>
+                  <svg className={`w-4 h-4 text-gray-400 transition-transform ${showManualForm ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+              </div>
             </div>
           )}
         </div>

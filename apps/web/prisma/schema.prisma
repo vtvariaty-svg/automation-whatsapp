@@ -31,6 +31,7 @@ model Tenant {
   subscription        Subscription?
   automationRules     AutomationRule[]
   services            Service[]
+  aiUsages            AiUsage[]
 }
 
 model BusinessConfig {
@@ -94,13 +95,40 @@ model Subscription {
   tenantId              String    @unique
   stripeCustomerId      String?
   stripeSubscriptionId  String?
+  planId                String?
   plan                  String    @default("starter")
   status                String    @default("trialing")
   usageMessages         Int       @default(0)
   trialEnd              DateTime?
+  currentPeriodStart    DateTime?
   currentPeriodEnd      DateTime?
   createdAt             DateTime  @default(now())
+  
   tenant                Tenant    @relation(fields: [tenantId], references: [id])
+  planRel               Plan?     @relation(fields: [planId], references: [id])
+}
+
+model Plan {
+  id               String   @id @default(uuid())
+  name             String
+  monthlyAiLimit   Int
+  price            Float
+  createdAt        DateTime @default(now())
+  
+  subscriptions    Subscription[]
+  
+  @@map("plans")
+}
+
+model AiUsage {
+  id             String   @id @default(uuid())
+  tenantId       String
+  totalTokens    Int      @default(0)
+  createdAt      DateTime @default(now())
+  
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  
+  @@map("ai_usage")
 }
 
 model Order {

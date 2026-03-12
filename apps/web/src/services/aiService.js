@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { getAvailableSlots, createAppointment, getServices } from "./schedulingService";
+import { recordAiUsage } from "./billingService";
 
 /**
  * Envia mensagem para OpenAI e executa funções de agendamento se necessário.
@@ -108,6 +109,9 @@ ${schedulingInstructions}
     });
 
     let messageObj = response.choices[0].message;
+    
+    // Calcula o uso logo após a chamada
+    await recordAiUsage(tenantId, response.usage?.total_tokens || 1);
 
     // Lida com tool calls (funções)
     if (messageObj.tool_calls) {
@@ -161,6 +165,9 @@ ${schedulingInstructions}
         model: "gpt-4o-mini",
         messages: messages,
       });
+
+      // Calcula o uso após a segunda (final) resposta
+      await recordAiUsage(tenantId, secondResponse.usage?.total_tokens || 1);
 
       return secondResponse.choices[0].message.content;
     }

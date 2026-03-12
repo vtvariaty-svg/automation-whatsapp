@@ -5,9 +5,9 @@ import { generateAIResponse } from "@/src/services/aiService";
 import { sendWhatsAppMessage } from "@/src/services/whatsappService";
 // @ts-ignore - Importing from JS file
 import { saveUserMessage, saveAIMessage, getConversationHistory, getConversationStatus } from "@/src/services/conversationService";
-// @ts-ignore - Importing from JS file
 import { getTenantByPhoneId } from "@/src/services/tenantService";
 import { checkAutomationMatch } from "@/src/services/automationService";
+import { verifyAiLimits } from "@/src/services/billingService";
 
 const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
 
@@ -104,6 +104,21 @@ export async function POST(req: Request) {
             await saveAIMessage(from, automation.responseText, tenant.id, status, false);
             
             // Encerra, não chama OpenAI
+            return new Response('OK', { status: 200 });
+          }
+
+          // Verificar limites de IA
+          const canUseAI = await verifyAiLimits(tenant.id);
+          
+          if (!canUseAI) {
+            console.log(`Limite da IA atingido para o tenant ${tenant.name}.`);
+            const limitMessage = "Seu limite de respostas da IA foi atingido neste mês. Para continuar utilizando o atendimento automático, atualize seu plano.";
+            
+            const replyPhoneId = tenant.whatsappPhoneNumberId || tenant.whatsappPhoneId;
+            const replyToken = tenant.whatsappToken;
+
+            await sendWhatsAppMessage(from, limitMessage, replyPhoneId, replyToken);
+            await saveAIMessage(from, limitMessage, tenant.id, status, false);
             return new Response('OK', { status: 200 });
           }
 

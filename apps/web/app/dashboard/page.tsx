@@ -112,40 +112,38 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      {/* Welcome banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] p-8 text-white">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)] bg-[size:24px_24px]"></div>
-        <div className="absolute -right-20 -top-20 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
-        <div className="absolute -right-10 -bottom-10 w-48 h-48 bg-white/5 rounded-full blur-2xl"></div>
-        
-        <div className="relative">
-          <h1 className="text-2xl md:text-3xl font-bold mb-2">
-            Bem-vindo ao Variaty Secretary IA 🚀
-          </h1>
-          <p className="text-indigo-200 text-sm md:text-base max-w-xl">
-            Seu painel de controle para automação de atendimento inteligente. Monitore conversas, gerencie produtos e configure sua IA.
-          </p>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Welcome banner */}
+        <div className="lg:col-span-2 relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] p-8 text-white">
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)] bg-[size:24px_24px]"></div>
+          <div className="absolute -right-20 -top-20 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
+          
+          <div className="relative">
+            <h1 className="text-2xl md:text-3xl font-bold mb-2">
+              Bem-vindo ao Variaty Secretary IA 🚀
+            </h1>
+            <p className="text-indigo-200 text-sm md:text-base max-w-xl">
+              Seu painel de controle para automação de atendimento inteligente. Monitore conversas e gerencie seu plano.
+            </p>
 
-          {/* WhatsApp status pill */}
-          <div className="mt-5 inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-full px-4 py-2">
-            <span className="relative flex h-2.5 w-2.5">
-              {whatsappStatus === "connected" && (
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-              )}
-              <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
-                whatsappStatus === "connected" ? "bg-green-400" : whatsappStatus === "loading" ? "bg-yellow-400" : "bg-red-400"
-              }`}></span>
-            </span>
-            <span className="text-sm font-medium">
-              WhatsApp {whatsappStatus === "connected" ? "Conectado" : whatsappStatus === "loading" ? "Verificando..." : "Desconectado"}
-            </span>
-            {whatsappStatus === "disconnected" && (
-              <Link href="/dashboard/integrations" className="text-xs underline text-indigo-200 hover:text-white ml-1">
-                Conectar →
-              </Link>
-            )}
+            <div className="mt-5 inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-full px-4 py-2">
+              <span className="relative flex h-2.5 w-2.5">
+                {whatsappStatus === "connected" && (
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                )}
+                <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
+                  whatsappStatus === "connected" ? "bg-green-400" : whatsappStatus === "loading" ? "bg-yellow-400" : "bg-red-400"
+                }`}></span>
+              </span>
+              <span className="text-sm font-medium">
+                WhatsApp {whatsappStatus === "connected" ? "Conectado" : whatsappStatus === "loading" ? "Verificando..." : "Desconectado"}
+              </span>
+            </div>
           </div>
         </div>
+
+        {/* Plan Usage Card */}
+        <UsageCard tenantId={user?.tenantId} />
       </div>
 
       {/* Stat Cards */}
@@ -261,6 +259,73 @@ function StatusRow({ label, status }: { label: string; status: string }) {
           {isOnline ? "Online" : needsConfig ? "Configurar" : "Offline"}
         </span>
       </div>
+    </div>
+  );
+}
+
+function UsageCard({ tenantId }: { tenantId?: string }) {
+  const [usage, setUsage] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!tenantId) return;
+    fetch(`/api/plan-usage?tenantId=${tenantId}`)
+      .then(res => res.json())
+      .then(data => { setUsage(data); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [tenantId]);
+
+  if (loading) return (
+    <div className="bg-white rounded-2xl border border-gray-100 p-6 animate-pulse shadow-sm h-full">
+      <div className="h-3 bg-gray-100 rounded w-1/4 mb-4"></div>
+      <div className="h-8 bg-gray-100 rounded w-1/2 mb-4"></div>
+      <div className="h-2 bg-gray-100 rounded w-full"></div>
+    </div>
+  );
+
+  if (!usage) return null;
+
+  const percentage = usage.limit === -1 ? 0 : Math.min(100, (usage.usage / usage.limit) * 100);
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-shadow h-full flex flex-col justify-center">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-bold text-gray-900">Uso do Plano</h3>
+        <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg">
+          {usage.plan_name}
+        </span>
+      </div>
+
+      <div className="mb-4">
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-3xl font-black text-gray-900 tracking-tight">{usage.usage.toLocaleString()}</span>
+          <span className="text-sm text-gray-400 font-medium">
+            / {usage.limit === -1 ? "∞" : usage.limit.toLocaleString()} créditos
+          </span>
+        </div>
+        <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider mt-1">Geração de IA Mensal</p>
+      </div>
+
+      <div className="relative h-2.5 w-full bg-gray-100 rounded-full overflow-hidden mb-3">
+        <div 
+          className={`absolute top-0 left-0 h-full rounded-full transition-all duration-1000 ${percentage > 90 ? "bg-red-500" : "bg-gradient-to-r from-indigo-500 to-purple-500"}`}
+          style={{ width: `${usage.limit === -1 ? 100 : Math.max(5, percentage)}%` }}
+        />
+      </div>
+
+      <div className="flex justify-between items-center text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+        <span>{percentage.toFixed(0)}% USADO</span>
+        <span>{usage.remaining === -1 ? "ILIMITADO" : `${usage.remaining.toLocaleString()} RESTANTES`}</span>
+      </div>
+
+      {usage.remaining !== -1 && usage.remaining < 500 && usage.remaining > 0 && (
+        <div className="mt-5 p-3 bg-amber-50 rounded-xl border border-amber-100 flex items-center gap-2">
+          <span className="text-base">⚠️</span>
+          <p className="text-[11px] text-amber-700 font-medium leading-tight">
+            Limite próximo. Faça upgrade para evitar pausas no atendimento.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

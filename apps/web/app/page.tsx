@@ -28,6 +28,24 @@ function Navbar() {
           <a href="#como-funciona" className="hover:text-[#4f46e5] transition-colors">Como funciona</a>
           <a href="#planos" className="hover:text-[#4f46e5] transition-colors">Planos</a>
           <a href="#faq" className="hover:text-[#4f46e5] transition-colors">FAQ</a>
+          <div className="relative group cursor-pointer">
+            <div className="flex items-center gap-1 hover:text-[#4f46e5] transition-colors py-4">
+              SAC
+              <svg className="w-4 h-4 transition-transform group-hover:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+            </div>
+            <div className="absolute top-full left-1/2 -translate-x-1/2 w-56 bg-white border border-gray-100 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+              <div className="p-2 flex flex-col gap-1 text-sm">
+                <a href="mailto:vtvariaty@gmail.com" className="flex flex-col hover:bg-gray-50 p-3 rounded-lg transition-colors">
+                  <span className="text-gray-900 font-semibold mb-0.5">E-mail</span>
+                  <span className="text-gray-500 text-xs">vtvariaty@gmail.com</span>
+                </a>
+                <a href="https://wa.me/5516994082931" target="_blank" rel="noopener noreferrer" className="flex flex-col hover:bg-gray-50 p-3 rounded-lg transition-colors">
+                  <span className="text-gray-900 font-semibold mb-0.5">WhatsApp</span>
+                  <span className="text-gray-500 text-xs">(16) 99408-2931</span>
+                </a>
+              </div>
+            </div>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <Link href="/login" className="text-sm font-medium text-gray-700 hover:text-[#4f46e5] transition-colors px-3 py-2">Entrar</Link>

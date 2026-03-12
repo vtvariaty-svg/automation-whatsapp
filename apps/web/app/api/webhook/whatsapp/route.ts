@@ -71,13 +71,17 @@ export async function POST(req: Request) {
           }
 
           // Check status of conversation
-          const status = await getConversationStatus(from, tenant.id);
+          let status = await getConversationStatus(from, tenant.id);
+          
+          if (status === 'closed') {
+            status = 'open';
+          }
 
-          // Etapa 9/Multi-tenant: salvar mensagem do usuário no banco com tenant_id (e o status atual)
+          // Salvar mensagem do usuário no banco com tenant_id (e o status atualizado)
           await saveUserMessage(from, textBody, tenant.id, status);
 
-          if (status === 'human') {
-            console.log(`Conversa com ${from} está com atendimento humano. Ignorando IA.`);
+          if (status !== 'open') {
+            console.log(`Conversa com ${from} está com status: ${status}. Ignorando IA.`);
             // Apenas retorna OK, o humano é responsável a partir daqui
             return new Response('OK', { status: 200 });
           }

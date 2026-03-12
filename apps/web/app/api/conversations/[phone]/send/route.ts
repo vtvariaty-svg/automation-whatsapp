@@ -30,8 +30,8 @@ export async function POST(
     // Send message via WhatsApp API (from tenant)
     await sendWhatsAppMessage(phone, message, sendPhoneId, sendToken);
 
-    // Save as human response
-    await saveAIMessage(phone, message, tenantId, 'human');
+    // Save as human response (aiGenerated = false)
+    await saveAIMessage(phone, message, tenantId, 'human', false);
 
     return NextResponse.json({ success: true });
   } catch (error: any) {

@@ -9,11 +9,14 @@ type Conversation = {
   last_message: string;
   status: string;
   timestamp: string;
+  assigned_user?: string;
 };
 
 type Message = {
   id: string;
   sender: "user" | "ai" | "human";
+  direction?: string;
+  ai_generated?: boolean;
   message_text?: string;
   ai_response?: string;
   timestamp: string;
@@ -25,7 +28,7 @@ export default function InboxPage() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedPhone, setSelectedPhone] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [currentStatus, setCurrentStatus] = useState<string>("ai");
+  const [currentStatus, setCurrentStatus] = useState<string>("open");
   const [replyText, setReplyText] = useState("");
   const [loadingList, setLoadingList] = useState(false);
   const [loadingChat, setLoadingChat] = useState(false);
@@ -89,12 +92,16 @@ export default function InboxPage() {
     }
   }, [tenantId, selectedPhone, currentStatus]);
 
-  const handleTakeover = async () => {
+  const handleStatusChange = async (newStatus: string) => {
     if (!selectedPhone || !tenantId) return;
     try {
-      const res = await fetch(`/api/conversations/${selectedPhone}/takeover?tenantId=${tenantId}`, { method: "POST" });
+      const res = await fetch(`/api/conversations/${selectedPhone}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tenantId, status: newStatus }),
+      });
       if (res.ok) {
-        setCurrentStatus("human");
+        setCurrentStatus(newStatus);
         loadConversations();
       }
     } catch (err) {
@@ -262,25 +269,41 @@ export default function InboxPage() {
                     <div className="flex items-center gap-2">
                       <span className="relative flex h-2 w-2">
                         <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                          currentStatus === "human" ? "bg-orange-400" : "bg-green-400"
+                          currentStatus === "human" ? "bg-orange-400" : currentStatus === "closed" ? "bg-gray-400" : currentStatus === "waiting" ? "bg-yellow-400" : "bg-green-400"
                         }`}></span>
                         <span className={`relative inline-flex rounded-full h-2 w-2 ${
-                          currentStatus === "human" ? "bg-orange-500" : "bg-green-500"
+                          currentStatus === "human" ? "bg-orange-500" : currentStatus === "closed" ? "bg-gray-500" : currentStatus === "waiting" ? "bg-yellow-500" : "bg-green-500"
                         }`}></span>
                       </span>
                       <p className="text-xs text-gray-500 font-medium">
-                        {currentStatus === "human" ? "Atendimento Humano" : "Atendimento IA"}
+                        {currentStatus === "human" ? "Atendimento Humano" : currentStatus === "closed" ? "Encerrado" : currentStatus === "waiting" ? "Aguardando" : "Atendimento IA"}
                       </p>
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {currentStatus !== "human" && (
+                  {currentStatus === "open" || currentStatus === "waiting" ? (
                     <button
-                      onClick={handleTakeover}
+                      onClick={() => handleStatusChange("human")}
                       className="inline-flex items-center gap-2 px-4 py-2 bg-orange-50 text-orange-600 rounded-xl text-sm font-semibold hover:bg-orange-100 transition-all border border-orange-100"
                     >
                       <span>👤</span> Assumir
+                    </button>
+                  ) : null}
+                  {currentStatus === "human" && (
+                    <button
+                      onClick={() => handleStatusChange("open")}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 text-[#4f46e5] rounded-xl text-sm font-semibold hover:bg-indigo-100 transition-all border border-indigo-100"
+                    >
+                      <span>🤖</span> Voltar para IA
+                    </button>
+                  )}
+                  {currentStatus !== "closed" && (
+                    <button
+                      onClick={() => handleStatusChange("closed")}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-gray-50 text-gray-600 rounded-xl text-sm font-semibold hover:bg-gray-100 transition-all border border-gray-200"
+                    >
+                      <span>✅</span> Encerrar
                     </button>
                   )}
                 </div>
@@ -304,15 +327,15 @@ export default function InboxPage() {
                   </div>
                 ) : (
                   messages.map((msg) => {
-                    const isUser = msg.sender === "user";
-                    const isAI = msg.sender === "ai";
+                    const isInbound = msg.direction === "inbound" || msg.sender === "user";
+                    const isAI = msg.ai_generated !== false && (msg.sender === "ai" || !isInbound);
                     const text = msg.message_text || msg.ai_response || "";
 
                     return (
-                      <div key={msg.id} className={`flex ${isUser ? "justify-start" : "justify-end"}`}>
+                      <div key={msg.id} className={`flex ${isInbound ? "justify-start" : "justify-end"}`}>
                         <div
                           className={`max-w-[70%] px-4 py-3 rounded-2xl shadow-sm ${
-                            isUser
+                            isInbound
                               ? "bg-white border border-gray-100 rounded-bl-sm"
                               : isAI
                               ? "bg-gradient-to-r from-[#4f46e5] to-[#5b51e0] text-white rounded-br-sm"
@@ -321,16 +344,16 @@ export default function InboxPage() {
                         >
                           <div className="flex items-center gap-2 mb-1">
                             <span className={`text-[10px] font-bold tracking-wider uppercase ${
-                              isUser ? "text-gray-400" : isAI ? "text-indigo-200" : "text-gray-400"
+                              isInbound ? "text-gray-400" : isAI ? "text-indigo-200" : "text-gray-400"
                             }`}>
-                              {isUser ? "Cliente" : isAI ? "🤖 IA" : "👤 Você"}
+                              {isInbound ? "Cliente" : isAI ? "🤖 IA" : "👤 Você"}
                             </span>
                           </div>
-                          <p className={`text-[14px] leading-relaxed ${isUser ? "text-gray-800" : "text-white"}`}>
+                          <p className={`text-[14px] leading-relaxed ${isInbound ? "text-gray-800" : "text-white"}`}>
                             {text}
                           </p>
                           <span className={`text-[10px] block mt-1.5 text-right ${
-                            isUser ? "text-gray-300" : "text-white/50"
+                            isInbound ? "text-gray-300" : "text-white/50"
                           }`}>
                             {new Date(msg.timestamp).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                           </span>
@@ -343,7 +366,7 @@ export default function InboxPage() {
               </div>
 
               {/* Input area */}
-              {currentStatus === "human" ? (
+              {currentStatus !== "closed" ? (
                 <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-100 bg-white flex items-center gap-3 shrink-0">
                   <div className="flex-1 relative">
                     <input
@@ -369,15 +392,10 @@ export default function InboxPage() {
                   </button>
                 </form>
               ) : (
-                <div className="p-5 border-t border-gray-100 bg-gradient-to-r from-indigo-50/50 to-purple-50/50 text-center shrink-0">
-                  <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
-                    <span className="text-lg">🤖</span>
-                    <p>
-                      A <strong className="text-[#4f46e5]">IA</strong> está atendendo este cliente.{" "}
-                      <button onClick={handleTakeover} className="text-[#4f46e5] font-semibold hover:underline">
-                        Assumir manualmente →
-                      </button>
-                    </p>
+                <div className="p-5 border-t border-gray-100 bg-gray-50 text-center shrink-0">
+                  <div className="flex items-center justify-center gap-2 text-sm text-gray-500 font-medium">
+                    <span className="text-lg">🔒</span>
+                    <p>Esta conversa foi encerrada.</p>
                   </div>
                 </div>
               )}
@@ -392,7 +410,7 @@ export default function InboxPage() {
               <p className="text-sm text-gray-500 max-w-sm leading-relaxed">
                 Selecione uma conversa ao lado para visualizar o histórico de mensagens ou iniciar o atendimento manual.
               </p>
-              <div className="mt-6 flex items-center gap-4 text-xs text-gray-400">
+              <div className="mt-6 gap-4 flex-wrap flex items-center justify-center text-xs text-gray-400">
                 <div className="flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-green-400"></span>
                   IA ativo
@@ -400,6 +418,14 @@ export default function InboxPage() {
                 <div className="flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-orange-400"></span>
                   Humano
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-yellow-400"></span>
+                  Aguardando
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-gray-400"></span>
+                  Encerrado
                 </div>
               </div>
             </div>

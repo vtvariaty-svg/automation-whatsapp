@@ -19,17 +19,21 @@ export async function saveUserMessage(phoneNumber: string, messageText: string, 
       data: {
         conversationId: conversation.id,
         role: 'user',
-        content: messageText
+        direction: 'inbound',
+        content: messageText,
+        aiGenerated: false
       }
     });
 
-    // Update status if needed
+    const updateData: any = { lastMessageAt: new Date() };
     if (conversation.status !== status) {
-      await prisma.conversation.update({
-         where: { id: conversation.id },
-         data: { status }
-      });
+      updateData.status = status;
     }
+
+    await prisma.conversation.update({
+       where: { id: conversation.id },
+       data: updateData
+    });
 
     console.log(`Mensagem do usuário ${phoneNumber} salva no banco.`);
     return msg;
@@ -41,7 +45,7 @@ export async function saveUserMessage(phoneNumber: string, messageText: string, 
 /**
  * Salva a resposta gerada pela IA.
  */
-export async function saveAIMessage(phoneNumber: string, aiResponse: string, tenantId: string, status = 'ai') {
+export async function saveAIMessage(phoneNumber: string, aiResponse: string, tenantId: string, status = 'ai', aiGenerated = true) {
   try {
     let conversation = await prisma.conversation.findFirst({
       where: { customerPhone: phoneNumber, tenantId }
@@ -53,21 +57,27 @@ export async function saveAIMessage(phoneNumber: string, aiResponse: string, ten
       });
     }
 
+    const roleString = aiGenerated ? 'ai' : 'human';
+
     const msg = await prisma.message.create({
       data: {
         conversationId: conversation.id,
-        role: 'ai',
-        content: aiResponse
+        role: roleString,
+        direction: 'outbound',
+        content: aiResponse,
+        aiGenerated: aiGenerated
       }
     });
 
-    // Update status if needed
+    const updateData: any = { lastMessageAt: new Date() };
     if (conversation.status !== status) {
-      await prisma.conversation.update({
-         where: { id: conversation.id },
-         data: { status }
-      });
+      updateData.status = status;
     }
+
+    await prisma.conversation.update({
+       where: { id: conversation.id },
+       data: updateData
+    });
 
     console.log(`Resposta da IA para ${phoneNumber} salva no banco.`);
     return msg;
@@ -92,12 +102,14 @@ export async function getConversationHistory(phoneNumber: string, tenantId: stri
     
     if (!conversation) return [];
 
-    // Map to old format for compatibility
+    // Map to old format for compatibility, adding new fields
     return conversation.messages.map((msg: any) => ({
       id: msg.id,
       phone_number: phoneNumber,
       message_text: msg.content,
       sender: msg.role === 'user' ? 'user' : (msg.role === 'human' ? 'human' : 'ai'),
+      direction: msg.direction,
+      ai_generated: msg.aiGenerated,
       timestamp: msg.createdAt,
       tenant_id: tenantId,
       status: conversation.status
@@ -121,19 +133,19 @@ export async function getConversationsList(tenantId: string) {
           take: 1
         }
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { lastMessageAt: 'desc' }
     });
 
     return conversations.map((c: any) => {
       const lastMessage = c.messages.length > 0 ? c.messages[0].content : null;
-      const ts = c.messages.length > 0 ? c.messages[0].createdAt : c.createdAt;
       
       return {
         id: c.customerPhone,
         phone_number: c.customerPhone,
-        timestamp: ts,
+        timestamp: c.lastMessageAt,
         last_message: lastMessage,
-        status: c.status
+        status: c.status,
+        assigned_user: c.assignedUser
       };
     });
   } catch (error) {
@@ -159,8 +171,9 @@ export async function getConversationStatus(phoneNumber: string, tenantId: strin
 
 /**
  * Atualiza o status de todas as mensagens de um número para 'human'.
+ * Agora atualizamos apenas o próprio conversation.status.
  */
-export async function takeoverConversation(phoneNumber: string, tenantId: string) {
+export async function takeoverConversation(phoneNumber: string, tenantId: string, newStatus: string = 'human') {
   try {
     const conversation = await prisma.conversation.findFirst({
       where: { customerPhone: phoneNumber, tenantId }
@@ -169,12 +182,12 @@ export async function takeoverConversation(phoneNumber: string, tenantId: string
     if (conversation) {
       await prisma.conversation.update({
         where: { id: conversation.id },
-        data: { status: 'human' }
+        data: { status: newStatus }
       });
     }
     return { success: true };
   } catch (error) {
-    console.error('Erro ao fazer takeover da conversa:', error);
+    console.error('Erro ao fazer takeover/status update da conversa:', error);
     throw error;
   }
 }

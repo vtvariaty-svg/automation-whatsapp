@@ -28,8 +28,10 @@ export const updateSubscriptionFromStripe = async (
     stripeCustomerId?: string;
     stripeSubscriptionId?: string;
     plan?: string;
+    planId?: string;
     status?: string;
     trialEnd?: Date;
+    currentPeriodStart?: Date;
     currentPeriodEnd?: Date;
   }
 ) => {
@@ -85,9 +87,15 @@ export const incrementUsage = async (tenantId: string) => {
 };
 
 export const resetUsage = async (tenantId: string) => {
-  return await prisma.subscription.update({
+  // Reset the counter on the subscription
+  await prisma.subscription.update({
     where: { tenantId },
     data: { usageMessages: 0 },
+  });
+
+  // Also clear the ai_usage table for this tenant (new billing cycle)
+  await prisma.aiUsage.deleteMany({
+    where: { tenantId },
   });
 };
 

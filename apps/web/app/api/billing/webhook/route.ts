@@ -29,12 +29,18 @@ export async function POST(req: Request) {
           const trialEnd = new Date();
           trialEnd.setDate(trialEnd.getDate() + 7);
 
+          // Find the planId in the DB
+          const { prisma } = await import('@/lib/prisma');
+          const dbPlan = await prisma.plan.findFirst({ where: { name: { contains: plan || 'Starter', mode: 'insensitive' } } });
+
           await updateSubscriptionFromStripe(tenantId, {
             stripeCustomerId: session.customer,
             stripeSubscriptionId: session.subscription,
             plan: plan || 'starter',
+            planId: dbPlan?.id || undefined,
             status: 'trialing',
             trialEnd,
+            currentPeriodStart: new Date(),
           });
         }
         break;
@@ -52,12 +58,16 @@ export async function POST(req: Request) {
           });
 
           if (subscription) {
+            const periodStart = invoice.lines?.data?.[0]?.period?.start
+              ? new Date(invoice.lines.data[0].period.start * 1000)
+              : new Date();
             const periodEnd = invoice.lines?.data?.[0]?.period?.end
               ? new Date(invoice.lines.data[0].period.end * 1000)
               : undefined;
 
             await updateSubscriptionFromStripe(subscription.tenantId, {
               status: 'active',
+              currentPeriodStart: periodStart,
               currentPeriodEnd: periodEnd,
             });
 

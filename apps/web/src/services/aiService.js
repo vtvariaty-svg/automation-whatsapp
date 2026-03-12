@@ -110,8 +110,8 @@ ${schedulingInstructions}
 
     let messageObj = response.choices[0].message;
     
-    // Calcula o uso logo após a chamada
-    await recordAiUsage(tenantId, response.usage?.total_tokens || 1);
+    // Registra uso de tokens (non-blocking - não deve impedir a resposta)
+    try { await recordAiUsage(tenantId, response.usage?.total_tokens || 1); } catch (e) { console.error('recordAiUsage falhou:', e.message); }
 
     // Lida com tool calls (funções)
     if (messageObj.tool_calls) {
@@ -166,8 +166,8 @@ ${schedulingInstructions}
         messages: messages,
       });
 
-      // Calcula o uso após a segunda (final) resposta
-      await recordAiUsage(tenantId, secondResponse.usage?.total_tokens || 1);
+      // Registra uso de tokens (non-blocking)
+      try { await recordAiUsage(tenantId, secondResponse.usage?.total_tokens || 1); } catch (e) { console.error('recordAiUsage falhou:', e.message); }
 
       return secondResponse.choices[0].message.content;
     }

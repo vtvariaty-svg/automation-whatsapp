@@ -107,8 +107,13 @@ export async function POST(req: Request) {
             return new Response('OK', { status: 200 });
           }
 
-          // Verificar limites de IA
-          const canUseAI = await verifyAiLimits(tenant.id);
+          // Verificar limites de IA (non-blocking - se falhar, permite IA)
+          let canUseAI = true;
+          try {
+            canUseAI = await verifyAiLimits(tenant.id);
+          } catch (e) {
+            console.error('Erro ao verificar limites de IA (permitindo por segurança):', e);
+          }
           
           if (!canUseAI) {
             console.log(`Limite da IA atingido para o tenant ${tenant.name}.`);
@@ -117,7 +122,11 @@ export async function POST(req: Request) {
             const replyPhoneId = tenant.whatsappPhoneNumberId || tenant.whatsappPhoneId;
             const replyToken = tenant.whatsappToken;
 
-            await sendWhatsAppMessage(from, limitMessage, replyPhoneId, replyToken);
+            try {
+              await sendWhatsAppMessage(from, limitMessage, replyPhoneId, replyToken);
+            } catch (sendErr) {
+              console.error('Erro ao enviar msg de limite via WhatsApp:', sendErr);
+            }
             await saveAIMessage(from, limitMessage, tenant.id, status, false);
             return new Response('OK', { status: 200 });
           }
@@ -126,15 +135,21 @@ export async function POST(req: Request) {
           const aiResponse = await generateAIResponse(textBody, tenant.openaiKey || '', tenant.aiPrompt || '', tenant.businessHours || '', tenant.id, from);
           console.log(`Resposta da IA para ${from} (Tenant ${tenant.name}): ${aiResponse}`);
 
-          // Etapa 9/Multi-tenant: salvar resposta da IA no banco com tenant_id
+          // Salvar resposta da IA no banco com tenant_id
           await saveAIMessage(from, aiResponse, tenant.id, status);
 
-          // Resolve quais credenciais WhatsApp usar no envio (priorizar nova do embedded)
+          // Enviar resposta via WhatsApp
           const replyPhoneId = tenant.whatsappPhoneNumberId || tenant.whatsappPhoneId;
           const replyToken = tenant.whatsappToken;
 
-          // Fluxo: enviar resposta via whatsappService com credenciais do tenant
-          await sendWhatsAppMessage(from, aiResponse, replyPhoneId, replyToken);
+          console.log(`Enviando WhatsApp para ${from} via phoneId=${replyPhoneId}, token=${replyToken ? 'PRESENTE' : 'AUSENTE'}`);
+          
+          try {
+            await sendWhatsAppMessage(from, aiResponse, replyPhoneId, replyToken);
+            console.log(`WhatsApp enviado com sucesso para ${from}`);
+          } catch (sendErr: any) {
+            console.error(`FALHA ao enviar WhatsApp para ${from}:`, sendErr?.response?.data || sendErr?.message || sendErr);
+          }
         }
       }
     }

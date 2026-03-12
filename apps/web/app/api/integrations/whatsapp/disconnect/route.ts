@@ -19,6 +19,15 @@ export async function POST(request: Request) {
       }
     });
 
+    try {
+      await prisma.whatsAppConnection.update({
+        where: { tenantId: auth.tenantId },
+        data: { status: 'disconnected' }
+      });
+    } catch (e) {
+      // Ignore if record doesn't exist
+    }
+
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error('Error disconnecting WhatsApp:', error);

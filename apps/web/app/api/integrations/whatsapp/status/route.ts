@@ -16,6 +16,7 @@ export async function GET(request: Request) {
         whatsappBusinessAccountId: true,
         whatsappPhoneNumberId: true,
         whatsappPhoneId: true,
+        whatsappConnection: true,
       }
     });
 
@@ -23,15 +24,19 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
     }
 
-    // Connected if we have at least a token saved
-    const connected = !!tenant.whatsappToken;
-    const hasFullConfig = !!(tenant.whatsappToken && (tenant.whatsappPhoneNumberId || tenant.whatsappPhoneId));
+    // Connected if we have at least a token saved (legacy or new model)
+    const connected = !!tenant.whatsappToken || tenant.whatsappConnection?.status === 'connected';
+    const hasFullConfig = !!(
+      (tenant.whatsappToken && (tenant.whatsappPhoneNumberId || tenant.whatsappPhoneId)) ||
+      (tenant.whatsappConnection?.wabaId && tenant.whatsappConnection?.phoneNumberId)
+    );
 
     return NextResponse.json({
       connected,
       hasFullConfig,
-      whatsappBusinessAccountId: tenant.whatsappBusinessAccountId || null,
-      whatsappPhoneNumberId: tenant.whatsappPhoneNumberId || tenant.whatsappPhoneId || null,
+      whatsappBusinessAccountId: tenant.whatsappConnection?.wabaId || tenant.whatsappBusinessAccountId || null,
+      whatsappPhoneNumberId: tenant.whatsappConnection?.phoneNumberId || tenant.whatsappPhoneNumberId || tenant.whatsappPhoneId || null,
+      displayPhone: tenant.whatsappConnection?.displayPhone || null,
     });
   } catch (error: any) {
     console.error('Error checking WhatsApp status:', error);

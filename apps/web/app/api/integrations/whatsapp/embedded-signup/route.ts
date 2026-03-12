@@ -130,7 +130,7 @@ export async function POST(request: Request) {
       } catch {}
     }
 
-    // Save to database
+    // Save to Database (Tenant for fallback webhook support)
     await prisma.tenant.update({
       where: { id: tenantId },
       data: {
@@ -140,6 +140,52 @@ export async function POST(request: Request) {
         whatsappPhoneId: finalPhoneId,
       },
     });
+
+    // Save to new WhatsAppConnection model
+    if (accessToken) {
+      await prisma.whatsAppConnection.upsert({
+        where: { tenantId },
+        create: {
+          tenantId,
+          wabaId: finalWabaId,
+          phoneNumberId: finalPhoneId,
+          displayPhone: phoneDisplay,
+          accessToken,
+          status: 'connected',
+        },
+        update: {
+          wabaId: finalWabaId,
+          phoneNumberId: finalPhoneId,
+          displayPhone: phoneDisplay,
+          accessToken,
+          status: 'connected',
+        },
+      });
+    }
+
+    // Auto-subscribe the webhook so the user doesn't have to do it manually in the Meta App Dashboard
+    if (finalWabaId && accessToken) {
+      try {
+        console.log(`Auto-subscribing Meta App webhook for WABA ID: ${finalWabaId}`);
+        const subscribeRes = await fetch(
+          `https://graph.facebook.com/v22.0/${finalWabaId}/subscribed_apps`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          }
+        );
+        const subscribeData = await subscribeRes.json();
+        if (!subscribeRes.ok || !subscribeData.success) {
+          console.warn('Non-fatal: Could not auto-subscribe webhook:', subscribeData);
+        } else {
+          console.log('Successfully subscribed webhook:', subscribeData);
+        }
+      } catch (subErr: any) {
+        console.warn('Non-fatal error auto-subscribing webhook:', subErr.message);
+      }
+    }
 
     return NextResponse.json({
       success: true,

@@ -11,6 +11,7 @@ interface WhatsAppStatus {
   hasFullConfig: boolean;
   whatsappBusinessAccountId: string | null;
   whatsappPhoneNumberId: string | null;
+  displayPhone: string | null;
 }
 
 function IntegrationsContent() {
@@ -154,7 +155,7 @@ function IntegrationsContent() {
       if (token) headers["Authorization"] = `Bearer ${token}`;
       const res = await fetch("/api/integrations/whatsapp/disconnect", { method: "POST", headers });
       if (res.ok) {
-        setStatus({ connected: false, hasFullConfig: false, whatsappBusinessAccountId: null, whatsappPhoneNumberId: null });
+        setStatus({ connected: false, hasFullConfig: false, whatsappBusinessAccountId: null, whatsappPhoneNumberId: null, displayPhone: null });
         setMessage("✅ WhatsApp desconectado com sucesso.");
       } else {
         const data = await res.json().catch(() => ({}));
@@ -302,11 +303,17 @@ function IntegrationsContent() {
                     <p className="text-sm font-mono text-gray-800">{status.whatsappPhoneNumberId}</p>
                   </div>
                 )}
+                {status.displayPhone && (
+                  <div className="bg-gray-50 rounded-xl px-4 py-3 border border-gray-100">
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Número (Display Phone)</p>
+                    <p className="text-sm font-mono text-gray-800">{status.displayPhone}</p>
+                  </div>
+                )}
               </div>
 
               {!status.hasFullConfig && (
                 <div className="p-4 bg-amber-50 rounded-xl border border-amber-100 text-sm text-amber-700">
-                  ⚠️ Token salvo, mas WABA ID ou Phone ID não foram detectados.{" "}
+                  ⚠️ WABA ID ou Phone ID não foram detectados.{" "}
                   <button onClick={() => setShowManualForm(!showManualForm)} className="font-semibold underline hover:no-underline">
                     {showManualForm ? "Fechar formulário" : "Completar manualmente"}
                   </button>
@@ -412,31 +419,7 @@ function IntegrationsContent() {
                 </div>
               </div>
 
-              {/* Divider */}
-              <div className="flex items-center gap-4 py-1">
-                <div className="flex-1 h-px bg-gray-200"></div>
-                <span className="text-xs text-gray-400 font-medium">ou</span>
-                <div className="flex-1 h-px bg-gray-200"></div>
-              </div>
-
-              {/* Secondary: Manual config */}
-              <div>
-                <button
-                  onClick={() => setShowManualForm(!showManualForm)}
-                  className="w-full flex items-center justify-between p-4 rounded-xl bg-gray-50 border border-gray-200 hover:bg-gray-100 transition-all text-left"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-lg">⚙️</span>
-                    <div>
-                      <p className="font-semibold text-gray-900 text-sm">Configuração Manual</p>
-                      <p className="text-xs text-gray-500">Insira token e IDs do Facebook Developer Console</p>
-                    </div>
-                  </div>
-                  <svg className={`w-4 h-4 text-gray-400 transition-transform ${showManualForm ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-              </div>
+              {/* Removed manual config section for new connections to enforce Embedded Signup */}
             </div>
           )}
         </div>

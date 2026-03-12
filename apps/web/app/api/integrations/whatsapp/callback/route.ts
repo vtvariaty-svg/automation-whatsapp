@@ -107,6 +107,63 @@ export async function POST(request: Request) {
       });
     }
 
+    // Upsert into WhatsAppConnection model
+    if (!isIdOnlyUpdate && accessToken) {
+      await prisma.whatsAppConnection.upsert({
+        where: { tenantId },
+        create: {
+          tenantId,
+          wabaId: finalWabaId,
+          phoneNumberId: finalPhoneId,
+          displayPhone: phoneDisplay,
+          accessToken,
+          status: 'connected',
+        },
+        update: {
+          wabaId: finalWabaId,
+          phoneNumberId: finalPhoneId,
+          displayPhone: phoneDisplay,
+          accessToken,
+          status: 'connected',
+        },
+      });
+    } else if (finalWabaId || finalPhoneId) {
+      // If we're only updating IDs (isIdOnlyUpdate)
+      await prisma.whatsAppConnection.updateMany({
+        where: { tenantId },
+        data: {
+          ...(finalWabaId && { wabaId: finalWabaId }),
+          ...(finalPhoneId && { phoneNumberId: finalPhoneId }),
+          ...(phoneDisplay && { displayPhone: phoneDisplay }),
+          status: 'connected',
+        },
+      });
+    }
+
+    // Auto-subscribe the webhook so the user doesn't have to do it manually in the Meta App Dashboard
+    if (finalWabaId && accessToken) {
+      try {
+        console.log(`Auto-subscribing Meta App webhook for WABA ID: ${finalWabaId}`);
+        const subscribeRes = await fetch(
+          `https://graph.facebook.com/v22.0/${finalWabaId}/subscribed_apps`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          }
+        );
+        const subscribeData = await subscribeRes.json();
+        if (!subscribeRes.ok || !subscribeData.success) {
+          console.warn('Non-fatal: Could not auto-subscribe webhook:', subscribeData);
+        } else {
+          console.log('Successfully subscribed webhook:', subscribeData);
+        }
+      } catch (subErr: any) {
+        console.warn('Non-fatal error auto-subscribing webhook:', subErr.message);
+      }
+    }
+
     return NextResponse.json({
       success: true,
       wabaId: finalWabaId,

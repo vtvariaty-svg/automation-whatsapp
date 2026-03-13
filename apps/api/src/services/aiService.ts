@@ -1,5 +1,6 @@
 import { createOpenAIClient } from '../integrations/openai/openaiClient';
 import { getTenantConfig, listProducts, searchProducts } from './tenantService';
+import { createCheckoutSession } from './salesService';
 
 const openai = createOpenAIClient();
 
@@ -62,12 +63,12 @@ Responda APENAS com a palavra da categoria.
   return intent;
 };
 
-export const generateSalesResponse = async (tenantId: string, userMessage: string) => {
+export const generateSalesResponse = async (tenantId: string, userMessage: string, contactId: string) => {
   const config = await getTenantConfig(tenantId);
   const recommendedProducts = await searchProducts(tenantId, userMessage);
 
   const productList = recommendedProducts.map((p: any) => 
-    `Nome: ${p.name}\nDescrição: ${p.description || 'Não informada'}\nPreço: R$ ${p.price.toFixed(2)}`
+    `ID: ${p.id}\nNome: ${p.name}\nDescrição: ${p.description || 'Não informada'}\nPreço: R$ ${p.price.toFixed(2)}`
   ).join('\n\n');
 
   const systemPrompt = `
@@ -85,19 +86,84 @@ O cliente demonstrou interesse em comprar ou tirar dúvidas sobre produtos. Voc�
 1. Recomendar os produtos acima que melhor se adaptam à necessidade do cliente.
 2. Explicar os benefícios de cada item recomendado de forma persuasiva.
 3. Perguntar qual deles o cliente prefere para guiar o fechamento da venda.
-4. Se o item estiver em falta (estoque 0), ofereça alternativas do catálogo.
-5. Seja claro, objetivo, amigável e focado em conversão.
+4. Se o cliente aceitar explicitamente ou quiser comprar um produto ESPECÍFICO, você DEVE gerar o link de pagamento usando a ferramenta generate_checkout_link informando o ID do produto.
+5. Ao retornar o link de checkout, diga obrigatoriamente a frase: "Aqui está o link para finalizar sua compra: {url}".
+6. Se o item estiver em falta, ofereça alternativas do catálogo.
+7. Seja claro, objetivo, amigável e focado em conversão.
 
-Exemplo de tom: "Temos estas opções que podem te ajudar... O [Produto X] é ótimo para [Benefício]. Qual você prefere?"
+Exemplo de tom inicial: "Temos estas opções que podem te ajudar... O [Produto X] é ótimo para [Benefício]. Qual você prefere?"
   `;
 
-  const response = await openai.chat.completions.create({
+  const messages: any[] = [
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: userMessage }
+  ];
+
+  const tools: any[] = [
+    {
+      type: "function",
+      function: {
+        name: "generate_checkout_link",
+        description: "Gera uma URL de checkout quando o cliente diz que quer comprar ou aceita um produto sugerido.",
+        parameters: {
+          type: "object",
+          properties: {
+            productId: {
+              type: "string",
+              description: "O ID do produto escolhido."
+            }
+          },
+          required: ["productId"]
+        }
+      }
+    }
+  ];
+
+  let response = await openai.chat.completions.create({
     model: 'gpt-3.5-turbo',
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userMessage }
-    ],
+    messages,
+    tools,
+    tool_choice: "auto"
   });
 
-  return response.choices[0].message.content;
+  const responseMessage = response.choices[0].message;
+
+  if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
+    messages.push(responseMessage); // append the assistant's tool call message
+    
+    for (const toolCall of responseMessage.tool_calls) {
+      const call = toolCall as any;
+      if (call.function.name === 'generate_checkout_link') {
+        const args = JSON.parse(call.function.arguments);
+        try {
+          // Execute local function to generate link and mock the DB object
+          const checkoutData = await createCheckoutSession(tenantId, contactId, args.productId);
+          
+          messages.push({
+            role: "tool",
+            tool_call_id: call.id,
+            name: call.function.name,
+            content: JSON.stringify(checkoutData)
+          });
+        } catch (error: any) {
+          messages.push({
+            role: "tool",
+            tool_call_id: call.id,
+            name: call.function.name,
+            content: JSON.stringify({ error: error.message })
+          });
+        }
+      }
+    }
+
+    // Call OpenAI again to get the final response formatted with the generated data
+    response = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      messages
+    });
+    
+    return response.choices[0].message.content;
+  }
+
+  return responseMessage.content;
 };

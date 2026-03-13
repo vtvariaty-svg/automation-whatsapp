@@ -46,7 +46,7 @@ export const routeMessage = async (from: string, text: string) => {
 
   let aiText;
   if (intent === 'sales') {
-    aiText = await generateSalesResponse(tenant.id, text);
+    aiText = await generateSalesResponse(tenant.id, text, from);
   } else {
     // Normal / Support / FAQ / General Fallback
     aiText = await generateResponse(tenant.id, text);

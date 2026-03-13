@@ -35,6 +35,7 @@ model Tenant {
   services            Service[]
   aiUsages            AiUsage[]
   whatsappConnection  WhatsAppConnection?
+  salesEvents         SalesEvent[]
 }
 
 model BusinessConfig {
@@ -58,6 +59,7 @@ model Product {
   stock       Int?
   createdAt   DateTime @default(now())
   tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  salesEvents SalesEvent[]
 }
 
 model User {
@@ -201,4 +203,17 @@ model WhatsAppConnection {
   tenant          Tenant   @relation(fields: [tenantId], references: [id])
 
   @@map("whatsapp_connections")
+}
+
+model SalesEvent {
+  id          String   @id @default(uuid())
+  tenantId    String
+  contactId   String   // Can point to a customer phone or a specific customer ID if applicable
+  productId   String
+  checkoutUrl String
+  status      String   @default("created") // created, paid, cancelled
+  createdAt   DateTime @default(now())
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  product     Product  @relation(fields: [productId], references: [id])
 }

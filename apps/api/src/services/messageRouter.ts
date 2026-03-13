@@ -46,6 +46,26 @@ export const routeMessage = async (from: string, text: string) => {
 
   let aiText;
   if (intent === 'sales') {
+    // CRM Tracking: Ensure there is an open opportunity for this customer.
+    // An opportunity is considered open if it's not "pago" or "pos_venda".
+    const openOpportunity = await prisma.salesOpportunity.findFirst({
+      where: {
+        tenantId: tenant.id,
+        contactId: from,
+        status: { notIn: ['pago', 'pos_venda'] }
+      }
+    });
+
+    if (!openOpportunity) {
+      await prisma.salesOpportunity.create({
+        data: {
+          tenantId: tenant.id,
+          contactId: from,
+          status: 'novo_lead'
+        }
+      });
+    }
+
     aiText = await generateSalesResponse(tenant.id, text, from);
   } else {
     // Normal / Support / FAQ / General Fallback

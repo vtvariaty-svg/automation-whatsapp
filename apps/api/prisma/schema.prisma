@@ -35,7 +35,8 @@ model Tenant {
   services            Service[]
   aiUsages            AiUsage[]
   whatsappConnection  WhatsAppConnection?
-  salesEvents         SalesEvent[]
+  salesEvents       SalesEvent[]
+  salesOpportunities SalesOpportunity[]
 }
 
 model BusinessConfig {
@@ -60,6 +61,7 @@ model Product {
   createdAt   DateTime @default(now())
   tenant      Tenant   @relation(fields: [tenantId], references: [id])
   salesEvents SalesEvent[]
+  salesOpportunities SalesOpportunity[]
 }
 
 model User {
@@ -216,4 +218,18 @@ model SalesEvent {
 
   tenant      Tenant   @relation(fields: [tenantId], references: [id])
   product     Product  @relation(fields: [productId], references: [id])
+}
+
+model SalesOpportunity {
+  id          String   @id @default(uuid())
+  tenantId    String
+  contactId   String   // WhatsApp phone or customer ID
+  productId   String?
+  value       Float?
+  status      String   @default("novo_lead") // novo_lead, interessado, checkout_enviado, pago, pos_venda
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  product     Product? @relation(fields: [productId], references: [id])
 }

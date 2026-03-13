@@ -1,6 +1,9 @@
 import { createOpenAIClient } from '../integrations/openai/openaiClient';
 import { getTenantConfig, listProducts, searchProducts } from './tenantService';
 import { createCheckoutSession } from './salesService';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 const openai = createOpenAIClient();
 
@@ -66,6 +69,19 @@ Responda APENAS com a palavra da categoria.
 export const generateSalesResponse = async (tenantId: string, userMessage: string, contactId: string) => {
   const config = await getTenantConfig(tenantId);
   const recommendedProducts = await searchProducts(tenantId, userMessage);
+
+  if (recommendedProducts.length > 0) {
+    const openOpp = await prisma.salesOpportunity.findFirst({
+      where: { tenantId, contactId, status: 'novo_lead' },
+      orderBy: { createdAt: 'desc' }
+    });
+    if (openOpp) {
+      await prisma.salesOpportunity.update({
+        where: { id: openOpp.id },
+        data: { status: 'interessado' }
+      });
+    }
+  }
 
   const productList = recommendedProducts.map((p: any) => 
     `ID: ${p.id}\nNome: ${p.name}\nDescrição: ${p.description || 'Não informada'}\nPreço: R$ ${p.price.toFixed(2)}`

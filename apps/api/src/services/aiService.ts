@@ -1,5 +1,5 @@
 import { createOpenAIClient } from '../integrations/openai/openaiClient';
-import { getTenantConfig, listProducts } from './tenantService';
+import { getTenantConfig, listProducts, searchProducts } from './tenantService';
 
 const openai = createOpenAIClient();
 
@@ -64,10 +64,7 @@ Responda APENAS com a palavra da categoria.
 
 export const generateSalesResponse = async (tenantId: string, userMessage: string) => {
   const config = await getTenantConfig(tenantId);
-  const products = await listProducts(tenantId);
-  
-  // Limiting to 5 products for recommendations as requested
-  const recommendedProducts = products.slice(0, 5);
+  const recommendedProducts = await searchProducts(tenantId, userMessage);
 
   const productList = recommendedProducts.map((p: any) => 
     `Nome: ${p.name}\nDescrição: ${p.description || 'Não informada'}\nPreço: R$ ${p.price.toFixed(2)}`

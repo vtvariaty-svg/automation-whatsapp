@@ -115,3 +115,32 @@ export const deleteProduct = async (tenantId: string, productId: string) => {
     where: { id: productId }
   });
 };
+
+export const searchProducts = async (tenantId: string, query: string) => {
+  // Exclui palavras muito curtas para melhorar a precisão da busca
+  const keywords = query.toLowerCase().split(/\W+/).filter(w => w.length > 3);
+  
+  if (keywords.length === 0) {
+    // Fallback: traz os 5 mais recentes se não houver palavras úteis
+    return await prisma.product.findMany({
+      where: { tenantId },
+      orderBy: { createdAt: 'desc' },
+      take: 5
+    });
+  }
+
+  // Cria condição OR insensível a maiúsculas para cada palavra-chave
+  const searchConditions = keywords.flatMap(keyword => [
+    { name: { contains: keyword, mode: 'insensitive' as const } },
+    { description: { contains: keyword, mode: 'insensitive' as const } },
+    { category: { contains: keyword, mode: 'insensitive' as const } }
+  ]);
+
+  return await prisma.product.findMany({
+    where: { 
+      tenantId,
+      OR: searchConditions
+    },
+    take: 5
+  });
+};

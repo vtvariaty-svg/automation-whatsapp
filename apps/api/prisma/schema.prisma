@@ -13,11 +13,28 @@ model Tenant {
   businessDescription String?
   businessType        String?
   phone               String?
+  whatsappPhoneNumberId String?
+  whatsappPhoneId     String?
+  whatsappBusinessAccountId String?
+  whatsappToken       String?
+  openaiKey           String?
+  aiPrompt            String? @db.Text
+  welcomeMessage      String? @db.Text
+  businessHours       String?
+  setupStep           Int             @default(1)
+  setupCompleted      Boolean         @default(false)
   createdAt           DateTime        @default(now())
   users               User[]
   conversations       Conversation[]
   products            Product[]
+  orders              Order[]
+  appointments        Appointment[]
   businessConfig      BusinessConfig?
+  subscription        Subscription?
+  automationRules     AutomationRule[]
+  services            Service[]
+  aiUsages            AiUsage[]
+  whatsappConnection  WhatsAppConnection?
 }
 
 model BusinessConfig {
@@ -46,8 +63,12 @@ model Product {
 model User {
   id           String   @id @default(uuid())
   tenantId     String
+  name         String?
   email        String   @unique
-  passwordHash String
+  passwordHash String?
+  facebookId   String?  @unique
+  instagramId  String?  @unique
+  role         String   @default("user")
   createdAt    DateTime @default(now())
   tenant       Tenant   @relation(fields: [tenantId], references: [id])
 }
@@ -56,6 +77,9 @@ model Conversation {
   id            String    @id @default(uuid())
   tenantId      String
   customerPhone String
+  status        String    @default("open")
+  lastMessageAt DateTime  @default(now())
+  assignedUser  String?
   createdAt     DateTime  @default(now())
   tenant        Tenant    @relation(fields: [tenantId], references: [id])
   messages      Message[]
@@ -65,7 +89,116 @@ model Message {
   id             String       @id @default(uuid())
   conversationId String
   role           String
+  direction      String       @default("inbound")
   content        String
+  aiGenerated    Boolean      @default(true)
   createdAt      DateTime     @default(now())
   conversation   Conversation @relation(fields: [conversationId], references: [id])
+}
+
+model Subscription {
+  id                    String    @id @default(uuid())
+  tenantId              String    @unique
+  stripeCustomerId      String?
+  stripeSubscriptionId  String?
+  planId                String?
+  plan                  String    @default("starter")
+  status                String    @default("trialing")
+  usageMessages         Int       @default(0)
+  trialEnd              DateTime?
+  currentPeriodStart    DateTime?
+  currentPeriodEnd      DateTime?
+  createdAt             DateTime  @default(now())
+  
+  tenant                Tenant    @relation(fields: [tenantId], references: [id])
+  planRel               Plan?     @relation(fields: [planId], references: [id])
+}
+
+model Plan {
+  id               String   @id @default(uuid())
+  name             String
+  monthlyAiLimit   Int
+  price            Float
+  createdAt        DateTime @default(now())
+  
+  subscriptions    Subscription[]
+  
+  @@map("plans")
+}
+
+model AiUsage {
+  id             String   @id @default(uuid())
+  tenantId       String
+  totalTokens    Int      @default(0)
+  createdAt      DateTime @default(now())
+  
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  
+  @@map("ai_usage")
+}
+
+model Order {
+  id            String   @id @default(uuid())
+  tenantId      String
+  customerPhone String
+  customerName  String?
+  product       String?
+  price         Float    @default(0.0)
+  status        String   @default("novo") // novo, confirmado, preparando, enviado, finalizado
+  createdAt     DateTime @default(now())
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+}
+
+model Appointment {
+  id            String   @id @default(uuid())
+  tenantId      String
+  customerPhone String
+  customerName  String?
+  service       String?
+  date          String?  // YYYY-MM-DD
+  time          String?  // HH:MM
+  status        String   @default("agendado") // agendado, confirmado, cancelado, concluido
+  createdAt     DateTime @default(now())
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+}
+
+model AutomationRule {
+  id            String   @id @default(uuid())
+  tenantId      String
+  name          String
+  triggerType   String   // keyword, contains
+  triggerValue  String
+  matchType     String   // exact, contains
+  responseType  String   // text, template
+  responseText  String   @db.Text
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+}
+
+model Service {
+  id              String   @id @default(uuid())
+  tenantId        String
+  name            String
+  durationMinutes Int      @default(30)
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+}
+
+model WhatsAppConnection {
+  id              String   @id @default(uuid())
+  tenantId        String   @unique
+  wabaId          String?
+  phoneNumberId   String?
+  displayPhone    String?
+  accessToken     String?
+  status          String   @default("connected")
+  createdAt       DateTime @default(now())
+
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@map("whatsapp_connections")
 }

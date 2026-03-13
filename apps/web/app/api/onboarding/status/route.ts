@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthTenant } from '@/lib/getAuthTenant';
+import { createSystemHealthCheck } from '@/lib/onboarding/healthCheck';
 
 export async function GET(request: Request) {
   try {
@@ -16,12 +17,6 @@ export async function GET(request: Request) {
         setupCompleted: true,
         name: true,
         businessType: true,
-        businessDescription: true,
-        businessHours: true,
-        whatsappToken: true,
-        whatsappPhoneNumberId: true,
-        whatsappBusinessAccountId: true,
-        aiPrompt: true,
       }
     });
 
@@ -29,26 +24,28 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
     }
 
-    // Compute checklist
+    // Run the full system health check
+    const health = await createSystemHealthCheck(auth.tenantId);
+
+    // Map to the checklist format used by the frontend
     const checklist = {
       companyConfigured: !!(tenant.name && tenant.businessType),
-      whatsappConnected: !!tenant.whatsappToken,
-      servicesCreated: false, // will check below
-      aiConfigured: !!tenant.aiPrompt,
-      firstTestDone: tenant.setupStep > 5 || tenant.setupCompleted,
+      whatsappConnected: health.whatsapp_connected,
+      servicesCreated: health.services_configured,
+      aiConfigured: health.ai_configured,
+      automationsCreated: health.automations_created,
+      firstTestDone: health.test_message_received,
     };
-
-    // Check services
-    const serviceCount = await prisma.service.count({ where: { tenantId: auth.tenantId } });
-    checklist.servicesCreated = serviceCount > 0;
 
     return NextResponse.json({
       setupStep: tenant.setupStep,
       setupCompleted: tenant.setupCompleted,
       checklist,
+      health, // raw health check result
     });
   } catch (error: any) {
     console.error('Error getting onboarding status:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+

@@ -355,7 +355,8 @@ function SetupChecklist({ tenantId }: { tenantId?: string }) {
     { key: "whatsappConnected", label: "WhatsApp conectado", icon: "📱" },
     { key: "servicesCreated", label: "Serviços cadastrados", icon: "📋" },
     { key: "aiConfigured", label: "IA configurada", icon: "🤖" },
-    { key: "firstTestDone", label: "Primeiro teste realizado", icon: "🧪" },
+    { key: "automationsCreated", label: "Automações criadas", icon: "⚙️" },
+    { key: "firstTestDone", label: "Primeira mensagem recebida", icon: "🧪" },
   ];
 
   const completed = items.filter(i => checklist[i.key]).length;
@@ -364,28 +365,44 @@ function SetupChecklist({ tenantId }: { tenantId?: string }) {
   // Hide when all complete
   if (completed === total) return null;
 
+  const hasCriticalMissing = !checklist.whatsappConnected || !checklist.aiConfigured;
+
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-6">
+    <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-bold text-gray-900">Configuração da Plataforma</h3>
-        <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg">
+        <span className={`text-xs font-bold px-2.5 py-1 rounded-lg ${
+          completed === total ? "text-emerald-600 bg-emerald-50" : "text-indigo-600 bg-indigo-50"
+        }`}>
           {completed}/{total} concluídos
         </span>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+
+      {hasCriticalMissing && (
+        <div className="mb-4 p-3 bg-amber-50 border border-amber-100 rounded-xl flex items-center gap-2">
+          <span className="text-base">⚠️</span>
+          <p className="text-xs text-amber-700 font-medium">
+            Itens essenciais estão pendentes. O atendimento automático não funcionará até que WhatsApp e IA estejam configurados.
+          </p>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {items.map(item => {
           const done = checklist[item.key];
           return (
             <div key={item.key} className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
-              done ? "bg-emerald-50 border-emerald-100" : "bg-gray-50 border-gray-100"
+              done ? "bg-emerald-50 border-emerald-100" : "bg-amber-50/50 border-amber-100"
             }`}>
               <span className="text-lg">{item.icon}</span>
               <div className="flex-1 min-w-0">
-                <p className={`text-xs font-semibold truncate ${done ? "text-emerald-700" : "text-gray-500"}`}>
+                <p className={`text-xs font-semibold truncate ${done ? "text-emerald-700" : "text-amber-700"}`}>
                   {item.label}
                 </p>
               </div>
-              {done && <span className="text-emerald-500 text-sm">✓</span>}
+              <span className={`text-sm font-bold ${done ? "text-emerald-500" : "text-amber-500"}`}>
+                {done ? "✓" : "⚠"}
+              </span>
             </div>
           );
         })}

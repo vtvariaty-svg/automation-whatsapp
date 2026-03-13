@@ -53,6 +53,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(false);
   }, []);
 
+  const redirectAfterAuth = async (token: string) => {
+    try {
+      const res = await fetch('/api/onboarding/status', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (!data.setupCompleted) {
+          router.push(`/onboarding/step/${data.setupStep || 1}`);
+          return;
+        }
+      }
+    } catch {}
+    router.push('/dashboard');
+  };
+
   const login = async (credentials: any) => {
     setLoading(true);
     try {
@@ -61,7 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(response.user);
       authStorage.saveToken(response.token);
       document.cookie = `auth_token=${response.token}; path=/; max-age=86400`;
-      router.push('/dashboard');
+      await redirectAfterAuth(response.token);
     } catch (error) {
       console.error('Login failed', error);
       throw error;
@@ -78,7 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(response.user);
       authStorage.saveToken(response.token);
       document.cookie = `auth_token=${response.token}; path=/; max-age=86400`;
-      router.push('/dashboard');
+      await redirectAfterAuth(response.token);
     } catch (error) {
       console.error('Register failed', error);
       throw error;

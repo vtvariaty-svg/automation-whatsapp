@@ -166,6 +166,9 @@ export default function DashboardPage() {
         ))}
       </div>
 
+      {/* Setup Checklist */}
+      <SetupChecklist tenantId={user?.tenantId} />
+
       {/* Quick Actions */}
       <div>
         <h2 className="text-lg font-bold text-gray-900 mb-4">Acesso Rápido</h2>
@@ -329,3 +332,65 @@ function UsageCard({ tenantId }: { tenantId?: string }) {
     </div>
   );
 }
+
+function SetupChecklist({ tenantId }: { tenantId?: string }) {
+  const [checklist, setChecklist] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!tenantId) return;
+    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+    fetch("/api/onboarding/status", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(res => res.json())
+      .then(data => { setChecklist(data.checklist); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [tenantId]);
+
+  if (loading || !checklist) return null;
+
+  const items = [
+    { key: "companyConfigured", label: "Empresa configurada", icon: "🏢" },
+    { key: "whatsappConnected", label: "WhatsApp conectado", icon: "📱" },
+    { key: "servicesCreated", label: "Serviços cadastrados", icon: "📋" },
+    { key: "aiConfigured", label: "IA configurada", icon: "🤖" },
+    { key: "firstTestDone", label: "Primeiro teste realizado", icon: "🧪" },
+  ];
+
+  const completed = items.filter(i => checklist[i.key]).length;
+  const total = items.length;
+
+  // Hide when all complete
+  if (completed === total) return null;
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 p-6">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-bold text-gray-900">Configuração da Plataforma</h3>
+        <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg">
+          {completed}/{total} concluídos
+        </span>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        {items.map(item => {
+          const done = checklist[item.key];
+          return (
+            <div key={item.key} className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
+              done ? "bg-emerald-50 border-emerald-100" : "bg-gray-50 border-gray-100"
+            }`}>
+              <span className="text-lg">{item.icon}</span>
+              <div className="flex-1 min-w-0">
+                <p className={`text-xs font-semibold truncate ${done ? "text-emerald-700" : "text-gray-500"}`}>
+                  {item.label}
+                </p>
+              </div>
+              {done && <span className="text-emerald-500 text-sm">✓</span>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+

@@ -21,6 +21,8 @@ model Tenant {
   aiPrompt            String? @db.Text
   welcomeMessage      String? @db.Text
   businessHours       String?
+  setupStep           Int             @default(1)
+  setupCompleted      Boolean         @default(false)
   createdAt           DateTime        @default(now())
   users               User[]
   conversations       Conversation[]

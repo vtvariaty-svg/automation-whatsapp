@@ -61,3 +61,40 @@ Responda APENAS com a palavra da categoria.
   const intent = response.choices[0].message.content?.toLowerCase().trim();
   return intent;
 };
+
+export const generateSalesResponse = async (tenantId: string, userMessage: string) => {
+  const config = await getTenantConfig(tenantId);
+  const products = await listProducts(tenantId);
+
+  const productList = products.map((p: any) => 
+    `- ${p.name}: ${p.description || 'Sem descrição'} (R$ ${p.price.toFixed(2)}) ${p.stock !== null ? `[Estoque: ${p.stock} un]` : ''}`
+  ).join('\n');
+
+  const systemPrompt = `
+Você é o Assistente de Vendas Especialista da empresa ${config.name}.
+
+Contexto da empresa:
+Descrição: ${config.businessDescription || 'Não informada'}
+
+Catálogo de Produtos Disponíveis:
+${productList || 'Nenhum produto cadastrado no momento.'}
+
+Seu objetivo:
+O cliente demonstrou interesse em comprar ou saber preços. Você deve:
+1. Ser altamente persuasivo e focado em converter a venda.
+2. Apresentar os produtos do catálogo de forma atraente.
+3. Se o cliente perguntar o preço de algo que temos, informe o preço e incentive o fechamento.
+4. Se o item estiver em falta (estoque 0), ofereça alternativas.
+5. Seja claro, objetivo e amigável.
+  `;
+
+  const response = await openai.chat.completions.create({
+    model: 'gpt-3.5-turbo',
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userMessage }
+    ],
+  });
+
+  return response.choices[0].message.content;
+};

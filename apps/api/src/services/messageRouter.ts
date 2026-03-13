@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
-import { generateResponse } from './aiService';
+import { generateResponse, generateSalesResponse } from './aiService';
+import { detectIntent } from './intentService';
 import { sendMessage } from '../integrations/whatsapp/whatsappClient';
 
 const prisma = new PrismaClient();
@@ -39,8 +40,17 @@ export const routeMessage = async (from: string, text: string) => {
     }
   });
 
-  // 3. Generate AI Response
-  const aiText = await generateResponse(tenant.id, text);
+  // 3. Detect Intent & Generate Response
+  const { intent } = detectIntent(text);
+  console.log(`[Intent Detection] Message from ${from} classified as: ${intent}`);
+
+  let aiText;
+  if (intent === 'sales') {
+    aiText = await generateSalesResponse(tenant.id, text);
+  } else {
+    // Normal / Support / FAQ / General Fallback
+    aiText = await generateResponse(tenant.id, text);
+  }
   
   if (!aiText) return;
 

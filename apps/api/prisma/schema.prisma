@@ -227,6 +227,9 @@ model SalesOpportunity {
   productId   String?
   value       Float?
   status      String   @default("novo_lead") // novo_lead, interessado, checkout_enviado, pago, pos_venda
+  followUp1Sent Boolean  @default(false)
+  followUp2Sent Boolean  @default(false)
+  followUp3Sent Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

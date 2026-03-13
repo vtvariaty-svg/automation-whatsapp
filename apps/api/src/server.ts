@@ -17,6 +17,8 @@ import productsRouter from './routes/products';
 import aiRouter from './routes/ai';
 import whatsappRouter from './routes/whatsapp';
 import webhookRouter from './routes/webhook';
+import cron from 'node-cron';
+import { processFollowUps } from './services/followUpService';
 
 app.use('/auth', authRouter);
 app.use('/tenant', tenantRouter);
@@ -24,6 +26,11 @@ app.use('/products', productsRouter);
 app.use('/ai', aiRouter);
 app.use('/whatsapp', whatsappRouter);
 app.use('/webhook', webhookRouter);
+
+// Schedule follow-ups every 15 minutes
+cron.schedule('*/15 * * * *', () => {
+  processFollowUps().catch(err => console.error('Cron job failed:', err));
+});
 
 const PORT = process.env.PORT || 3000;
 

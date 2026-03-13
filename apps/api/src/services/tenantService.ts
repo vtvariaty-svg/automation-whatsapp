@@ -58,7 +58,7 @@ export const updateTenantConfig = async (
   return tenant;
 };
 
-export const createProduct = async (tenantId: string, data: { name: string, description?: string, price: number }) => {
+export const createProduct = async (tenantId: string, data: { name: string, description?: string, category?: string, price: number, currency?: string, stock?: number | null }) => {
   return await prisma.product.create({
     data: {
       ...data,
@@ -71,5 +71,47 @@ export const listProducts = async (tenantId: string) => {
   return await prisma.product.findMany({
     where: { tenantId },
     orderBy: { createdAt: 'desc' }
+  });
+};
+
+export const getProduct = async (tenantId: string, productId: string) => {
+  return await prisma.product.findFirst({
+    where: { id: productId, tenantId }
+  });
+};
+
+export const updateProduct = async (
+  tenantId: string, 
+  productId: string, 
+  data: { 
+    name?: string, 
+    description?: string, 
+    category?: string, 
+    price?: number, 
+    currency?: string, 
+    stock?: number | null 
+  }
+) => {
+  // First verify the product belongs to this tenant
+  const existingProduct = await prisma.product.findFirst({
+    where: { id: productId, tenantId }
+  });
+  if (!existingProduct) throw new Error('Product not found');
+
+  return await prisma.product.update({
+    where: { id: productId },
+    data
+  });
+};
+
+export const deleteProduct = async (tenantId: string, productId: string) => {
+  // First verify the product belongs to this tenant
+  const existingProduct = await prisma.product.findFirst({
+    where: { id: productId, tenantId }
+  });
+  if (!existingProduct) throw new Error('Product not found');
+
+  return await prisma.product.delete({
+    where: { id: productId }
   });
 };

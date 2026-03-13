@@ -56,6 +56,17 @@ export const authApi = {
   listProducts: async () => {
     return apiClient('/products');
   },
+  updateProduct: async (id: string, data: any) => {
+    return apiClient(`/products/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  },
+  deleteProduct: async (id: string) => {
+    return apiClient(`/products/${id}`, {
+      method: 'DELETE'
+    });
+  },
   testAI: async (message: string) => {
     return apiClient('/ai/test', {
       method: 'POST',

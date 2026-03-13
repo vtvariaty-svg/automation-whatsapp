@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.listProducts = exports.createProduct = exports.updateTenantConfig = exports.getTenantConfig = void 0;
+exports.deleteProduct = exports.updateProduct = exports.getProduct = exports.listProducts = exports.createProduct = exports.updateTenantConfig = exports.getTenantConfig = void 0;
 const client_1 = require("@prisma/client");
 const prisma = new client_1.PrismaClient();
 const getTenantConfig = (tenantId) => __awaiter(void 0, void 0, void 0, function* () {
@@ -57,3 +57,34 @@ const listProducts = (tenantId) => __awaiter(void 0, void 0, void 0, function* (
     });
 });
 exports.listProducts = listProducts;
+const getProduct = (tenantId, productId) => __awaiter(void 0, void 0, void 0, function* () {
+    return yield prisma.product.findFirst({
+        where: { id: productId, tenantId }
+    });
+});
+exports.getProduct = getProduct;
+const updateProduct = (tenantId, productId, data) => __awaiter(void 0, void 0, void 0, function* () {
+    // First verify the product belongs to this tenant
+    const existingProduct = yield prisma.product.findFirst({
+        where: { id: productId, tenantId }
+    });
+    if (!existingProduct)
+        throw new Error('Product not found');
+    return yield prisma.product.update({
+        where: { id: productId },
+        data
+    });
+});
+exports.updateProduct = updateProduct;
+const deleteProduct = (tenantId, productId) => __awaiter(void 0, void 0, void 0, function* () {
+    // First verify the product belongs to this tenant
+    const existingProduct = yield prisma.product.findFirst({
+        where: { id: productId, tenantId }
+    });
+    if (!existingProduct)
+        throw new Error('Product not found');
+    return yield prisma.product.delete({
+        where: { id: productId }
+    });
+});
+exports.deleteProduct = deleteProduct;

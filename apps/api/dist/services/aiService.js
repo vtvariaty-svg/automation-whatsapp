@@ -17,7 +17,7 @@ const generateResponse = (tenantId, userMessage) => __awaiter(void 0, void 0, vo
     var _a, _b;
     const config = yield (0, tenantService_1.getTenantConfig)(tenantId);
     const products = yield (0, tenantService_1.listProducts)(tenantId);
-    const productList = products.map(p => `- ${p.name}: ${p.description} (R$ ${p.price})`).join('\n');
+    const productList = products.map((p) => `- ${p.name}: ${p.description} (R$ ${p.price})`).join('\n');
     const systemPrompt = `
 Você é um assistente virtual da empresa ${config.name}.
 

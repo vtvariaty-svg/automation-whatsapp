@@ -2,8 +2,10 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyToken } from '@/lib/services/authService';
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id: oppId } = await params;
+
     const authHeader = req.headers.get('authorization');
     if (!authHeader) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -14,8 +16,6 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
     const body = await req.json();
     const { status } = body;
-
-    const oppId = params.id;
 
     // Verify ownership
     const existing = await prisma.salesOpportunity.findUnique({

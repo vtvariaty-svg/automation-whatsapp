@@ -65,10 +65,13 @@ Responda APENAS com a palavra da categoria.
 export const generateSalesResponse = async (tenantId: string, userMessage: string) => {
   const config = await getTenantConfig(tenantId);
   const products = await listProducts(tenantId);
+  
+  // Limiting to 5 products for recommendations as requested
+  const recommendedProducts = products.slice(0, 5);
 
-  const productList = products.map((p: any) => 
-    `- ${p.name}: ${p.description || 'Sem descrição'} (R$ ${p.price.toFixed(2)}) ${p.stock !== null ? `[Estoque: ${p.stock} un]` : ''}`
-  ).join('\n');
+  const productList = recommendedProducts.map((p: any) => 
+    `Nome: ${p.name}\nDescrição: ${p.description || 'Não informada'}\nPreço: R$ ${p.price.toFixed(2)}`
+  ).join('\n\n');
 
   const systemPrompt = `
 Você é o Assistente de Vendas Especialista da empresa ${config.name}.
@@ -76,16 +79,19 @@ Você é o Assistente de Vendas Especialista da empresa ${config.name}.
 Contexto da empresa:
 Descrição: ${config.businessDescription || 'Não informada'}
 
-Catálogo de Produtos Disponíveis:
+Produtos disponíveis:
+
 ${productList || 'Nenhum produto cadastrado no momento.'}
 
 Seu objetivo:
-O cliente demonstrou interesse em comprar ou saber preços. Você deve:
-1. Ser altamente persuasivo e focado em converter a venda.
-2. Apresentar os produtos do catálogo de forma atraente.
-3. Se o cliente perguntar o preço de algo que temos, informe o preço e incentive o fechamento.
-4. Se o item estiver em falta (estoque 0), ofereça alternativas.
-5. Seja claro, objetivo e amigável.
+O cliente demonstrou interesse em comprar ou tirar dúvidas sobre produtos. Você deve:
+1. Recomendar os produtos acima que melhor se adaptam à necessidade do cliente.
+2. Explicar os benefícios de cada item recomendado de forma persuasiva.
+3. Perguntar qual deles o cliente prefere para guiar o fechamento da venda.
+4. Se o item estiver em falta (estoque 0), ofereça alternativas do catálogo.
+5. Seja claro, objetivo, amigável e focado em conversão.
+
+Exemplo de tom: "Temos estas opções que podem te ajudar... O [Produto X] é ótimo para [Benefício]. Qual você prefere?"
   `;
 
   const response = await openai.chat.completions.create({

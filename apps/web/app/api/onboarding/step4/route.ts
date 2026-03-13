@@ -2,6 +2,27 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthTenant } from '@/lib/getAuthTenant';
 
+export async function GET(request: Request) {
+  try {
+    const auth = await getAuthTenant(request);
+    if (!auth) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
+
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: auth.tenantId },
+      select: { aiPrompt: true, welcomeMessage: true }
+    });
+
+    return NextResponse.json({
+      aiPrompt: tenant?.aiPrompt || '',
+      welcomeMessage: tenant?.welcomeMessage || ''
+    });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const auth = await getAuthTenant(request);

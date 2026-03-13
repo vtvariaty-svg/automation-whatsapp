@@ -4,16 +4,11 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 const businessTypes = [
-  "Salão de Beleza / Barbearia",
-  "Clínica Médica / Odontológica",
-  "Escritório de Advocacia",
-  "Loja / E-commerce",
-  "Restaurante / Delivery",
-  "Academia / Estúdio",
-  "Consultoria / Freelancer",
-  "Imobiliária",
-  "Pet Shop / Veterinária",
-  "Outro",
+  { id: "Clínica Médica / Odontológica", label: "Clínica / Saúde", desc: "Configura Consultas, Avaliações e automação de horários." },
+  { id: "Salão de Beleza / Barbearia", label: "Salão / Barbearia", desc: "Configura Cortes, Colorações e automação de tabela de preços." },
+  { id: "Restaurante / Delivery", label: "Restaurante / Delivery", desc: "Configura Reservas, Entregas e automação de cardápio." },
+  { id: "Loja / E-commerce", label: "Loja / E-commerce", desc: "Configura Suporte e automação para frete e trocas." },
+  { id: "Outro", label: "Outro", desc: "Configuração básica em branco." },
 ];
 
 export default function OnboardingStep1() {
@@ -28,6 +23,7 @@ export default function OnboardingStep1() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!companyName.trim()) { setError("Nome da empresa é obrigatório"); return; }
+    if (!businessType) { setError("Por favor, selecione um tipo de negócio para aplicar os templates corretos."); return; }
     setSaving(true);
     setError("");
 
@@ -59,7 +55,7 @@ export default function OnboardingStep1() {
       <div className="bg-white rounded-2xl border border-gray-200/60 shadow-sm overflow-hidden mt-6">
         <div className="px-8 py-6 border-b border-gray-100 bg-gradient-to-r from-indigo-50/50 to-purple-50/50">
           <h2 className="text-xl font-bold text-gray-900">🏢 Sobre sua empresa</h2>
-          <p className="text-sm text-gray-500 mt-1">Conte-nos um pouco sobre o seu negócio</p>
+          <p className="text-sm text-gray-500 mt-1">Conte-nos um pouco sobre o seu negócio para configurarmos a IA sob medida.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="p-8 space-y-6">
@@ -80,31 +76,34 @@ export default function OnboardingStep1() {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Tipo de Negócio</label>
-            <div className="grid grid-cols-2 gap-2">
+            <label className="block text-sm font-semibold text-gray-700 mb-3">
+              Tipo de Negócio <span className="text-red-500">*</span> <span className="font-normal text-gray-400 text-xs ml-1">(Isso define as automações padrão da sua IA)</span>
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {businessTypes.map((type) => (
                 <button
-                  key={type}
+                  key={type.id}
                   type="button"
-                  onClick={() => setBusinessType(type)}
-                  className={`px-4 py-2.5 rounded-xl text-sm font-medium border transition-all text-left ${
-                    businessType === type
-                      ? "bg-indigo-50 border-indigo-300 text-indigo-700 ring-2 ring-indigo-500/20"
-                      : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
+                  onClick={() => setBusinessType(type.id)}
+                  className={`p-4 rounded-xl border transition-all text-left ${
+                    businessType === type.id
+                      ? "bg-indigo-50 border-indigo-400 text-indigo-700 ring-2 ring-indigo-500/10 shadow-sm"
+                      : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300"
                   }`}
                 >
-                  {type}
+                  <p className="font-bold text-sm mb-1">{type.label}</p>
+                  <p className={`text-xs ${businessType === type.id ? "text-indigo-600/80" : "text-gray-500"}`}>{type.desc}</p>
                 </button>
               ))}
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Descrição do Negócio</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Descrição da Empresa / Regras Gerais</label>
             <textarea
               value={businessDescription}
               onChange={(e) => setBusinessDescription(e.target.value)}
-              placeholder="Descreva brevemente o que sua empresa faz..."
+              placeholder="Descreva brevemente o que sua empresa faz ou regras importantes que a IA deve saber..."
               rows={3}
               className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500/40 transition-all resize-none"
             />
@@ -126,7 +125,7 @@ export default function OnboardingStep1() {
               disabled={saving}
               className="px-8 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-semibold text-sm hover:shadow-lg hover:shadow-indigo-200/50 transition-all disabled:opacity-50"
             >
-              {saving ? "Salvando..." : "Continuar →"}
+              {saving ? "Salvando e Criando Automações..." : "Continuar →"}
             </button>
           </div>
         </form>

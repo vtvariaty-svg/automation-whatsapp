@@ -2,6 +2,24 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthTenant } from '@/lib/getAuthTenant';
 
+export async function GET(request: Request) {
+  try {
+    const auth = await getAuthTenant(request);
+    if (!auth) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
+
+    const services = await prisma.service.findMany({
+      where: { tenantId: auth.tenantId, active: true },
+      orderBy: { createdAt: 'asc' }
+    });
+
+    return NextResponse.json({ services });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const auth = await getAuthTenant(request);
@@ -15,6 +33,11 @@ export async function POST(request: Request) {
     if (!services || !Array.isArray(services) || services.length === 0) {
       return NextResponse.json({ error: 'Adicione pelo menos um serviço' }, { status: 400 });
     }
+
+    // Overwrite existing services completely for simplicity during onboarding
+    await prisma.service.deleteMany({
+      where: { tenantId: auth.tenantId }
+    });
 
     // Create services in the real Service table
     for (const svc of services) {

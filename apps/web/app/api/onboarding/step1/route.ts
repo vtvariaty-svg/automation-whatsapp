@@ -27,6 +27,12 @@ export async function POST(request: Request) {
       },
     });
 
+    // Apply industry preset if a business type was selected
+    if (businessType) {
+      const { applyBusinessTemplate } = await import('@/lib/onboarding/applyTemplate');
+      await applyBusinessTemplate(auth.tenantId, businessType, companyName, businessHours || "");
+    }
+
     return NextResponse.json({ success: true, nextStep: 2 });
   } catch (error: any) {
     console.error('Onboarding step 1 error:', error);

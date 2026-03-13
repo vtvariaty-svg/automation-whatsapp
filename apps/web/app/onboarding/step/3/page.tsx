@@ -3,17 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-const suggestedServices: Record<string, string[]> = {
-  "Salão de Beleza / Barbearia": ["Corte de Cabelo", "Barba", "Coloração", "Hidratação", "Manicure", "Pedicure"],
-  "Clínica Médica / Odontológica": ["Consulta", "Limpeza", "Exame", "Retorno", "Procedimento"],
-  "Escritório de Advocacia": ["Consulta Jurídica", "Análise de Contrato", "Processo Civil", "Processo Trabalhista"],
-  "Loja / E-commerce": ["Produto Personalizado", "Entrega", "Troca/Devolução"],
-  "Restaurante / Delivery": ["Reserva de Mesa", "Delivery", "Encomenda", "Buffet"],
-  "Academia / Estúdio": ["Aula Avulsa", "Personal Trainer", "Avaliação Física", "Plano Mensal"],
-  "Consultoria / Freelancer": ["Consultoria", "Reunião", "Projeto", "Mentoria"],
-  "Imobiliária": ["Visita ao Imóvel", "Avaliação", "Consultoria Imobiliária"],
-  "Pet Shop / Veterinária": ["Banho", "Tosa", "Consulta Veterinária", "Vacinação"],
-};
+
 
 interface ServiceItem {
   name: string;
@@ -24,22 +14,27 @@ export default function OnboardingStep3() {
   const router = useRouter();
   const [services, setServices] = useState<ServiceItem[]>([{ name: "", durationMinutes: 30 }]);
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [suggestions, setSuggestions] = useState<string[]>([]);
 
-  // Load business type to suggest services
+  // Load services that might have been created by the Step 1 template
   useEffect(() => {
     const load = async () => {
       try {
         const token = localStorage.getItem("auth_token");
-        const res = await fetch("/api/onboarding/status", {
+        // We'll create a quick GET endpoint below to fetch tenant services
+        const res = await fetch("/api/onboarding/step3", {
           headers: { Authorization: `Bearer ${token}` },
         });
-        // We need the business type - let's get it via a different route
-        const statusRes = await fetch("/api/integrations/whatsapp/status", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-      } catch {}
+        if (res.ok) {
+          const data = await res.json();
+          if (data.services && data.services.length > 0) {
+            setServices(data.services.map((s: any) => ({ name: s.name, durationMinutes: s.durationMinutes })));
+          }
+        }
+      } catch {} finally {
+        setLoading(false);
+      }
     };
     load();
   }, []);
@@ -58,13 +53,6 @@ export default function OnboardingStep3() {
     const updated = [...services];
     (updated[index] as any)[field] = value;
     setServices(updated);
-  };
-
-  const applySuggestions = (type: string) => {
-    const suggested = suggestedServices[type];
-    if (suggested) {
-      setServices(suggested.map(name => ({ name, durationMinutes: 30 })));
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -94,6 +82,8 @@ export default function OnboardingStep3() {
     }
   };
 
+  if (loading) return <div className="text-center py-20 animate-pulse text-indigo-400 font-bold">Carregando serviços...</div>;
+
   return (
     <div>
       <StepProgress current={3} />
@@ -101,7 +91,7 @@ export default function OnboardingStep3() {
       <div className="bg-white rounded-2xl border border-gray-200/60 shadow-sm overflow-hidden mt-6">
         <div className="px-8 py-6 border-b border-gray-100 bg-gradient-to-r from-amber-50/50 to-orange-50/50">
           <h2 className="text-xl font-bold text-gray-900">📋 Serviços</h2>
-          <p className="text-sm text-gray-500 mt-1">Cadastre os serviços que sua empresa oferece</p>
+          <p className="text-sm text-gray-500 mt-1">Revise ou cadastre os serviços que sua empresa oferece</p>
         </div>
 
         <div className="p-8 space-y-6">
@@ -109,21 +99,9 @@ export default function OnboardingStep3() {
             <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-700">{error}</div>
           )}
 
-          {/* Quick suggestions */}
-          <div className="p-4 bg-indigo-50/50 rounded-xl border border-indigo-100">
-            <p className="text-xs font-semibold text-indigo-700 mb-2">💡 Sugestões rápidas por tipo de negócio:</p>
-            <div className="flex flex-wrap gap-1.5">
-              {Object.keys(suggestedServices).map(type => (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={() => applySuggestions(type)}
-                  className="px-3 py-1 bg-white border border-indigo-200 rounded-lg text-[11px] font-medium text-indigo-600 hover:bg-indigo-50 transition-all"
-                >
-                  {type}
-                </button>
-              ))}
-            </div>
+          <div className="p-4 bg-indigo-50/50 rounded-xl border border-indigo-100 mb-2">
+            <p className="text-sm font-semibold text-indigo-700">💡 Pré-configuramos alguns serviços para você!</p>
+            <p className="text-xs text-indigo-600/80 mt-1">Eles foram gerados com base no tipo de negócio que você escolheu. Sinta-se à vontade para editar, excluir ou adicionar novos.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-3">

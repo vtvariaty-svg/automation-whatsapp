@@ -4,11 +4,11 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 const businessTypes = [
-  { id: "Clínica Médica / Odontológica", label: "Clínica / Saúde", desc: "Configura Consultas, Avaliações e automação de horários." },
-  { id: "Salão de Beleza / Barbearia", label: "Salão / Barbearia", desc: "Configura Cortes, Colorações e automação de tabela de preços." },
-  { id: "Restaurante / Delivery", label: "Restaurante / Delivery", desc: "Configura Reservas, Entregas e automação de cardápio." },
-  { id: "Loja / E-commerce", label: "Loja / E-commerce", desc: "Configura Suporte e automação para frete e trocas." },
-  { id: "Outro", label: "Outro", desc: "Configuração básica em branco." },
+  { id: "clínica", label: "Clínica Médica / Odontológica", desc: "Configura Consultas, Avaliações e automação de horários." },
+  { id: "salão", label: "Salão de Beleza / Barbearia", desc: "Configura Cortes, Colorações e automação de tabela de preços." },
+  { id: "restaurante", label: "Restaurante / Delivery", desc: "Configura Reservas, Entregas e automação de cardápio." },
+  { id: "ecommerce", label: "Loja / E-commerce", desc: "Configura Suporte e automação para frete e trocas." },
+  { id: "outro", label: "Outro", desc: "Configuração básica em branco." },
 ];
 
 export default function OnboardingStep1() {

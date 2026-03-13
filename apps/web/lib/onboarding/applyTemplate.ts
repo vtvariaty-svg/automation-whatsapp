@@ -5,8 +5,8 @@ import { businessTemplates } from "./templates";
  * Applies a business template to a tenant, inserting default services, automations, and generating AI prompt/knowledge base.
  */
 export async function applyBusinessTemplate(tenantId: string, businessType: string, companyName: string, businessHours: string) {
-  // Find matching template or fallback to 'Outro'
-  const template = businessTemplates[businessType] || businessTemplates["Outro"];
+  // Find matching template or fallback to 'outro'
+  const template = businessTemplates[businessType] || businessTemplates["outro"];
 
   // 1. Insert Default Services
   // Only add if no services exist to prevent duplicates if user goes back and saves again
@@ -27,12 +27,15 @@ export async function applyBusinessTemplate(tenantId: string, businessType: stri
   
   if (existingAuthsCount === 0 && template.defaultAutomations.length > 0) {
     const rulesToCreate = template.defaultAutomations.map(rule => {
-      // Replace {business_hours} placeholder in response text
+      // Replace placeholders
       let responseText = rule.responseText;
       if (responseText.includes("{business_hours}") && businessHours) {
         responseText = responseText.replace("{business_hours}", businessHours);
       } else if (responseText.includes("{business_hours}")) {
         responseText = responseText.replace("{business_hours}", "horário comercial padrão");
+      }
+      if (responseText.includes("{business_address}")) {
+        responseText = responseText.replace("{business_address}", "endereço principal");
       }
 
       return {

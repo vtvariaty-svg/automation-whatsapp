@@ -12,9 +12,9 @@ const SEED_TEMPLATES = [
     category: 'UTILITY',
     language: 'en_US',
     status: 'APPROVED',
-    body: 'Hello {{1}}, your order {{2}} has been confirmed. Estimated delivery: {{3}}.',
-    placeholders: ['{{1}}', '{{2}}', '{{3}}'],
-    placeholderLabels: ['Customer Name', 'Order ID', 'Delivery Date'],
+    body: 'Hello {{1}}, your order {{2}} has been confirmed. Thank you.',
+    placeholders: ['{{1}}', '{{2}}'],
+    placeholderLabels: ['Customer Name', 'Order ID'],
   },
   {
     name: 'appointment_reminder',

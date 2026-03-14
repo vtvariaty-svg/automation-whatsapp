@@ -53,7 +53,7 @@ export async function POST(request: Request) {
     if (variables && variables.length > 0) {
       templatePayload.template.components = [
         {
-          type: 'body',
+          type: 'BODY',
           parameters: variables.map((val: string) => ({
             type: 'text',
             text: val,

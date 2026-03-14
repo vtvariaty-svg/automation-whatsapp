@@ -10,6 +10,7 @@ interface Template {
   status: string;
   body: string;
   placeholders: string[];
+  placeholderLabels?: string[];
 }
 
 type SendStatus = 'idle' | 'loading' | 'success' | 'error';
@@ -217,12 +218,12 @@ export default function TemplatesPage() {
               {/* Placeholders */}
               {selectedTemplate.placeholders.length > 0 && (
                 <div className="bg-[#121212] rounded-2xl border border-white/5 p-6">
-                  <h3 className="text-sm font-semibold text-gray-300 mb-4">🔤 Fill Placeholders</h3>
+                  <h3 className="text-sm font-semibold text-gray-300 mb-4">🔤 Template Variables</h3>
                   <div className="space-y-3">
                     {selectedTemplate.placeholders.map((ph, index) => (
                       <div key={ph}>
                         <label className="block text-xs text-gray-500 mb-1">
-                          Variable {index + 1} <span className="text-gray-600">({ph})</span>
+                          {selectedTemplate.placeholderLabels?.[index] || `Variable ${index + 1}`} <span className="text-gray-600">({ph})</span>
                         </label>
                         <input
                           type="text"

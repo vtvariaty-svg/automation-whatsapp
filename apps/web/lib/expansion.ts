@@ -2,7 +2,7 @@
  * G6 – Expansion Ops
  * Detects upsell/upgrade triggers for tenants and manages ExpansionEvent records.
  */
-import prisma from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 import { subDays, startOfDay } from 'date-fns';
 import { getEntitlements } from '@/lib/services/entitlementsService';
 import { getSubscription } from '@/lib/services/subscriptionService';

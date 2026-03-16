@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
-import { v4 as uuidv4 } from 'uuid';
 import { prisma } from '@/lib/prisma';
 import { getAuthTenant } from '@/lib/getAuthTenant';
 
@@ -71,7 +70,7 @@ export async function POST(request: Request) {
     });
 
     // Generate a temporary password from a UUID (first 12 chars, uppercase for readability)
-    const tempPassword = uuidv4().replace(/-/g, '').slice(0, 12).toUpperCase();
+    const tempPassword = crypto.randomUUID().replace(/-/g, '').slice(0, 12).toUpperCase();
     const passwordHash = await bcrypt.hash(tempPassword, 10);
 
     // Create admin user for new tenant

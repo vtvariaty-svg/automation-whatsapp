@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthTenant } from '@/lib/getAuthTenant';
-import prisma from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 
 const PLAN_PRICES: Record<string, number> = {
   starter: 39.9,

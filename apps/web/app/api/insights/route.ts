@@ -4,7 +4,7 @@ import { getOrGenerateInsight } from '@/src/services/conversationInsightService'
 
 // GET /api/insights?period=7days  — retorna cache ou gera novo
 export async function GET(req: Request) {
-  const user = getAuthUser(req);
+  const user = await getAuthUser(req);
   if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
@@ -21,7 +21,7 @@ export async function GET(req: Request) {
 
 // POST /api/insights?period=7days  — força regeneração ignorando cache
 export async function POST(req: Request) {
-  const user = getAuthUser(req);
+  const user = await getAuthUser(req);
   if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
 
   const { searchParams } = new URL(req.url);

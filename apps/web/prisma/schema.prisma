@@ -210,6 +210,16 @@ model WhatsAppConnection {
   @@map("whatsapp_connections")
 }
 
+model RevokedToken {
+  id        String   @id @default(uuid())
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([expiresAt])
+  @@map("revoked_tokens")
+}
+
 model ConversationInsight {
   id          String   @id @default(uuid())
   tenantId    String

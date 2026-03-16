@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
+import { isRevoked } from '@/lib/tokenBlacklist';
 
 if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET environment variable is required');
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -38,6 +39,7 @@ export async function getAuthTenant(request?: Request): Promise<AuthResult | nul
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as { userId: string; tenantId: string; role?: string };
+    if (await isRevoked(token)) return null;
     return { tenantId: decoded.tenantId, userId: decoded.userId };
   } catch {
     return null;

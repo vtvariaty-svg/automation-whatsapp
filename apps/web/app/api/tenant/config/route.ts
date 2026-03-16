@@ -3,7 +3,7 @@ import { getTenantConfig, updateTenantConfig } from '@/lib/services/tenantServic
 import { getAuthUser } from '@/lib/auth-api';
 
 export async function GET(req: Request) {
-  const user = getAuthUser(req);
+  const user = await getAuthUser(req);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
@@ -15,7 +15,7 @@ export async function GET(req: Request) {
 }
 
 export async function PUT(req: Request) {
-  const user = getAuthUser(req);
+  const user = await getAuthUser(req);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {

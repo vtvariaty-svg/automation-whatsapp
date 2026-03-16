@@ -139,7 +139,8 @@ model AiUsage {
   createdAt      DateTime @default(now())
   
   tenant         Tenant   @relation(fields: [tenantId], references: [id])
-  
+
+  @@index([tenantId, createdAt])
   @@map("ai_usage")
 }
 

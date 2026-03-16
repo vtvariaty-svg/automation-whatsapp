@@ -134,7 +134,9 @@ model Subscription {
   currentPeriodStart    DateTime?
   currentPeriodEnd      DateTime?
   createdAt             DateTime  @default(now())
-  
+  // L2 – per-tenant admin override (partial PlanEntitlements JSON)
+  entitlementsOverride  Json?
+
   tenant                Tenant    @relation(fields: [tenantId], references: [id])
   planRel               Plan?     @relation(fields: [planId], references: [id])
 }
@@ -460,4 +462,20 @@ model FacebookConnection {
   tenant      Tenant   @relation(fields: [tenantId], references: [id])
 
   @@map("facebook_connections")
+}
+
+// ─── L3 Sandbox / E2E QA ──────────────────────────────────────────────────────
+
+model SandboxRun {
+  id         String   @id @default(uuid())
+  tenantId   String
+  scenario   String   // e.g. "comment_to_dm_flow"
+  status     String   @default("pending") // pending, running, passed, failed, partial
+  steps      Json     // StepResult[]
+  summary    String?
+  createdAt  DateTime @default(now())
+  finishedAt DateTime?
+
+  @@index([tenantId, createdAt])
+  @@map("sandbox_runs")
 }

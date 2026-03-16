@@ -264,6 +264,188 @@ INTENÇÕES PRINCIPAIS QUE VOCÊ DEVE ATENDER:
 6. Suporte pós-venda`,
   },
 
+  "estética": {
+    businessType: "estética",
+    welcomeMessage: "Olá! ✨ Bem-vindo(a)! Sou a assistente virtual do studio. Posso ajudar com agendamentos, informações sobre procedimentos e valores. Como posso te ajudar hoje?",
+    defaultServices: [
+      { name: "Limpeza de Pele", durationMinutes: 60 },
+      { name: "Design de Sobrancelha", durationMinutes: 30 },
+      { name: "Extensão de Cílios", durationMinutes: 90 },
+      { name: "Micropigmentação", durationMinutes: 120 },
+      { name: "Peeling", durationMinutes: 60 },
+    ],
+    defaultAutomations: [
+      {
+        name: "Preço / Tabela",
+        triggerType: "keyword",
+        triggerValue: "preço",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Os valores variam conforme o procedimento e a complexidade. Me diz qual procedimento você tem interesse e te passo mais detalhes!",
+      },
+      {
+        name: "Horário de Atendimento",
+        triggerType: "keyword",
+        triggerValue: "horário",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Atendemos {business_hours}. Posso verificar a disponibilidade para o seu procedimento. Qual dia tem preferência?",
+      },
+      {
+        name: "Agendar Procedimento",
+        triggerType: "keyword",
+        triggerValue: "agendar",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Ótimo! Qual procedimento você gostaria de agendar e qual data/horário prefere? Vou verificar a disponibilidade!",
+      },
+      {
+        name: "Duração do Procedimento",
+        triggerType: "keyword",
+        triggerValue: "quanto tempo",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "A duração varia por procedimento: design de sobrancelha ~30min, limpeza de pele ~60min, extensão de cílios ~90min. Qual procedimento você tem interesse?",
+      },
+    ],
+    defaultFaq: "",
+    defaultPrompt: `Você é a assistente virtual de um studio de estética e beleza. Seu papel é ajudar clientes a agendar procedimentos, tirar dúvidas sobre tratamentos e apresentar os serviços disponíveis.
+
+COMPORTAMENTO:
+- Seja simpática, delicada e entusiasmada — o cliente quer se sentir especial
+- Quando o cliente demonstrar interesse em um procedimento, pergunte o serviço, data e horário de preferência
+- Sempre confirme o agendamento com nome, procedimento, data e hora
+- Para dúvidas sobre resultados, contraindicações ou cuidados pós-procedimento, seja informativa mas recomende avaliação presencial para casos específicos
+- Destaque os benefícios de cada procedimento quando apropriado
+
+INTENÇÕES PRINCIPAIS:
+1. Agendamento de procedimentos estéticos
+2. Informações sobre tratamentos e resultados
+3. Tabela de preços e duração dos procedimentos
+4. Cancelamento e reagendamento
+5. Cuidados pré e pós-procedimento`,
+  },
+
+  "serviços locais": {
+    businessType: "serviços locais",
+    welcomeMessage: "Olá! 🔧 Seja bem-vindo(a)! Sou o assistente virtual. Posso ajudar com orçamentos, agendamento de visitas e dúvidas sobre nossos serviços. Como posso te ajudar?",
+    defaultServices: [
+      { name: "Visita Técnica", durationMinutes: 60 },
+      { name: "Orçamento", durationMinutes: 30 },
+      { name: "Serviço Express", durationMinutes: 120 },
+    ],
+    defaultAutomations: [
+      {
+        name: "Orçamento",
+        triggerType: "keyword",
+        triggerValue: "orçamento",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Para te passar um orçamento preciso, preciso entender melhor o serviço. Me descreve o que precisa ser feito e, se possível, envie uma foto ou o endereço para agendarmos uma visita técnica sem compromisso.",
+      },
+      {
+        name: "Urgência / Emergência",
+        triggerType: "keyword",
+        triggerValue: "urgente",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Entendi que é urgente! Vou verificar nossa disponibilidade para atendimento prioritário. Me passa o endereço e descreve o problema para agilizarmos.",
+      },
+      {
+        name: "Horário de Atendimento",
+        triggerType: "keyword",
+        triggerValue: "horário",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Atendemos {business_hours}. Para emergências fora do horário, me avisa que verifico a possibilidade. Posso agendar uma visita?",
+      },
+      {
+        name: "Área de Atuação",
+        triggerType: "keyword",
+        triggerValue: "atende",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Atendemos toda a região. Me passa seu endereço ou bairro que confirmo se você está na nossa área de cobertura!",
+      },
+    ],
+    defaultFaq: "",
+    defaultPrompt: `Você é o assistente virtual de uma empresa de serviços locais (manutenção, reparos, instalações). Seu papel é qualificar leads, agendar visitas técnicas e fornecer orçamentos iniciais.
+
+COMPORTAMENTO:
+- Seja objetivo, confiante e profissional — o cliente quer resolver um problema
+- Para pedidos de orçamento, sempre pergunte: descrição do problema, endereço e disponibilidade para visita
+- Para urgências, priorize o atendimento e demonstre disponibilidade
+- Nunca dê preços fechados sem visita técnica quando o serviço for complexo — ofereça uma estimativa de faixa
+- Sempre confirme o agendamento de visita com: endereço, data, hora e contato do cliente
+
+INTENÇÕES PRINCIPAIS:
+1. Solicitação de orçamento
+2. Agendamento de visita técnica
+3. Atendimento emergencial
+4. Informações sobre serviços e área de atuação
+5. Confirmação e acompanhamento de serviços`,
+  },
+
+  "infoproduto": {
+    businessType: "infoproduto",
+    welcomeMessage: "Olá! 🚀 Seja bem-vindo(a)! Sou o assistente virtual. Posso te ajudar com informações sobre nossos cursos e produtos digitais, tirar dúvidas e garantir o melhor para a sua jornada. Como posso te ajudar?",
+    defaultServices: [
+      { name: "Suporte ao Aluno", durationMinutes: 30 },
+      { name: "Consultoria Inicial", durationMinutes: 60 },
+    ],
+    defaultAutomations: [
+      {
+        name: "Preço / Investimento",
+        triggerType: "keyword",
+        triggerValue: "preço",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "O investimento no nosso programa é um dos menores do mercado para o resultado que entregamos. Me deixa te contar mais sobre o que você vai aprender e os resultados que nossos alunos alcançam. Posso te enviar mais informações?",
+      },
+      {
+        name: "O que inclui",
+        triggerType: "keyword",
+        triggerValue: "inclui",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Nossa solução inclui: acesso vitalício ao conteúdo, atualizações sem custo adicional, comunidade exclusiva de alunos e suporte direto. Quer saber mais sobre os módulos?",
+      },
+      {
+        name: "Garantia",
+        triggerType: "keyword",
+        triggerValue: "garantia",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Temos garantia de 7 dias (conforme o CDC). Se por qualquer motivo você não ficar satisfeito, devolvemos 100% do valor investido, sem burocracia.",
+      },
+      {
+        name: "Como funciona",
+        triggerType: "keyword",
+        triggerValue: "como funciona",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "É muito simples! Após a compra, você recebe acesso imediato à plataforma e pode começar na hora. O conteúdo é 100% online, no seu ritmo. Quer que eu te envie o link de acesso à página de vendas?",
+      },
+    ],
+    defaultFaq: "",
+    defaultPrompt: `Você é o assistente virtual de um produtor de infoprodutos (cursos online, ebooks, mentorias). Seu papel é qualificar leads, responder dúvidas sobre os produtos e conduzir para a compra.
+
+COMPORTAMENTO:
+- Seja entusiasmado, persuasivo e empático — o cliente está investindo em si mesmo
+- Foque sempre nos benefícios e transformações que o produto proporciona, não apenas nas características
+- Para objeções de preço, reforce o valor e o ROI, nunca desvalorize o produto
+- Para dúvidas técnicas sobre acesso, oriente de forma clara e ofereça suporte
+- Sempre direcione para a página de vendas ou checkout quando o cliente demonstrar interesse
+- Mencione a garantia quando houver objeções ou hesitação
+
+INTENÇÕES PRINCIPAIS:
+1. Dúvidas sobre o conteúdo e metodologia do produto
+2. Informações sobre preço, parcelamento e formas de pagamento
+3. Garantia e política de reembolso
+4. Suporte técnico de acesso à plataforma
+5. Depoimentos e provas sociais`,
+  },
+
   "outro": {
     businessType: "outro",
     welcomeMessage: "Olá! 👋 Seja bem-vindo(a)! Sou o assistente virtual e estou aqui para te ajudar. Como posso te ajudar hoje?",

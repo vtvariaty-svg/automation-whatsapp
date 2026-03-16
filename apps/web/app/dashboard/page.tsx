@@ -102,10 +102,10 @@ export default function DashboardPage() {
   ];
 
   const quickActions = [
+    { label: "Ativar Automação", href: "/dashboard/onboarding", icon: "🚀", desc: "Wizard de ativação" },
     { label: "Ver Conversas", href: "/dashboard/conversations", icon: "💬", desc: "Inbox de atendimento" },
     { label: "Configurar IA", href: "/dashboard/ai", icon: "🤖", desc: "Tom de voz e regras" },
     { label: "Integrações", href: "/dashboard/integrations", icon: "🔌", desc: "WhatsApp e redes" },
-    { label: "Produtos", href: "/dashboard/products", icon: "📦", desc: "Catálogo de itens" },
     { label: "Agenda", href: "/dashboard/appointments", icon: "📅", desc: "Agendamentos" },
     { label: "Configurações", href: "/dashboard/settings", icon: "⚙️", desc: "Dados da empresa" },
   ];
@@ -376,6 +376,19 @@ function SetupChecklist({ tenantId }: { tenantId?: string }) {
         }`}>
           {completed}/{total} concluídos
         </span>
+      </div>
+
+      {/* L5 – Fast Onboarding CTA */}
+      <div className="mb-4 p-4 bg-indigo-50 border border-indigo-100 rounded-xl flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-lg">🚀</span>
+          <p className="text-xs text-indigo-800 font-medium leading-tight">
+            Configure tudo em minutos com o assistente de ativação.
+          </p>
+        </div>
+        <Link href="/dashboard/onboarding" className="text-xs whitespace-nowrap px-3 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors">
+          Ativar agora →
+        </Link>
       </div>
 
       {hasCriticalMissing && (

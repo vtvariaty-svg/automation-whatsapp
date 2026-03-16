@@ -26,6 +26,8 @@ model Tenant {
   createdAt           DateTime        @default(now())
   // M0 – omnichannel
   enabledChannels     String?         // comma-separated: "whatsapp,instagram"
+  // L4 – kill switch (comma-separated channels manually paused by operator)
+  channelKillSwitch   String?
   // M1 – Instagram
   instagramPageId     String?
   instagramToken      String?
@@ -462,6 +464,40 @@ model FacebookConnection {
   tenant      Tenant   @relation(fields: [tenantId], references: [id])
 
   @@map("facebook_connections")
+}
+
+// ─── L4 Production Hardening ──────────────────────────────────────────────────
+
+model DeadLetterEvent {
+  id         String    @id @default(uuid())
+  tenantId   String?
+  channel    String?
+  event      String    // e.g. "send_message", "sequence_step"
+  payload    Json
+  error      String    @db.Text
+  attempts   Int       @default(1)
+  status     String    @default("failed") // failed, resolved
+  resolvedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([tenantId, status])
+  @@index([createdAt])
+  @@map("dead_letter_events")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  tenantId   String
+  userId     String?
+  action     String   // e.g. "instagram.connect", "conversation.takeover"
+  resource   String?
+  resourceId String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId, createdAt])
+  @@index([action])
+  @@map("audit_logs")
 }
 
 // ─── L3 Sandbox / E2E QA ──────────────────────────────────────────────────────

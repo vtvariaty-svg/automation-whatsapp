@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { encrypt } from '@/lib/utils/crypto';
 import { addChannel } from '@/lib/channels/featureFlags';
+import { audit } from '@/lib/audit';
 
 const GRAPH = 'https://graph.facebook.com/v22.0';
 
@@ -79,6 +80,8 @@ export async function GET(req: Request) {
       create: { tenantId, pageId, accessToken: encrypt(pageToken), igAccountId, username, status: 'connected' },
       update: { pageId, accessToken: encrypt(pageToken), igAccountId, username, status: 'connected' },
     });
+
+    audit(tenantId, 'instagram.connect', { pageId, igAccountId, username });
 
     return NextResponse.redirect(`${base}/dashboard/integrations?success=instagram&username=${username || ''}`);
   } catch (e: any) {

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthTenant } from '@/lib/getAuthTenant';
 import { removeChannel } from '@/lib/channels/featureFlags';
+import { audit } from '@/lib/audit';
 
 export async function POST(request: Request) {
   const auth = await getAuthTenant(request);
@@ -20,6 +21,7 @@ export async function POST(request: Request) {
     },
   });
   await prisma.instagramConnection.deleteMany({ where: { tenantId: auth.tenantId } });
+  audit(auth.tenantId, 'instagram.disconnect', {}, auth.userId);
 
   return NextResponse.json({ success: true });
 }

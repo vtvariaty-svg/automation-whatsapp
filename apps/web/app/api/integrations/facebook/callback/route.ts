@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { encrypt } from '@/lib/utils/crypto';
 import { addChannel } from '@/lib/channels/featureFlags';
+import { audit } from '@/lib/audit';
 
 const GRAPH = 'https://graph.facebook.com/v22.0';
 
@@ -69,6 +70,8 @@ export async function GET(req: Request) {
       create: { tenantId, pageId, pageName, accessToken: encrypt(pageToken), status: 'connected' },
       update: { pageId, pageName, accessToken: encrypt(pageToken), status: 'connected' },
     });
+
+    audit(tenantId, 'facebook.connect', { pageId, pageName });
 
     return NextResponse.redirect(`${base}/dashboard/integrations?success=facebook&page=${pageName}`);
   } catch (e: any) {

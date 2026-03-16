@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { decrypt } from '@/lib/utils/crypto';
 // @ts-ignore - Importing from JS file
 import { generateAIResponse } from "@/src/services/aiService";
 // @ts-ignore - Importing from JS file
@@ -43,6 +44,9 @@ export async function POST(req: Request) {
         console.error(`Tenant não encontrado para o phoneId: ${phoneId}`);
         return new Response('Tenant not found', { status: 200 }); // Retorna 200 para a Meta não reenviar
       }
+
+      // Decrypt token once — supports both encrypted (new) and plaintext (legacy) values
+      if (tenant.whatsappToken) tenant.whatsappToken = decrypt(tenant.whatsappToken);
 
       const messages = body.entry[0].changes[0].value.messages;
 

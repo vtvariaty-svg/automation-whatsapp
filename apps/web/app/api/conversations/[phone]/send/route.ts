@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { decrypt } from '@/lib/utils/crypto';
 // @ts-ignore
 import { sendWhatsAppMessage } from '@/src/services/whatsappService';
 // @ts-ignore
@@ -25,7 +26,7 @@ export async function POST(
     }
 
     const sendPhoneId = tenant.whatsappPhoneNumberId || tenant.whatsappPhoneId;
-    const sendToken = tenant.whatsappToken;
+    const sendToken = tenant.whatsappToken ? decrypt(tenant.whatsappToken) : null;
 
     // Send message via WhatsApp API (from tenant)
     await sendWhatsAppMessage(phone, message, sendPhoneId, sendToken);

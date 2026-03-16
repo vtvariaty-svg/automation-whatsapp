@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthTenant } from '@/lib/getAuthTenant';
+import { decrypt } from '@/lib/utils/crypto';
 
 // Seed templates that demonstrate placeholder functionality for Meta App Review.
 // These mirror real WhatsApp template structure so the send endpoint works the same way.
@@ -57,7 +58,8 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
     }
 
-    const token = tenant.whatsappConnection?.accessToken || tenant.whatsappToken;
+    const rawToken = tenant.whatsappConnection?.accessToken || tenant.whatsappToken;
+    const token = rawToken ? decrypt(rawToken) : null;
     const wabaId = tenant.whatsappConnection?.wabaId || tenant.whatsappBusinessAccountId;
 
     let liveTemplates: any[] = [];

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthTenant } from '@/lib/getAuthTenant';
+import { decrypt } from '@/lib/utils/crypto';
 
 export async function POST(request: Request) {
   try {
@@ -31,7 +32,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
     }
 
-    const token = tenant.whatsappConnection?.accessToken || tenant.whatsappToken;
+    const rawToken = tenant.whatsappConnection?.accessToken || tenant.whatsappToken;
+    const token = rawToken ? decrypt(rawToken) : null;
     const phoneId = tenant.whatsappConnection?.phoneNumberId || tenant.whatsappPhoneNumberId || tenant.whatsappPhoneId;
 
     if (!token || !phoneId) {

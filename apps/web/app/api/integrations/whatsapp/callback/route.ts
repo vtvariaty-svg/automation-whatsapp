@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthTenant } from '@/lib/getAuthTenant';
+import { encrypt } from '@/lib/utils/crypto';
 
 export async function POST(request: Request) {
   try {
@@ -137,7 +138,7 @@ export async function POST(request: Request) {
 
     // Save to database
     const updateData: any = {};
-    if (!isIdOnlyUpdate && accessToken) updateData.whatsappToken = accessToken;
+    if (!isIdOnlyUpdate && accessToken) updateData.whatsappToken = encrypt(accessToken);
     if (finalWabaId) {
       updateData.whatsappBusinessAccountId = finalWabaId;
     }
@@ -162,14 +163,14 @@ export async function POST(request: Request) {
           wabaId: finalWabaId,
           phoneNumberId: finalPhoneId,
           displayPhone: phoneDisplay,
-          accessToken,
+          accessToken: encrypt(accessToken),
           status: 'connected',
         },
         update: {
           wabaId: finalWabaId,
           phoneNumberId: finalPhoneId,
           displayPhone: phoneDisplay,
-          accessToken,
+          accessToken: encrypt(accessToken),
           status: 'connected',
         },
       });

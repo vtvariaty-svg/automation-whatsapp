@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthTenant } from '@/lib/getAuthTenant';
+import { encrypt } from '@/lib/utils/crypto';
 
 /**
  * Handles the WhatsApp Embedded Signup callback.
@@ -165,7 +166,7 @@ export async function POST(request: Request) {
     await prisma.tenant.update({
       where: { id: tenantId },
       data: {
-        whatsappToken: accessToken,
+        whatsappToken: encrypt(accessToken),
         whatsappBusinessAccountId: finalWabaId,
         whatsappPhoneNumberId: finalPhoneId,
         whatsappPhoneId: finalPhoneId,
@@ -181,14 +182,14 @@ export async function POST(request: Request) {
           wabaId: finalWabaId,
           phoneNumberId: finalPhoneId,
           displayPhone: phoneDisplay,
-          accessToken,
+          accessToken: encrypt(accessToken),
           status: 'connected',
         },
         update: {
           wabaId: finalWabaId,
           phoneNumberId: finalPhoneId,
           displayPhone: phoneDisplay,
-          accessToken,
+          accessToken: encrypt(accessToken),
           status: 'connected',
         },
       });

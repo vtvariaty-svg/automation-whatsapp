@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { encrypt } from '@/lib/utils/crypto';
 
 /**
  * Busca um tenant pelo ID do telefone do WhatsApp.
@@ -29,7 +30,7 @@ export async function createTenant({ name, whatsapp_phone_id, whatsapp_token, op
       data: {
         name,
         whatsappPhoneId: whatsapp_phone_id,
-        whatsappToken: whatsapp_token,
+        whatsappToken: whatsapp_token ? encrypt(whatsapp_token) : undefined,
         openaiKey: openai_key,
         aiPrompt: ai_prompt,
         welcomeMessage: welcome_message,
@@ -73,7 +74,7 @@ export async function updateTenantWhatsAppCredentials(id: string, { business_acc
       data: {
         whatsappBusinessAccountId: business_account_id,
         whatsappPhoneNumberId: phone_number_id,
-        whatsappToken: access_token
+        whatsappToken: access_token ? encrypt(access_token) : undefined
       }
     });
     return tenant;

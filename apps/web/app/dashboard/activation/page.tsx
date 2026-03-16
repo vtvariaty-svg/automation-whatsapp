@@ -30,8 +30,10 @@ interface ActivationMetrics {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function authHeaders() {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') ?? localStorage.getItem('token') : '';
+function authHeaders(): Record<string, string> {
+  const token = typeof window !== 'undefined'
+    ? (localStorage.getItem('auth_token') ?? localStorage.getItem('token') ?? '')
+    : '';
   return { Authorization: `Bearer ${token}` };
 }
 

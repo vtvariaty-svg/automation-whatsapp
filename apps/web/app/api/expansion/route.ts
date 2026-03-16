@@ -57,8 +57,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   if (action === 'converted') {
     // Find the event to get trigger info then mark converted
-    const prisma = (await import('@/lib/prisma')).default;
-    const event = await (prisma as any).expansionEvent.findFirst({
+    const { prisma } = await import('@/lib/prisma');
+    const event = await prisma.expansionEvent.findFirst({
       where: { id: eventId, tenantId: auth.tenantId },
     });
     if (event) {

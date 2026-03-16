@@ -22,7 +22,7 @@ export async function logSuperAdminAction(
         adminUserId,
         action,
         targetTenantId: targetTenantId ?? null,
-        metadata: metadata ?? null,
+        metadata: metadata ?? undefined,
       },
     });
   } catch (e) {

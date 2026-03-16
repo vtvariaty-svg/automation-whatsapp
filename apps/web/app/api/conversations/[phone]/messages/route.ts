@@ -1,21 +1,19 @@
 import { NextResponse } from 'next/server';
 // @ts-ignore
 import { getConversationHistory } from '@/src/services/conversationService';
+import { getAuthTenant } from '@/lib/getAuthTenant';
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ phone: string }> }
 ) {
-  const { searchParams } = new URL(request.url);
-  const tenantId = searchParams.get('tenantId');
+  const auth = await getAuthTenant(request);
+  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   const { phone } = await params;
 
-  if (!tenantId) {
-    return NextResponse.json({ error: 'tenantId is required' }, { status: 400 });
-  }
-
   try {
-    const messages = await getConversationHistory(phone, tenantId);
+    const messages = await getConversationHistory(phone, auth.tenantId);
     return NextResponse.json(messages);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

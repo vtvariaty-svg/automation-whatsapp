@@ -1,17 +1,14 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getAuthTenant } from '@/lib/getAuthTenant';
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const tenantId = searchParams.get('tenantId');
-
-  if (!tenantId) {
-    return NextResponse.json({ error: 'tenantId is required' }, { status: 400 });
-  }
+  const auth = await getAuthTenant(request);
+  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
     const orders = await prisma.order.findMany({
-      where: { tenantId },
+      where: { tenantId: auth.tenantId },
       orderBy: { createdAt: 'desc' },
     });
     return NextResponse.json(orders);
@@ -22,17 +19,20 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const auth = await getAuthTenant(request);
+  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   try {
     const body = await request.json();
-    const { tenantId, customerPhone, customerName, product, price } = body;
+    const { customerPhone, customerName, product, price } = body;
 
-    if (!tenantId || !customerPhone) {
-      return NextResponse.json({ error: 'tenantId e customerPhone são obrigatórios' }, { status: 400 });
+    if (!customerPhone) {
+      return NextResponse.json({ error: 'customerPhone é obrigatório' }, { status: 400 });
     }
 
     const order = await prisma.order.create({
       data: {
-        tenantId,
+        tenantId: auth.tenantId,
         customerPhone,
         customerName,
         product,

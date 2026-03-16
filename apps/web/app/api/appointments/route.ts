@@ -1,16 +1,13 @@
 import { NextResponse } from 'next/server';
 import { getAppointments, createAppointment } from '@/src/services/schedulingService';
+import { getAuthTenant } from '@/lib/getAuthTenant';
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const tenantId = searchParams.get('tenantId');
-
-  if (!tenantId) {
-    return NextResponse.json({ error: 'tenantId is required' }, { status: 400 });
-  }
+  const auth = await getAuthTenant(request);
+  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
-    const list = await getAppointments(tenantId);
+    const list = await getAppointments(auth.tenantId);
     return NextResponse.json(list);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -18,15 +15,18 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const auth = await getAuthTenant(request);
+  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   try {
     const body = await request.json();
-    const { tenantId, phone, customerName, service, date, time } = body;
+    const { phone, customerName, service, date, time } = body;
 
-    if (!tenantId || !phone || !service || !date || !time) {
+    if (!phone || !service || !date || !time) {
       return NextResponse.json({ error: 'Missing required scheduling fields' }, { status: 400 });
     }
 
-    const newAppt = await createAppointment(tenantId, { phone, customerName, service, date, time });
+    const newAppt = await createAppointment(auth.tenantId, { phone, customerName, service, date, time });
     return NextResponse.json(newAppt);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

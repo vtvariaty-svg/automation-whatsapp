@@ -1,16 +1,13 @@
 import { NextResponse } from 'next/server';
 import { getAutomations, createAutomation } from '@/src/services/automationService';
+import { getAuthTenant } from '@/lib/getAuthTenant';
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const tenantId = searchParams.get('tenantId');
-
-  if (!tenantId) {
-    return NextResponse.json({ error: 'tenantId is required' }, { status: 400 });
-  }
+  const auth = await getAuthTenant(request);
+  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
-    const list = await getAutomations(tenantId);
+    const list = await getAutomations(auth.tenantId);
     return NextResponse.json(list);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -18,15 +15,14 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const auth = await getAuthTenant(request);
+  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   try {
     const body = await request.json();
-    const { tenantId, ...data } = body;
+    const { tenantId: _ignored, ...data } = body;
 
-    if (!tenantId) {
-      return NextResponse.json({ error: 'tenantId is required' }, { status: 400 });
-    }
-
-    const newRule = await createAutomation(tenantId, data);
+    const newRule = await createAutomation(auth.tenantId, data);
     return NextResponse.json(newRule);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

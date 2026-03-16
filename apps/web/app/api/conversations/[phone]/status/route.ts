@@ -1,18 +1,22 @@
 import { NextResponse } from 'next/server';
 // @ts-ignore
 import { takeoverConversation } from '@/src/services/conversationService';
+import { getAuthTenant } from '@/lib/getAuthTenant';
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ phone: string }> }
 ) {
+  const auth = await getAuthTenant(request);
+  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   const { phone } = await params;
   try {
     const body = await request.json();
-    const { tenantId, status } = body;
+    const { status } = body;
 
-    if (!tenantId || !status) {
-      return NextResponse.json({ error: 'tenantId and status are required' }, { status: 400 });
+    if (!status) {
+      return NextResponse.json({ error: 'status is required' }, { status: 400 });
     }
 
     const validStatuses = ['open', 'human', 'closed', 'waiting'];
@@ -20,7 +24,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
     }
 
-    await takeoverConversation(phone, tenantId, status);
+    await takeoverConversation(phone, auth.tenantId, status);
 
     return NextResponse.json({ success: true, status });
   } catch (error: any) {

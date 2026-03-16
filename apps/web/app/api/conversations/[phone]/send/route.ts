@@ -6,21 +6,25 @@ import { sendWhatsAppMessage } from '@/src/services/whatsappService';
 import { saveAIMessage } from '@/src/services/conversationService';
 // @ts-ignore
 import { getTenantById } from '@/src/services/tenantService';
+import { getAuthTenant } from '@/lib/getAuthTenant';
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ phone: string }> }
 ) {
+  const auth = await getAuthTenant(request);
+  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   const { phone } = await params;
   try {
     const body = await request.json();
-    const { tenantId, message } = body;
+    const { message } = body;
 
-    if (!tenantId || !message) {
-      return NextResponse.json({ error: 'tenantId and message are required' }, { status: 400 });
+    if (!message) {
+      return NextResponse.json({ error: 'message is required' }, { status: 400 });
     }
 
-    const tenant = await getTenantById(tenantId);
+    const tenant = await getTenantById(auth.tenantId);
     if (!tenant) {
       return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
     }
@@ -32,7 +36,7 @@ export async function POST(
     await sendWhatsAppMessage(phone, message, sendPhoneId, sendToken);
 
     // Save as human response (aiGenerated = false)
-    await saveAIMessage(phone, message, tenantId, 'human', false);
+    await saveAIMessage(phone, message, auth.tenantId, 'human', false);
 
     return NextResponse.json({ success: true });
   } catch (error: any) {

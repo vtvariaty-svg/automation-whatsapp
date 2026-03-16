@@ -28,6 +28,12 @@ model Tenant {
   enabledChannels     String?         // comma-separated: "whatsapp,instagram"
   // L4 – kill switch (comma-separated channels manually paused by operator)
   channelKillSwitch   String?
+  // R1 – demo tenant flag
+  isDemo              Boolean         @default(false)
+  // R5 – agency/reseller
+  agencyId            String?
+  agencyBranding      Boolean         @default(false)
+  agency              Agency?         @relation(fields: [agencyId], references: [id])
   // M1 – Instagram
   instagramPageId     String?
   instagramToken      String?
@@ -138,6 +144,8 @@ model Subscription {
   createdAt             DateTime  @default(now())
   // L2 – per-tenant admin override (partial PlanEntitlements JSON)
   entitlementsOverride  Json?
+  // R2 – churn reason on cancel
+  churnReason           String?
 
   tenant                Tenant    @relation(fields: [tenantId], references: [id])
   planRel               Plan?     @relation(fields: [planId], references: [id])
@@ -498,6 +506,82 @@ model AuditLog {
   @@index([tenantId, createdAt])
   @@index([action])
   @@map("audit_logs")
+}
+
+// ─── R5 Agency / Reseller ─────────────────────────────────────────────────────
+
+model Agency {
+  id              String   @id @default(uuid())
+  name            String
+  ownerTenantId   String   @unique  // The agency's own tenant account
+  logoUrl         String?
+  primaryColor    String?  @default("#4f46e5")
+  billingMode     String   @default("separate") // separate | consolidated
+  createdAt       DateTime @default(now())
+
+  tenants         Tenant[]
+  members         AgencyMember[]
+
+  @@map("agencies")
+}
+
+model AgencyMember {
+  id         String   @id @default(uuid())
+  agencyId   String
+  userId     String   // User id from the agency's tenant
+  role       String   @default("viewer") // owner | manager | viewer
+  createdAt  DateTime @default(now())
+
+  agency     Agency   @relation(fields: [agencyId], references: [id])
+
+  @@unique([agencyId, userId])
+  @@map("agency_members")
+}
+
+// ─── R3 Support Notes ─────────────────────────────────────────────────────────
+
+model SupportNote {
+  id         String   @id @default(uuid())
+  tenantId   String
+  authorId   String   // superadmin user id
+  body       String   @db.Text
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId, createdAt])
+  @@map("support_notes")
+}
+
+// ─── R4 Product Feedback ──────────────────────────────────────────────────────
+
+model FeedbackItem {
+  id          String   @id @default(uuid())
+  tenantId    String
+  category    String   // bug, suggestion, onboarding, integration, billing
+  body        String   @db.Text
+  route       String?
+  channel     String?
+  plan        String?
+  score       Int?     // 1-5 satisfaction score
+  status      String   @default("new") // new, reviewing, planned, resolved
+  createdAt   DateTime @default(now())
+
+  @@index([status, createdAt])
+  @@index([tenantId])
+  @@map("feedback_items")
+}
+
+// ─── R6 Tenant Health / Retention ─────────────────────────────────────────────
+
+model TenantHealthScore {
+  id              String   @id @default(uuid())
+  tenantId        String   @unique
+  score           Int      @default(0) // 0-100
+  riskLevel       String   @default("unknown") // healthy, at_risk, churning
+  expansionSignal Boolean  @default(false)
+  breakdown       Json?    // per-metric breakdown
+  computedAt      DateTime @default(now())
+
+  @@map("tenant_health_scores")
 }
 
 // ─── L3 Sandbox / E2E QA ──────────────────────────────────────────────────────

@@ -21,6 +21,8 @@ const navItems = [
   { href: "/dashboard/products", label: "Produtos", icon: "📦", section: null },
   { href: "/dashboard/billing", label: "Assinatura", icon: "💳", section: null },
   { href: "/dashboard/settings", label: "Configurações", icon: "⚙️", section: null },
+  { href: "/dashboard/activation", label: "Ativação", icon: "🚀", section: null },
+  { href: "/dashboard/agency", label: "Agência", icon: "🏢", section: null },
 ];
 
 export default function Sidebar() {
@@ -109,9 +111,12 @@ export default function Sidebar() {
               <span className="text-[10px] font-bold text-rose-400 uppercase tracking-widest">⚡ Superadmin</span>
             </div>
             <p className="text-white font-bold text-sm">Acesso total</p>
-            <Link href="/dashboard/billing" className="inline-flex items-center gap-1 text-[11px] text-rose-400 hover:text-rose-300 font-medium mt-2 transition-colors">
-              Ver billing →
-            </Link>
+            <div className="flex flex-col gap-1 mt-2">
+              <Link href="/dashboard/admin/diagnostics" className="inline-flex items-center gap-1 text-[11px] text-rose-400 hover:text-rose-300 font-medium transition-colors">🔍 Diagnóstico →</Link>
+              <Link href="/dashboard/admin/retention" className="inline-flex items-center gap-1 text-[11px] text-rose-400 hover:text-rose-300 font-medium transition-colors">📊 Retenção →</Link>
+              <Link href="/dashboard/admin/feedback" className="inline-flex items-center gap-1 text-[11px] text-rose-400 hover:text-rose-300 font-medium transition-colors">💬 Feedback →</Link>
+              <Link href="/dashboard/demo" className="inline-flex items-center gap-1 text-[11px] text-rose-400 hover:text-rose-300 font-medium transition-colors">🎭 Demo →</Link>
+            </div>
           </div>
         ) : (
           <div className="bg-gradient-to-r from-indigo-500/10 to-purple-500/10 rounded-xl p-4 border border-indigo-500/10">

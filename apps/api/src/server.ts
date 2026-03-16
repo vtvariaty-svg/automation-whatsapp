@@ -1,39 +1,26 @@
-// WhatsApp Automation Server - Initial Structure
+/**
+ * SERVIDOR LEGADO — DESATIVADO
+ *
+ * Este servidor Express foi substituído pelo apps/web (Next.js).
+ * O webhook ativo está em apps/web/app/api/webhook/whatsapp/route.ts.
+ *
+ * Este arquivo retorna 503 em todas as rotas para evitar que qualquer
+ * deploy acidental deste serviço processe tráfego real.
+ */
 import express from 'express';
-import cors from 'cors';
 
 const app = express();
 
-app.use(cors());
-app.use(express.json());
-
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok' });
-});
-
-import authRouter from './routes/auth';
-import tenantRouter from './routes/tenant';
-import productsRouter from './routes/products';
-import aiRouter from './routes/ai';
-import whatsappRouter from './routes/whatsapp';
-import webhookRouter from './routes/webhook';
-import cron from 'node-cron';
-import { processFollowUps } from './services/followUpService';
-
-app.use('/auth', authRouter);
-app.use('/tenant', tenantRouter);
-app.use('/products', productsRouter);
-app.use('/ai', aiRouter);
-app.use('/whatsapp', whatsappRouter);
-app.use('/webhook', webhookRouter);
-
-// Schedule follow-ups every 15 minutes
-cron.schedule('*/15 * * * *', () => {
-  processFollowUps().catch(err => console.error('Cron job failed:', err));
+app.use((_req, res) => {
+  res.status(503).json({
+    error: 'SERVIDOR_LEGADO_DESATIVADO',
+    message: 'Este servidor foi descontinuado. O serviço ativo está em apps/web.',
+  });
 });
 
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  console.warn('[AVISO] apps/api está desativado. Todas as rotas retornam 503.');
+  console.warn('[AVISO] Use apps/web como serviço de produção.');
 });

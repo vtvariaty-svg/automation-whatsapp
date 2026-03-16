@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server';
+import { createHmac, timingSafeEqual } from 'crypto';
 import { decrypt } from '@/lib/utils/crypto';
+import { isRateLimited, getClientIp } from '@/lib/webhookRateLimit';
 // @ts-ignore - Importing from JS file
 import { generateAIResponse } from "@/src/services/aiService";
 // @ts-ignore - Importing from JS file
@@ -11,7 +12,39 @@ import { buildCustomerContext, upsertCustomerMemory, extractNameFromText } from 
 import { checkAutomationMatch } from "@/src/services/automationService";
 import { verifyAiLimits } from "@/src/services/billingService";
 
-const VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
+// Mascara todos os dígitos exceto os últimos 4 para logs seguros
+function maskPhone(phone: string): string {
+  if (!phone || phone.length <= 4) return '****';
+  return `****${phone.slice(-4)}`;
+}
+
+/**
+ * Valida a assinatura HMAC-SHA256 enviada pela Meta.
+ * Retorna true se válida ou se WHATSAPP_APP_SECRET não estiver configurado (modo dev).
+ */
+async function verifyMetaSignature(rawBody: string, signatureHeader: string | null): Promise<boolean> {
+  const appSecret = process.env.WHATSAPP_APP_SECRET;
+
+  if (!appSecret) {
+    console.warn('[Webhook] WHATSAPP_APP_SECRET não configurado — validação HMAC desativada');
+    return true;
+  }
+
+  if (!signatureHeader || !signatureHeader.startsWith('sha256=')) {
+    return false;
+  }
+
+  const receivedHex = signatureHeader.slice('sha256='.length);
+  const expectedHex = createHmac('sha256', appSecret).update(rawBody, 'utf8').digest('hex');
+
+  // timingSafeEqual previne timing attacks
+  try {
+    return timingSafeEqual(Buffer.from(receivedHex, 'hex'), Buffer.from(expectedHex, 'hex'));
+  } catch {
+    // Buffers de tamanho diferente lançam erro — assinatura inválida
+    return false;
+  }
+}
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -28,22 +61,44 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  try {
-    const body = await req.json();
+  // 1. Rate limiting por IP
+  const clientIp = getClientIp(req);
+  if (isRateLimited(clientIp)) {
+    console.warn(`[Webhook] Rate limit excedido para IP: ${clientIp}`);
+    return new Response('Too Many Requests', { status: 429 });
+  }
 
-    // Log Mensagem recebida
-    console.log("Webhook recebido:", JSON.stringify(body, null, 2));
+  // 2. Ler body como texto para validação HMAC antes de parsear
+  let rawBody: string;
+  try {
+    rawBody = await req.text();
+  } catch {
+    return new Response('Bad Request', { status: 400 });
+  }
+
+  // 3. Validar assinatura HMAC da Meta
+  const signature = (req.headers as any).get?.('x-hub-signature-256') ?? null;
+  const signatureValid = await verifyMetaSignature(rawBody, signature);
+  if (!signatureValid) {
+    console.warn('[Webhook] Assinatura HMAC inválida — requisição rejeitada');
+    return new Response('Forbidden', { status: 403 });
+  }
+
+  try {
+    const body = JSON.parse(rawBody);
+
+    console.log(`[Webhook] Recebido — entries: ${body.entry?.length ?? 0}`);
 
     if (body.object && body.entry && body.entry[0].changes && body.entry[0].changes[0].value.metadata) {
       const metadata = body.entry[0].changes[0].value.metadata;
-      const phoneId = metadata.phone_number_id; // Tarefa 3 - Identificar tenant
+      const phoneId = metadata.phone_number_id;
 
       // Buscar Tenant
       const tenant = await getTenantByPhoneId(phoneId);
-      
+
       if (!tenant) {
-        console.error(`Tenant não encontrado para o phoneId: ${phoneId}`);
-        return new Response('Tenant not found', { status: 200 }); // Retorna 200 para a Meta não reenviar
+        console.error(`[Webhook] Tenant não encontrado para phoneId: ${phoneId}`);
+        return new Response('OK', { status: 200 }); // 200 para a Meta não reenviar
       }
 
       // Decrypt token once — supports both encrypted (new) and plaintext (legacy) values
@@ -57,128 +112,110 @@ export async function POST(req: Request) {
         const textBody = message.text?.body;
 
         if (textBody) {
-          console.log(`Mensagem recebida de ${from} para o tenant ${tenant.name}: ${textBody}`);
+          console.log(`[Webhook] Mensagem de ${maskPhone(from)} — tenant: ${tenant.id}`);
 
-          // Verificar mensagem de boas vindas
+          // Verificar mensagem de boas-vindas
           try {
             const history = await getConversationHistory(from, tenant.id);
             if (history.length === 0 && tenant.welcomeMessage) {
-              console.log(`Enviando mensagem de boas-vindas para ${from} no tenant ${tenant.name}`);
-              
               const sendPhoneId = tenant.whatsappPhoneNumberId || tenant.whatsappPhoneId;
-              const sendToken = tenant.whatsappToken;
-
-              await sendWhatsAppMessage(from, tenant.welcomeMessage, sendPhoneId, sendToken);
-              // Opcional: Salvar a mensagem de boas vindas no histórico
+              await sendWhatsAppMessage(from, tenant.welcomeMessage, sendPhoneId, tenant.whatsappToken);
               await saveAIMessage(from, tenant.welcomeMessage, tenant.id);
+              console.log(`[Webhook] Boas-vindas enviadas para ${maskPhone(from)}`);
             }
           } catch (e) {
-            console.error("Erro ao verificar/enviar boas-vindas:", e);
+            console.error('[Webhook] Erro ao enviar boas-vindas:', e);
           }
 
-          // Check status of conversation
+          // Verificar status da conversa
           let status = await getConversationStatus(from, tenant.id);
-          
-          if (status === 'closed') {
-            status = 'open';
-          }
+          if (status === 'closed') status = 'open';
 
-          // Salvar mensagem do usuário no banco com tenant_id (e o status atualizado)
           await saveUserMessage(from, textBody, tenant.id, status);
 
           if (status !== 'open' && status !== 'ai') {
-            console.log(`Conversa com ${from} está com status: ${status}. Ignorando IA.`);
-            // Apenas retorna OK, o humano é responsável a partir daqui
+            console.log(`[Webhook] Conversa ${maskPhone(from)} em status "${status}" — IA ignorada`);
             return new Response('OK', { status: 200 });
           }
 
-          // ** [NOVO] VERIFICAR AUTOMAÇÃO POR PALAVRA-CHAVE **
+          // Verificar automação por palavra-chave
           const automation = await checkAutomationMatch(textBody, tenant.id);
-          
           if (automation) {
-            console.log(`Regra de automação acionada para ${from}: "${automation.name}"`);
-            
+            console.log(`[Webhook] Automação "${automation.name}" acionada para ${maskPhone(from)}`);
             const replyPhoneId = tenant.whatsappPhoneNumberId || tenant.whatsappPhoneId;
-            const replyToken = tenant.whatsappToken;
-
-            // Envia resposta da automação
-            await sendWhatsAppMessage(from, automation.responseText, replyPhoneId, replyToken);
-            
-            // Salva a resposta no banco, garantindo que aiGenerated = false (é uma automação hardcoded)
-            // (from, text, tenantId, status, aiGenerated)
+            await sendWhatsAppMessage(from, automation.responseText, replyPhoneId, tenant.whatsappToken);
             await saveAIMessage(from, automation.responseText, tenant.id, status, false);
-            
-            // Encerra, não chama OpenAI
             return new Response('OK', { status: 200 });
           }
 
-          // Verificar limites de IA (non-blocking - se falhar, permite IA)
+          // Verificar limites de IA
           let canUseAI = true;
           try {
             canUseAI = await verifyAiLimits(tenant.id);
           } catch (e) {
-            console.error('Erro ao verificar limites de IA (permitindo por segurança):', e);
+            console.error('[Webhook] Erro ao verificar limites de IA (permitindo por segurança):', e);
           }
-          
-          if (!canUseAI) {
-            console.log(`Limite da IA atingido para o tenant ${tenant.name}.`);
-            const limitMessage = "Seu limite de respostas da IA foi atingido neste mês. Para continuar utilizando o atendimento automático, atualize seu plano.";
-            
-            const replyPhoneId = tenant.whatsappPhoneNumberId || tenant.whatsappPhoneId;
-            const replyToken = tenant.whatsappToken;
 
+          if (!canUseAI) {
+            console.log(`[Webhook] Limite de IA atingido — tenant: ${tenant.id}`);
+            const limitMessage = "Seu limite de respostas da IA foi atingido neste mês. Para continuar utilizando o atendimento automático, atualize seu plano.";
+            const replyPhoneId = tenant.whatsappPhoneNumberId || tenant.whatsappPhoneId;
             try {
-              await sendWhatsAppMessage(from, limitMessage, replyPhoneId, replyToken);
+              await sendWhatsAppMessage(from, limitMessage, replyPhoneId, tenant.whatsappToken);
             } catch (sendErr) {
-              console.error('Erro ao enviar msg de limite via WhatsApp:', sendErr);
+              console.error('[Webhook] Erro ao enviar msg de limite:', sendErr);
             }
             await saveAIMessage(from, limitMessage, tenant.id, status, false);
             return new Response('OK', { status: 200 });
           }
 
-          // Carregar memória do cliente antes de chamar a IA
+          // Carregar memória do cliente
           let customerContext = '';
           try {
             customerContext = await buildCustomerContext(tenant.id, from);
           } catch (memErr) {
-            console.error('Erro ao carregar memória do cliente (continuando sem contexto):', memErr);
+            console.error('[Webhook] Erro ao carregar memória do cliente (continuando sem contexto):', memErr);
           }
 
-          // Detectar nome declarado na mensagem e salvar na memória (non-blocking)
+          // Detectar nome na mensagem e salvar na memória (non-blocking)
           const detectedName = extractNameFromText(textBody);
           if (detectedName) {
             upsertCustomerMemory(tenant.id, from, { name: detectedName }).catch(e =>
-              console.error('Erro ao salvar nome na memória:', e)
+              console.error('[Webhook] Erro ao salvar nome na memória:', e)
             );
           }
 
-          // Fluxo: enviar texto para aiService com configurações do tenant
-          const aiResponse = await generateAIResponse(textBody, tenant.openaiKey || '', tenant.aiPrompt || '', tenant.businessHours || '', tenant.id, from, customerContext);
-          console.log(`Resposta da IA para ${from} (Tenant ${tenant.name}): ${aiResponse}`);
+          // Gerar resposta da IA
+          const aiResponse = await generateAIResponse(
+            textBody,
+            tenant.openaiKey || '',
+            tenant.aiPrompt || '',
+            tenant.businessHours || '',
+            tenant.id,
+            from,
+            customerContext
+          );
+          console.log(`[Webhook] IA respondeu para ${maskPhone(from)} — ${aiResponse?.length ?? 0} chars`);
 
-          // Salvar resposta da IA no banco com tenant_id
           await saveAIMessage(from, aiResponse, tenant.id, status);
 
           // Enviar resposta via WhatsApp
           const replyPhoneId = tenant.whatsappPhoneNumberId || tenant.whatsappPhoneId;
-          const replyToken = tenant.whatsappToken;
+          console.log(`[Webhook] Enviando para ${maskPhone(from)} via phoneId: ${replyPhoneId}`);
 
-          console.log(`Enviando WhatsApp para ${from} via phoneId=${replyPhoneId}, token=${replyToken ? 'PRESENTE' : 'AUSENTE'}`);
-          
           try {
-            await sendWhatsAppMessage(from, aiResponse, replyPhoneId, replyToken);
-            console.log(`WhatsApp enviado com sucesso para ${from}`);
+            await sendWhatsAppMessage(from, aiResponse, replyPhoneId, tenant.whatsappToken);
+            console.log(`[Webhook] Mensagem entregue para ${maskPhone(from)}`);
           } catch (sendErr: any) {
-            console.error(`FALHA ao enviar WhatsApp para ${from}:`, sendErr?.response?.data || sendErr?.message || sendErr);
+            console.error(`[Webhook] FALHA ao enviar para ${maskPhone(from)}:`, sendErr?.response?.data || sendErr?.message || sendErr);
           }
         }
       }
     }
 
-    // Tarefa 5 - Sempre retorna 200
     return new Response('OK', { status: 200 });
   } catch (error) {
-    console.error("Erro no processamento do webhook:", error);
+    console.error('[Webhook] Erro no processamento:', error);
     return new Response('OK', { status: 200 });
   }
 }

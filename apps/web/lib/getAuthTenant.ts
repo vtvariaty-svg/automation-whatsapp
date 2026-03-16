@@ -8,6 +8,7 @@ const JWT_SECRET = process.env.JWT_SECRET;
 export interface AuthResult {
   tenantId: string;
   userId: string;
+  role: string;
 }
 
 /**
@@ -40,7 +41,7 @@ export async function getAuthTenant(request?: Request): Promise<AuthResult | nul
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as { userId: string; tenantId: string; role?: string };
     if (await isRevoked(token)) return null;
-    return { tenantId: decoded.tenantId, userId: decoded.userId };
+    return { tenantId: decoded.tenantId, userId: decoded.userId, role: decoded.role || 'user' };
   } catch {
     return null;
   }

@@ -68,5 +68,5 @@ export const verifyToken = (token: string) => {
 
 export const isAdmin = (token: string) => {
   const payload = verifyToken(token);
-  return payload?.role === 'admin';
+  return payload?.role === 'admin' || payload?.role === 'superadmin';
 };

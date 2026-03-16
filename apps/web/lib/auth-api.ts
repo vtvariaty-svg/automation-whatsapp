@@ -7,6 +7,7 @@ const JWT_SECRET = process.env.JWT_SECRET;
 export interface AuthUser {
   userId: string;
   tenantId: string;
+  role: string;
 }
 
 export const getAuthUser = async (req: Request): Promise<AuthUser | null> => {
@@ -17,7 +18,7 @@ export const getAuthUser = async (req: Request): Promise<AuthUser | null> => {
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as AuthUser;
     if (await isRevoked(token)) return null;
-    return decoded;
+    return { userId: decoded.userId, tenantId: decoded.tenantId, role: decoded.role || 'user' };
   } catch {
     return null;
   }

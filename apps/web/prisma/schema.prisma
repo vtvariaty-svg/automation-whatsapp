@@ -210,6 +210,19 @@ model WhatsAppConnection {
   @@map("whatsapp_connections")
 }
 
+model SuperAdminLog {
+  id             String   @id @default(uuid())
+  adminUserId    String
+  action         String   // "impersonate", "view_billing", "view_plan_usage"
+  targetTenantId String?
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  @@index([adminUserId])
+  @@index([createdAt])
+  @@map("superadmin_logs")
+}
+
 model RevokedToken {
   id        String   @id @default(uuid())
   tokenHash String   @unique

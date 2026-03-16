@@ -9,6 +9,7 @@ interface AuthContextType {
   user: any;
   token: string | null;
   loading: boolean;
+  isSuperAdmin: boolean;
   login: (credentials: any) => Promise<void>;
   register: (data: any) => Promise<void>;
   logout: () => Promise<void>;
@@ -119,8 +120,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push('/login');
   };
 
+  const isSuperAdmin = user?.role === 'superadmin';
+
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, token, loading, isSuperAdmin, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

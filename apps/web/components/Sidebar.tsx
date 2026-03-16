@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
+import { useAuth } from "@/hooks/useAuth";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: "📊", section: null },
@@ -25,6 +26,7 @@ const navItems = [
 export default function Sidebar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
+  const { isSuperAdmin } = useAuth();
 
   useEffect(() => {
     setIsOpen(false);
@@ -101,13 +103,25 @@ export default function Sidebar() {
 
       {/* Bottom section */}
       <div className="p-4 border-t border-white/[0.06] flex flex-col gap-3">
-        <div className="bg-gradient-to-r from-indigo-500/10 to-purple-500/10 rounded-xl p-4 border border-indigo-500/10">
-          <p className="text-xs text-indigo-300 font-semibold mb-1">Plano Atual</p>
-          <p className="text-white font-bold text-sm">Starter</p>
-          <Link href="/dashboard/billing" className="inline-flex items-center gap-1 text-[11px] text-indigo-400 hover:text-indigo-300 font-medium mt-2 transition-colors">
-            Fazer upgrade →
-          </Link>
-        </div>
+        {isSuperAdmin ? (
+          <div className="bg-gradient-to-r from-rose-500/20 to-orange-500/10 rounded-xl p-4 border border-rose-500/20">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-[10px] font-bold text-rose-400 uppercase tracking-widest">⚡ Superadmin</span>
+            </div>
+            <p className="text-white font-bold text-sm">Acesso total</p>
+            <Link href="/dashboard/billing" className="inline-flex items-center gap-1 text-[11px] text-rose-400 hover:text-rose-300 font-medium mt-2 transition-colors">
+              Ver billing →
+            </Link>
+          </div>
+        ) : (
+          <div className="bg-gradient-to-r from-indigo-500/10 to-purple-500/10 rounded-xl p-4 border border-indigo-500/10">
+            <p className="text-xs text-indigo-300 font-semibold mb-1">Plano Atual</p>
+            <p className="text-white font-bold text-sm">Starter</p>
+            <Link href="/dashboard/billing" className="inline-flex items-center gap-1 text-[11px] text-indigo-400 hover:text-indigo-300 font-medium mt-2 transition-colors">
+              Fazer upgrade →
+            </Link>
+          </div>
+        )}
         <div className="text-[10px] text-gray-500 leading-tight px-1">
           <p className="font-semibold text-gray-400">Contamei Tecnologia e Sistemas Digitais LTDA</p>
           <p>CNPJ: 64.790.325/0001-06</p>

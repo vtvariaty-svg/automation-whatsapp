@@ -37,7 +37,8 @@ model Tenant {
   whatsappConnection  WhatsAppConnection?
   salesEvents       SalesEvent[]
   salesOpportunities SalesOpportunity[]
-  customerMemories  CustomerMemory[]
+  customerMemories    CustomerMemory[]
+  conversationInsights ConversationInsight[]
 }
 
 model BusinessConfig {
@@ -206,6 +207,19 @@ model WhatsAppConnection {
   tenant          Tenant   @relation(fields: [tenantId], references: [id])
 
   @@map("whatsapp_connections")
+}
+
+model ConversationInsight {
+  id          String   @id @default(uuid())
+  tenantId    String
+  period      String   // "7days" | "30days"
+  report      Json
+  generatedAt DateTime @default(now())
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, period])
+  @@map("conversation_insights")
 }
 
 model CustomerMemory {

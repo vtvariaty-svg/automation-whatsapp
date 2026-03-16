@@ -14,6 +14,7 @@ const navItems = [
   { href: "/dashboard/ai", label: "Configuração de IA", icon: "🤖", section: "Automação" },
   { href: "/dashboard/automations", label: "Respostas Rápidas", icon: "⚡", section: null },
   { href: "/dashboard/marketplace", label: "Marketplace de Bots", icon: "✨", section: null },
+  { href: "/dashboard/insights", label: "Insights de IA", icon: "🔍", section: null },
   { href: "/dashboard/templates", label: "Templates WhatsApp", icon: "📋", section: null },
   { href: "/dashboard/integrations", label: "Integrações", icon: "🔌", section: "Administração" },
   { href: "/dashboard/products", label: "Produtos", icon: "📦", section: null },

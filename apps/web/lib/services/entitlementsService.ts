@@ -19,7 +19,14 @@ export async function getEntitlements(tenantId: string, role?: string): Promise<
   if (role && isSuperAdmin(role)) return PLAN_ENTITLEMENTS['superadmin'];
 
   const sub = await getSubscription(tenantId);
-  const planKey = sub?.plan || 'starter';
+
+  // Canceled subscriptions or expired trials fall back to starter limits (no features unlocked).
+  const isExpiredTrial =
+    sub?.status === 'trialing' && sub.trialEnd != null && new Date() > sub.trialEnd;
+  const isCanceled = sub?.status === 'canceled';
+
+  const planKey =
+    isCanceled || isExpiredTrial ? 'starter' : sub?.plan || 'starter';
   const base: PlanEntitlements =
     PLAN_ENTITLEMENTS[planKey] ?? PLAN_ENTITLEMENTS['starter'];
 

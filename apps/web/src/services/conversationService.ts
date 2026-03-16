@@ -6,7 +6,7 @@ import { prisma } from '@/lib/prisma';
 export async function saveUserMessage(phoneNumber: string, messageText: string, tenantId: string, status = 'ai', channel = 'whatsapp') {
   try {
     let conversation = await prisma.conversation.findFirst({
-      where: { customerPhone: phoneNumber, tenantId }
+      where: { customerPhone: phoneNumber, tenantId, channel }
     });
 
     if (!conversation) {
@@ -49,7 +49,7 @@ export async function saveUserMessage(phoneNumber: string, messageText: string, 
 export async function saveAIMessage(phoneNumber: string, aiResponse: string, tenantId: string, status = 'ai', aiGenerated = true, channel = 'whatsapp') {
   try {
     let conversation = await prisma.conversation.findFirst({
-      where: { customerPhone: phoneNumber, tenantId }
+      where: { customerPhone: phoneNumber, tenantId, channel }
     });
 
     if (!conversation) {
@@ -91,10 +91,10 @@ export async function saveAIMessage(phoneNumber: string, aiResponse: string, ten
 /**
  * Retorna o histórico de conversas de um número específico.
  */
-export async function getConversationHistory(phoneNumber: string, tenantId: string) {
+export async function getConversationHistory(phoneNumber: string, tenantId: string, channel = 'whatsapp') {
   try {
     const conversation = await prisma.conversation.findFirst({
-      where: { customerPhone: phoneNumber, tenantId },
+      where: { customerPhone: phoneNumber, tenantId, channel },
       include: {
         messages: {
           orderBy: { createdAt: 'asc' }

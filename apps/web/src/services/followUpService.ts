@@ -9,7 +9,7 @@ const MESSAGES = {
   followUp3: 'Se quiser, posso avisar quando tivermos promoção.',
 };
 
-async function sendFollowUp(
+async function sendFollowUpMessage(
   opportunityId: string,
   contactId: string,
   tenantId: string,
@@ -60,7 +60,7 @@ export async function processFollowUps(): Promise<void> {
     });
     for (const opp of opp1) {
       try {
-        await sendFollowUpMessage(opp.id, opp.contactId, opp.tenantId, MESSAGES.followUp1);
+        await sendFollowUpMessage(opp.id, opp.contactId, opp.tenantId, MESSAGES.followUp1, 'followUp1Sent');
       } catch (e) {
         console.error(`[FollowUp] Erro no follow-up 1 para ${opp.contactId}:`, e);
         // Rollback the claim so it will be retried on the next cycle
@@ -82,7 +82,7 @@ export async function processFollowUps(): Promise<void> {
     });
     for (const opp of opp2) {
       try {
-        await sendFollowUpMessage(opp.id, opp.contactId, opp.tenantId, MESSAGES.followUp2);
+        await sendFollowUpMessage(opp.id, opp.contactId, opp.tenantId, MESSAGES.followUp2, 'followUp2Sent');
       } catch (e) {
         console.error(`[FollowUp] Erro no follow-up 2 para ${opp.contactId}:`, e);
         await prisma.salesOpportunity.update({ where: { id: opp.id }, data: { followUp2Sent: false } }).catch(() => {});
@@ -103,7 +103,7 @@ export async function processFollowUps(): Promise<void> {
     });
     for (const opp of opp3) {
       try {
-        await sendFollowUpMessage(opp.id, opp.contactId, opp.tenantId, MESSAGES.followUp3);
+        await sendFollowUpMessage(opp.id, opp.contactId, opp.tenantId, MESSAGES.followUp3, 'followUp3Sent');
       } catch (e) {
         console.error(`[FollowUp] Erro no follow-up 3 para ${opp.contactId}:`, e);
         await prisma.salesOpportunity.update({ where: { id: opp.id }, data: { followUp3Sent: false } }).catch(() => {});

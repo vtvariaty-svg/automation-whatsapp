@@ -113,8 +113,12 @@ async function handleDM(body: any, pageId: string) {
   // Automation
   const automation = await checkAutomationMatch(textBody, tenant.id);
   if (automation) {
-    await sendInstagramMessage(from, automation.responseText, tenant.instagramPageId!, pageToken);
     await saveAIMessage(from, automation.responseText, tenant.id, status, false, 'instagram');
+    try {
+      await sendInstagramMessage(from, automation.responseText, tenant.instagramPageId!, pageToken);
+    } catch (e: any) {
+      channelLog.error({ channel: 'instagram', tenantId: tenant.id }, `Automation send failed: ${e?.message}`);
+    }
     return;
   }
 

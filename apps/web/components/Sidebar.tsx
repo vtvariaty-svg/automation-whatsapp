@@ -6,25 +6,34 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: "📊", section: null },
+  // ── Principal ──
+  { href: "/dashboard", label: "Dashboard", icon: "📊", section: "Principal" },
   { href: "/dashboard/analytics", label: "Analytics", icon: "📈", section: null },
-  { href: "/dashboard/conversations", label: "Conversas", icon: "💬", section: null },
-  { href: "/dashboard/orders", label: "Pedidos", icon: "🛍️", section: null },
+
+  // ── Atendimento ──
+  { href: "/dashboard/conversations", label: "Conversas", icon: "💬", section: "Atendimento" },
   { href: "/dashboard/appointments", label: "Agenda", icon: "📅", section: null },
   { href: "/dashboard/services", label: "Serviços", icon: "✂️", section: null },
-  { href: "/dashboard/ai", label: "Configuração de IA", icon: "🤖", section: "Automação" },
+  { href: "/dashboard/orders", label: "Pedidos", icon: "🛍️", section: null },
+
+  // ── Inteligência Artificial ──
+  { href: "/dashboard/ai", label: "Configuração de IA", icon: "🤖", section: "Inteligência Artificial" },
   { href: "/dashboard/automations", label: "Respostas Rápidas", icon: "⚡", section: null },
   { href: "/dashboard/marketplace", label: "Marketplace de Bots", icon: "✨", section: null },
   { href: "/dashboard/insights", label: "Insights de IA", icon: "🔍", section: null },
   { href: "/dashboard/templates", label: "Templates WhatsApp", icon: "📋", section: null },
+
+  // ── Administração ──
   { href: "/dashboard/integrations", label: "Integrações", icon: "🔌", section: "Administração" },
   { href: "/dashboard/products", label: "Produtos", icon: "📦", section: null },
   { href: "/dashboard/billing", label: "Assinatura", icon: "💳", section: null },
   { href: "/dashboard/settings", label: "Configurações", icon: "⚙️", section: null },
-  { href: "/dashboard/activation", label: "Ativação", icon: "🚀", section: null },
+
+  // ── Crescimento ──
+  { href: "/dashboard/activation", label: "Ativação", icon: "🚀", section: "Crescimento" },
+  { href: "/dashboard/go-live", label: "Go-Live", icon: "✅", section: null },
   { href: "/dashboard/agency", label: "Agência", icon: "🏢", section: null },
   { href: "/dashboard/referral", label: "Indicações", icon: "🎁", section: null },
-  { href: "/dashboard/go-live", label: "Go-Live", icon: "✅", section: null },
 ];
 
 export default function Sidebar() {

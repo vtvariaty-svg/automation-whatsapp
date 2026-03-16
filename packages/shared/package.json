@@ -8,12 +8,12 @@
     "build": "../../node_modules/.bin/tsc",
     "dev": "../../node_modules/.bin/tsc --watch"
   },
+  "dependencies": {
+    "axios": "*",
+    "openai": "*"
+  },
   "devDependencies": {
     "@types/node": "*",
     "typescript": "*"
-  },
-  "peerDependencies": {
-    "axios": "*",
-    "openai": "*"
   }
 }

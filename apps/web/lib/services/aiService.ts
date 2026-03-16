@@ -1,5 +1,6 @@
 import { createOpenAIClient } from '../integrations/openai/openaiClient';
 import { getTenantConfig, listProducts } from './tenantService';
+import { withRetry } from '../utils/retry';
 
 const openai = createOpenAIClient();
 
@@ -31,13 +32,13 @@ DIRETRIZES GERAIS:
 4. Responda de forma clara, educada e direta.
   `.trim();
 
-  const response = await openai.chat.completions.create({
+  const response = await withRetry(() => openai.chat.completions.create({
     model: 'gpt-3.5-turbo',
     messages: [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userMessage }
     ],
-  });
+  }));
 
   return response.choices[0].message.content;
 };
@@ -53,14 +54,14 @@ Classifique a intenção da mensagem do cliente em uma das seguintes categorias:
 Responda APENAS com a palavra da categoria.
   `;
 
-  const response = await openai.chat.completions.create({
+  const response = await withRetry(() => openai.chat.completions.create({
     model: 'gpt-3.5-turbo',
     messages: [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userMessage }
     ],
     max_tokens: 10,
-  });
+  }));
 
   const intent = response.choices[0].message.content?.toLowerCase().trim();
   return intent;

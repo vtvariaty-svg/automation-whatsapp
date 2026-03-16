@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { withRetry } from '../../utils/retry';
 
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
 const WHATSAPP_PHONE_ID = process.env.WHATSAPP_PHONE_ID;
@@ -12,7 +13,7 @@ export const sendMessage = async (phone: string, message: string) => {
   const url = `https://graph.facebook.com/v20.0/${WHATSAPP_PHONE_ID}/messages`;
 
   try {
-    const response = await axios.post(
+    const response = await withRetry(() => axios.post(
       url,
       {
         messaging_product: 'whatsapp',
@@ -26,7 +27,7 @@ export const sendMessage = async (phone: string, message: string) => {
           'Content-Type': 'application/json',
         },
       }
-    );
+    ));
     return response.data;
   } catch (error: any) {
     console.error('Error sending WhatsApp message:', error.response?.data || error.message);

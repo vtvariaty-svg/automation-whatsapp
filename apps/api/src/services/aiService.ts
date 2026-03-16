@@ -2,6 +2,7 @@ import { createOpenAIClient } from '../integrations/openai/openaiClient';
 import { getTenantConfig, listProducts, searchProducts } from './tenantService';
 import { createCheckoutSession } from './salesService';
 import { PrismaClient } from '@prisma/client';
+import { withRetry } from '../utils/retry';
 
 const prisma = new PrismaClient();
 
@@ -31,13 +32,13 @@ Use as informações acima para responder. Se não souber algo ou se a informaç
 Mantenha as respostas concisas e profissionais.
   `;
 
-  const response = await openai.chat.completions.create({
+  const response = await withRetry(() => openai.chat.completions.create({
     model: 'gpt-3.5-turbo',
     messages: [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userMessage }
     ],
-  });
+  }));
 
   return response.choices[0].message.content;
 };
@@ -53,14 +54,14 @@ Classifique a intenção da mensagem do cliente em uma das seguintes categorias:
 Responda APENAS com a palavra da categoria.
   `;
 
-  const response = await openai.chat.completions.create({
+  const response = await withRetry(() => openai.chat.completions.create({
     model: 'gpt-3.5-turbo',
     messages: [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userMessage }
     ],
     max_tokens: 10,
-  });
+  }));
 
   const intent = response.choices[0].message.content?.toLowerCase().trim();
   return intent;
@@ -135,12 +136,12 @@ Exemplo de tom inicial: "Temos estas opções que podem te ajudar... O [Produto 
     }
   ];
 
-  let response = await openai.chat.completions.create({
+  let response = await withRetry(() => openai.chat.completions.create({
     model: 'gpt-3.5-turbo',
     messages,
     tools,
     tool_choice: "auto"
-  });
+  }));
 
   const responseMessage = response.choices[0].message;
 
@@ -173,10 +174,10 @@ Exemplo de tom inicial: "Temos estas opções que podem te ajudar... O [Produto 
     }
 
     // Call OpenAI again to get the final response formatted with the generated data
-    response = await openai.chat.completions.create({
+    response = await withRetry(() => openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
       messages
-    });
+    }));
     
     return response.choices[0].message.content;
   }

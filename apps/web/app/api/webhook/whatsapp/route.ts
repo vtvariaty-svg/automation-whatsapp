@@ -7,6 +7,7 @@ import { sendWhatsAppMessage } from "@/src/services/whatsappService";
 // @ts-ignore - Importing from JS file
 import { saveUserMessage, saveAIMessage, getConversationHistory, getConversationStatus } from "@/src/services/conversationService";
 import { getTenantByPhoneId } from "@/src/services/tenantService";
+import { buildCustomerContext, upsertCustomerMemory, extractNameFromText } from "@/src/services/customerMemoryService";
 import { checkAutomationMatch } from "@/src/services/automationService";
 import { verifyAiLimits } from "@/src/services/billingService";
 
@@ -135,8 +136,24 @@ export async function POST(req: Request) {
             return new Response('OK', { status: 200 });
           }
 
+          // Carregar memória do cliente antes de chamar a IA
+          let customerContext = '';
+          try {
+            customerContext = await buildCustomerContext(tenant.id, from);
+          } catch (memErr) {
+            console.error('Erro ao carregar memória do cliente (continuando sem contexto):', memErr);
+          }
+
+          // Detectar nome declarado na mensagem e salvar na memória (non-blocking)
+          const detectedName = extractNameFromText(textBody);
+          if (detectedName) {
+            upsertCustomerMemory(tenant.id, from, { name: detectedName }).catch(e =>
+              console.error('Erro ao salvar nome na memória:', e)
+            );
+          }
+
           // Fluxo: enviar texto para aiService com configurações do tenant
-          const aiResponse = await generateAIResponse(textBody, tenant.openaiKey || '', tenant.aiPrompt || '', tenant.businessHours || '', tenant.id, from);
+          const aiResponse = await generateAIResponse(textBody, tenant.openaiKey || '', tenant.aiPrompt || '', tenant.businessHours || '', tenant.id, from, customerContext);
           console.log(`Resposta da IA para ${from} (Tenant ${tenant.name}): ${aiResponse}`);
 
           // Salvar resposta da IA no banco com tenant_id

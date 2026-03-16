@@ -12,7 +12,7 @@ import { recordAiUsage } from "./billingService";
  * @param {string} customerPhone 
  * @returns {Promise<string>}
  */
-export async function generateAIResponse(messageText, apiKey, aiPrompt, businessHours, tenantId, customerPhone) {
+export async function generateAIResponse(messageText, apiKey, aiPrompt, businessHours, tenantId, customerPhone, customerContext = '') {
   const openai = new OpenAI({
     apiKey: apiKey || process.env.OPENAI_API_KEY,
   });
@@ -33,6 +33,7 @@ Hoje é dia ${new Date().toLocaleDateString('pt-BR')}
 
   const systemMessage = `
 ${aiPrompt || 'Você é um assistente virtual da empresa. Responda cordialmente aos clientes.'}
+${customerContext ? `\n---\n${customerContext}\n---` : ''}
 
 ---
 DIRETRIZES TÉCNICAS E REGRAS:

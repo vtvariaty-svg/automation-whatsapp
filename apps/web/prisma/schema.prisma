@@ -37,6 +37,7 @@ model Tenant {
   whatsappConnection  WhatsAppConnection?
   salesEvents       SalesEvent[]
   salesOpportunities SalesOpportunity[]
+  customerMemories  CustomerMemory[]
 }
 
 model BusinessConfig {
@@ -205,6 +206,22 @@ model WhatsAppConnection {
   tenant          Tenant   @relation(fields: [tenantId], references: [id])
 
   @@map("whatsapp_connections")
+}
+
+model CustomerMemory {
+  id          String   @id @default(uuid())
+  tenantId    String
+  contactId   String
+  name        String?
+  preferences String?  @db.Text
+  notes       String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, contactId])
+  @@map("customer_memories")
 }
 
 model SalesEvent {

@@ -55,9 +55,9 @@ function IntegrationsContent() {
   const searchParams = useSearchParams();
   const appId = process.env.NEXT_PUBLIC_FB_APP_ID;
 
-  const authHeaders = () => {
-    const token = localStorage.getItem("token");
-    return token ? { Authorization: `Bearer ${token}` } : {};
+  const authHeaders = (): Record<string, string> => {
+    const token = localStorage.getItem("token") ?? "";
+    return { Authorization: `Bearer ${token}` };
   };
 
   const fetchAll = useCallback(async () => {

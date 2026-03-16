@@ -210,6 +210,15 @@ model WhatsAppConnection {
   @@map("whatsapp_connections")
 }
 
+model ProcessedMessage {
+  id        String   @id @default(uuid())
+  messageId String   @unique  // wamid from Meta webhook
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("processed_messages")
+}
+
 model SuperAdminLog {
   id             String   @id @default(uuid())
   adminUserId    String

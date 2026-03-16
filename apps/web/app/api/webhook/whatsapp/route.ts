@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from 'crypto';
 import { decrypt } from '@/lib/utils/crypto';
 import { isRateLimited, getClientIp } from '@/lib/webhookRateLimit';
+import { prisma } from '@/lib/prisma';
 // @ts-ignore - Importing from JS file
 import { generateAIResponse } from "@/src/services/aiService";
 // @ts-ignore - Importing from JS file
@@ -110,8 +111,24 @@ export async function POST(req: Request) {
         const message = messages[0];
         const from = message.from;
         const textBody = message.text?.body;
+        const messageId = message.id as string | undefined;
 
         if (textBody) {
+          // Idempotência: ignorar mensagens já processadas (retry da Meta)
+          if (messageId) {
+            try {
+              await prisma.processedMessage.create({ data: { messageId } });
+              // Cleanup lazy: remover registros com mais de 7 dias
+              prisma.processedMessage.deleteMany({
+                where: { createdAt: { lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } },
+              }).catch(() => {});
+            } catch {
+              // Unique constraint violation = mensagem já processada antes
+              console.warn(`[Webhook] Mensagem duplicada ignorada: ${messageId}`);
+              return new Response('OK', { status: 200 });
+            }
+          }
+
           console.log(`[Webhook] Mensagem de ${maskPhone(from)} — tenant: ${tenant.id}`);
 
           // Verificar mensagem de boas-vindas

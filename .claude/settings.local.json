@@ -6,7 +6,10 @@
       "Bash(wsl:*)",
       "Bash(node:*)",
       "Bash(find:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(npx tsc:*)",
+      "Bash(./node_modules/.bin/tsc --noEmit -p apps/web/tsconfig.json 2>&1 | head -80)",
+      "Bash(ls:*)"
     ]
   }
 }

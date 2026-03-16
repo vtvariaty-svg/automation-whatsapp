@@ -30,6 +30,8 @@ model Tenant {
   channelKillSwitch   String?
   // R1 – demo tenant flag
   isDemo              Boolean         @default(false)
+  // G1 – operational status
+  operationalStatus   String          @default("setup") // setup | ready | live | paused | blocked
   // R5 – agency/reseller
   agencyId            String?
   agencyBranding      Boolean         @default(false)
@@ -506,6 +508,86 @@ model AuditLog {
   @@index([tenantId, createdAt])
   @@index([action])
   @@map("audit_logs")
+}
+
+// ─── G6 Expansion Ops ─────────────────────────────────────────────────────────
+
+model ExpansionEvent {
+  id          String   @id @default(uuid())
+  tenantId    String
+  trigger     String   // limit_hit | wants_multichannel | high_lead_volume | premium_blocked | multi_agent
+  currentPlan String?
+  suggestedPlan String?
+  detail      String?
+  shown       Boolean  @default(false)
+  converted   Boolean  @default(false)
+  convertedAt DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([tenantId, converted])
+  @@index([trigger, converted])
+  @@map("expansion_events")
+}
+
+// ─── G3 Churn Prevention ──────────────────────────────────────────────────────
+
+model ChurnSignal {
+  id          String   @id @default(uuid())
+  tenantId    String
+  signal      String   // no_channel | no_automation | usage_drop | trial_expiring | paid_inactive
+  severity    String   @default("medium") // low | medium | high
+  detail      String?
+  resolved    Boolean  @default(false)
+  resolvedAt  DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([tenantId, resolved])
+  @@index([severity, resolved])
+  @@map("churn_signals")
+}
+
+model ChurnPlaybook {
+  id          String   @id @default(uuid())
+  tenantId    String
+  signal      String   // which signal triggered this
+  action      String   // nudge_shown | support_invited | template_suggested | reconnect_prompted
+  status      String   @default("pending") // pending | sent | dismissed | converted
+  sentAt      DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([tenantId, status])
+  @@map("churn_playbooks")
+}
+
+// ─── G2 Attribution ───────────────────────────────────────────────────────────
+
+model LeadAttribution {
+  id              String   @id @default(uuid())
+  tenantId        String
+  contactId       String   // phone or external id
+  // touch points
+  firstSource     String?  // instagram_dm | instagram_comment | facebook_dm | whatsapp | manual | template
+  firstMedium     String?  // organic | paid | referral | direct
+  firstCampaign   String?
+  lastSource      String?
+  lastMedium      String?
+  lastCampaign    String?
+  // linked entities
+  conversationId  String?
+  opportunityId   String?
+  appointmentId   String?
+  orderId         String?
+  // outcome
+  converted       Boolean  @default(false)
+  convertedAt     DateTime?
+  revenueAmount   Float?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([tenantId, contactId])
+  @@index([tenantId, firstSource])
+  @@index([tenantId, converted])
+  @@map("lead_attributions")
 }
 
 // ─── R5 Agency / Reseller ─────────────────────────────────────────────────────

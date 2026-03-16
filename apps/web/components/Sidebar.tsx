@@ -23,6 +23,7 @@ const navItems = [
   { href: "/dashboard/settings", label: "Configurações", icon: "⚙️", section: null },
   { href: "/dashboard/activation", label: "Ativação", icon: "🚀", section: null },
   { href: "/dashboard/agency", label: "Agência", icon: "🏢", section: null },
+  { href: "/dashboard/go-live", label: "Go-Live", icon: "✅", section: null },
 ];
 
 export default function Sidebar() {
@@ -116,6 +117,10 @@ export default function Sidebar() {
               <Link href="/dashboard/admin/retention" className="inline-flex items-center gap-1 text-[11px] text-rose-400 hover:text-rose-300 font-medium transition-colors">📊 Retenção →</Link>
               <Link href="/dashboard/admin/feedback" className="inline-flex items-center gap-1 text-[11px] text-rose-400 hover:text-rose-300 font-medium transition-colors">💬 Feedback →</Link>
               <Link href="/dashboard/demo" className="inline-flex items-center gap-1 text-[11px] text-rose-400 hover:text-rose-300 font-medium transition-colors">🎭 Demo →</Link>
+              <Link href="/dashboard/admin/go-live" className="inline-flex items-center gap-1 text-[11px] text-rose-400 hover:text-rose-300 font-medium transition-colors">✅ Go-Live →</Link>
+              <Link href="/dashboard/admin/attribution" className="inline-flex items-center gap-1 text-[11px] text-rose-400 hover:text-rose-300 font-medium transition-colors">📡 Atribuição →</Link>
+              <Link href="/dashboard/admin/churn" className="inline-flex items-center gap-1 text-[11px] text-rose-400 hover:text-rose-300 font-medium transition-colors">🚨 Churn →</Link>
+              <Link href="/dashboard/admin/expansion" className="inline-flex items-center gap-1 text-[11px] text-rose-400 hover:text-rose-300 font-medium transition-colors">💰 Expansão →</Link>
             </div>
           </div>
         ) : (

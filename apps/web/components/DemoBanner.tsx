@@ -17,7 +17,7 @@ export default function DemoBanner() {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem('token') ?? '';
+    const token = localStorage.getItem('auth_token') ?? localStorage.getItem('token') ?? '';
     fetch('/api/demo/mode', {
       headers: {
         Authorization: `Bearer ${token}`,

@@ -10,13 +10,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const codes = await (prisma as any).referralCode.findMany({
+  const codes = await prisma.referralCode.findMany({
     orderBy: { createdAt: 'desc' },
   });
 
   const codeIds = codes.map((c: any) => c.id);
 
-  const allConversions = await (prisma as any).referralConversion.findMany({
+  const allConversions = await prisma.referralConversion.findMany({
     where: { referralCodeId: { in: codeIds } },
   });
 
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   // Get tenant names
   const tenantIds = [...new Set(codes.map((c: any) => c.tenantId))] as string[];
-  const tenants = await (prisma as any).tenant.findMany({
+  const tenants = await prisma.tenant.findMany({
     where: { id: { in: tenantIds } },
     select: { id: true, name: true },
   });
@@ -92,7 +92,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
     updateData.paidAt = new Date();
   }
 
-  await (prisma as any).referralConversion.update({
+  await prisma.referralConversion.update({
     where: { id: conversionId },
     data: updateData,
   });

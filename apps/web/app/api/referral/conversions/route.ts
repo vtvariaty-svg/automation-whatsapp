@@ -10,7 +10,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   }
 
   // Get all codes for this tenant
-  const codes = await (prisma as any).referralCode.findMany({
+  const codes = await prisma.referralCode.findMany({
     where: { tenantId: auth.tenantId },
     select: { id: true },
   });
@@ -18,14 +18,14 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const codeIds = codes.map((c: any) => c.id);
 
   // Get all conversions for those codes
-  const conversions = await (prisma as any).referralConversion.findMany({
+  const conversions = await prisma.referralConversion.findMany({
     where: { referralCodeId: { in: codeIds } },
     orderBy: { createdAt: 'desc' },
   });
 
   // Get referred tenant names
   const referredTenantIds = [...new Set(conversions.map((c: any) => c.referredTenantId))] as string[];
-  const tenants = await (prisma as any).tenant.findMany({
+  const tenants = await prisma.tenant.findMany({
     where: { id: { in: referredTenantIds } },
     select: { id: true, name: true },
   });

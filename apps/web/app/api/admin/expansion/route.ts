@@ -33,7 +33,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     convertedParam === 'false' ? false : convertedParam === 'true' ? true : false;
 
   // Find all unconverted expansion events grouped by tenantId
-  const events = await (prisma as any).expansionEvent.findMany({
+  const events = await prisma.expansionEvent.findMany({
     where: { converted: filterConverted },
     orderBy: { createdAt: 'desc' },
   });
@@ -80,7 +80,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   // Load tenant + subscription info for all tenant IDs
   const tenantIds = Array.from(byTenant.keys());
 
-  const tenants = await (prisma as any).tenant.findMany({
+  const tenants = await prisma.tenant.findMany({
     where: { id: { in: tenantIds } },
     select: {
       id: true,

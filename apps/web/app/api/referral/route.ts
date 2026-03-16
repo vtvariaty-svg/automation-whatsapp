@@ -10,14 +10,14 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const codes = await (prisma as any).referralCode.findMany({
+  const codes = await prisma.referralCode.findMany({
     where: { tenantId: auth.tenantId },
     orderBy: { createdAt: 'desc' },
   });
 
   const codeIds = codes.map((c: any) => c.id);
 
-  const conversions = await (prisma as any).referralConversion.findMany({
+  const conversions = await prisma.referralConversion.findMany({
     where: { referralCodeId: { in: codeIds } },
   });
 
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   // If no code exists, provide a suggested code (don't auto-create)
   let suggestedCode: string | undefined;
   if (codes.length === 0) {
-    const tenant = await (prisma as any).tenant.findUnique({
+    const tenant = await prisma.tenant.findUnique({
       where: { id: auth.tenantId },
       select: { name: true },
     });
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const rewardValue: number = body.rewardValue ?? 0;
 
   // Check if tenant already has an active code
-  const existingActive = await (prisma as any).referralCode.findFirst({
+  const existingActive = await prisma.referralCode.findFirst({
     where: { tenantId: auth.tenantId, active: true },
   });
 
@@ -71,14 +71,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     );
   }
 
-  const tenant = await (prisma as any).tenant.findUnique({
+  const tenant = await prisma.tenant.findUnique({
     where: { id: auth.tenantId },
     select: { name: true },
   });
 
   const code = generateReferralCode(tenant?.name ?? 'USER');
 
-  const created = await (prisma as any).referralCode.create({
+  const created = await prisma.referralCode.create({
     data: {
       tenantId: auth.tenantId,
       userId: auth.userId,
@@ -107,7 +107,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
   }
 
   // Verify ownership
-  const existing = await (prisma as any).referralCode.findFirst({
+  const existing = await prisma.referralCode.findFirst({
     where: { id: codeId, tenantId: auth.tenantId },
   });
 
@@ -120,7 +120,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
   if (rewardType !== undefined) updateData.rewardType = rewardType;
   if (rewardValue !== undefined) updateData.rewardValue = rewardValue;
 
-  const updated = await (prisma as any).referralCode.update({
+  const updated = await prisma.referralCode.update({
     where: { id: codeId },
     data: updateData,
   });

@@ -21,19 +21,24 @@ export async function GET(request: Request) {
   if (!payload || !isSuperOrAdmin(payload.role))
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-  const { searchParams } = new URL(request.url);
-  const status = searchParams.get('status') ?? 'failed';
-  const limit = Math.min(parseInt(searchParams.get('limit') ?? '50'), 200);
+  try {
+    const { searchParams } = new URL(request.url);
+    const status = searchParams.get('status') ?? 'failed';
+    const limit = Math.min(parseInt(searchParams.get('limit') ?? '50'), 200);
 
-  const events = await prisma.deadLetterEvent.findMany({
-    where: { status },
-    orderBy: { createdAt: 'desc' },
-    take: limit,
-  });
+    const events = await prisma.deadLetterEvent.findMany({
+      where: { status },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
 
-  const circuits = getCircuitSnapshot();
+    const circuits = getCircuitSnapshot();
 
-  return NextResponse.json({ events, circuits });
+    return NextResponse.json({ events, circuits });
+  } catch (error: any) {
+    console.error('[DeadLetter] GET error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 }
 
 export async function PATCH(request: Request) {
@@ -44,9 +49,14 @@ export async function PATCH(request: Request) {
   if (!payload || !isSuperOrAdmin(payload.role))
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-  const { id } = await request.json();
-  if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
+  try {
+    const { id } = await request.json();
+    if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
 
-  await resolveDeadLetter(id);
-  return NextResponse.json({ ok: true });
+    await resolveDeadLetter(id);
+    return NextResponse.json({ ok: true });
+  } catch (error: any) {
+    console.error('[DeadLetter] PATCH error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 }

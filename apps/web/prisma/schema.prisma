@@ -66,6 +66,17 @@ model Tenant {
   // M3
   conversionSequences ConversionSequence[]
   conversionLeads     ConversionLead[]
+  // G4 Referral
+  referralCodes       ReferralCode[]
+  // G6 Expansion
+  expansionEvents     ExpansionEvent[]
+  // G3 Churn
+  churnSignals        ChurnSignal[]
+  churnPlaybooks      ChurnPlaybook[]
+  // G2 Attribution
+  leadAttributions    LeadAttribution[]
+  // R6 Health
+  healthScore         TenantHealthScore?
 }
 
 model BusinessConfig {
@@ -75,7 +86,7 @@ model BusinessConfig {
   address      String?
   faqJson      String?  @db.Text
   createdAt    DateTime @default(now())
-  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
 model Product {
@@ -88,9 +99,11 @@ model Product {
   currency    String   @default("BRL")
   stock       Int?
   createdAt   DateTime @default(now())
-  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   salesEvents SalesEvent[]
   salesOpportunities SalesOpportunity[]
+
+  @@index([tenantId])
 }
 
 model User {
@@ -103,7 +116,7 @@ model User {
   instagramId  String?  @unique
   role         String   @default("user")
   createdAt    DateTime @default(now())
-  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
 model Conversation {
@@ -115,8 +128,11 @@ model Conversation {
   assignedUser  String?
   createdAt     DateTime  @default(now())
   channel       String    @default("whatsapp") // M0
-  tenant        Tenant    @relation(fields: [tenantId], references: [id])
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   messages      Message[]
+
+  @@index([tenantId, status])
+  @@index([tenantId, lastMessageAt])
 }
 
 model Message {
@@ -128,7 +144,9 @@ model Message {
   aiGenerated    Boolean      @default(true)
   createdAt      DateTime     @default(now())
   channel        String       @default("whatsapp") // M0
-  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
 }
 
 model Subscription {
@@ -149,7 +167,7 @@ model Subscription {
   // R2 – churn reason on cancel
   churnReason           String?
 
-  tenant                Tenant    @relation(fields: [tenantId], references: [id])
+  tenant                Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   planRel               Plan?     @relation(fields: [planId], references: [id])
 }
 
@@ -170,8 +188,8 @@ model AiUsage {
   tenantId       String
   totalTokens    Int      @default(0)
   createdAt      DateTime @default(now())
-  
-  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, createdAt])
   @@map("ai_usage")
@@ -186,7 +204,9 @@ model Order {
   price         Float    @default(0.0)
   status        String   @default("novo") // novo, confirmado, preparando, enviado, finalizado
   createdAt     DateTime @default(now())
-  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, status])
 }
 
 model Appointment {
@@ -199,7 +219,9 @@ model Appointment {
   time          String?  // HH:MM
   status        String   @default("agendado") // agendado, confirmado, cancelado, concluido
   createdAt     DateTime @default(now())
-  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, status])
 }
 
 model AutomationRule {
@@ -213,8 +235,10 @@ model AutomationRule {
   responseText  String   @db.Text
   active        Boolean  @default(true)
   createdAt     DateTime @default(now())
-  
-  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, active])
 }
 
 model Service {
@@ -224,8 +248,10 @@ model Service {
   durationMinutes Int      @default(30)
   active          Boolean  @default(true)
   createdAt       DateTime @default(now())
-  
-  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
 }
 
 model WhatsAppConnection {
@@ -238,7 +264,7 @@ model WhatsAppConnection {
   status          String   @default("connected")
   createdAt       DateTime @default(now())
 
-  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@map("whatsapp_connections")
 }
@@ -282,7 +308,7 @@ model ConversationInsight {
   report      Json
   generatedAt DateTime @default(now())
 
-  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([tenantId, period])
   @@map("conversation_insights")
@@ -298,7 +324,7 @@ model CustomerMemory {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([tenantId, contactId])
   @@map("customer_memories")
@@ -313,8 +339,10 @@ model SalesEvent {
   status      String   @default("created") // created, paid, cancelled
   createdAt   DateTime @default(now())
 
-  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   product     Product  @relation(fields: [productId], references: [id])
+
+  @@index([tenantId, status])
 }
 
 model SalesOpportunity {
@@ -330,8 +358,10 @@ model SalesOpportunity {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   product     Product? @relation(fields: [productId], references: [id])
+
+  @@index([tenantId, status])
 }
 
 // ─── M1 Instagram ─────────────────────────────────────────────────────────────
@@ -346,7 +376,7 @@ model InstagramConnection {
   status      String   @default("connected")
   createdAt   DateTime @default(now())
 
-  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@map("instagram_connections")
 }
@@ -366,7 +396,7 @@ model InstagramCommentRule {
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
 
-  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, active])
   @@map("instagram_comment_rules")
@@ -384,7 +414,7 @@ model InstagramModerationItem {
   ruleTriggeredId String?
   createdAt       DateTime @default(now())
 
-  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, status])
   @@map("instagram_moderation_queue")
@@ -401,10 +431,11 @@ model ConversionSequence {
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
 
-  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   steps        ConversionSequenceStep[]
   leads        ConversionLead[]
 
+  @@index([tenantId, active])
   @@map("conversion_sequences")
 }
 
@@ -437,8 +468,8 @@ model ConversionLead {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  tenant      Tenant             @relation(fields: [tenantId], references: [id])
-  sequence    ConversionSequence @relation(fields: [sequenceId], references: [id])
+  tenant      Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sequence    ConversionSequence @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
   events      ConversionLeadEvent[]
 
   @@unique([sequenceId, contactId])
@@ -471,7 +502,7 @@ model FacebookConnection {
   status      String   @default("connected")
   createdAt   DateTime @default(now())
 
-  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@map("facebook_connections")
 }
@@ -552,6 +583,7 @@ model ReferralCode {
   active          Boolean  @default(true)
   createdAt       DateTime @default(now())
 
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   conversions     ReferralConversion[]
 
   @@index([tenantId])
@@ -589,6 +621,8 @@ model ExpansionEvent {
   convertedAt DateTime?
   createdAt   DateTime @default(now())
 
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
   @@index([tenantId, converted])
   @@index([trigger, converted])
   @@map("expansion_events")
@@ -606,6 +640,8 @@ model ChurnSignal {
   resolvedAt  DateTime?
   createdAt   DateTime @default(now())
 
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
   @@index([tenantId, resolved])
   @@index([severity, resolved])
   @@map("churn_signals")
@@ -619,6 +655,8 @@ model ChurnPlaybook {
   status      String   @default("pending") // pending | sent | dismissed | converted
   sentAt      DateTime?
   createdAt   DateTime @default(now())
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, status])
   @@map("churn_playbooks")
@@ -648,6 +686,8 @@ model LeadAttribution {
   revenueAmount   Float?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([tenantId, contactId])
   @@index([tenantId, firstSource])
@@ -727,6 +767,8 @@ model TenantHealthScore {
   expansionSignal Boolean  @default(false)
   breakdown       Json?    // per-metric breakdown
   computedAt      DateTime @default(now())
+
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@map("tenant_health_scores")
 }

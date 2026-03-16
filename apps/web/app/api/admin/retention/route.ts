@@ -47,6 +47,7 @@ export async function GET(request: Request) {
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (auth.role !== 'superadmin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
+  try {
   const { searchParams } = new URL(request.url);
   const periodParam = searchParams.get('period') ?? '30days';
   const riskLevelParam = searchParams.get('riskLevel') ?? 'all';
@@ -157,4 +158,8 @@ export async function GET(request: Request) {
   filtered.sort((a, b) => a.score - b.score);
 
   return NextResponse.json(filtered);
+  } catch (error: any) {
+    console.error('[Retention] GET error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 }

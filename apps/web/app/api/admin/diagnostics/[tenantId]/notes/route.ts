@@ -15,19 +15,25 @@ export async function POST(
   if (auth.role !== 'superadmin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const { tenantId } = await params;
-  const { body } = await request.json();
 
-  if (!body || typeof body !== 'string' || !body.trim()) {
-    return NextResponse.json({ error: 'body is required' }, { status: 400 });
+  try {
+    const { body } = await request.json();
+
+    if (!body || typeof body !== 'string' || !body.trim()) {
+      return NextResponse.json({ error: 'body is required' }, { status: 400 });
+    }
+
+    const note = await prisma.supportNote.create({
+      data: {
+        tenantId,
+        authorId: auth.userId,
+        body: body.trim(),
+      },
+    });
+
+    return NextResponse.json(note, { status: 201 });
+  } catch (error: any) {
+    console.error('[DiagnosticsNotes] POST error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
-
-  const note = await prisma.supportNote.create({
-    data: {
-      tenantId,
-      authorId: auth.userId,
-      body: body.trim(),
-    },
-  });
-
-  return NextResponse.json(note, { status: 201 });
 }

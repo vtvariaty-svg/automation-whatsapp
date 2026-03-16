@@ -17,6 +17,7 @@ export async function GET(
 
   const { tenantId } = await params;
 
+  try {
   const since7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
   const [
@@ -138,4 +139,8 @@ export async function GET(
       aiTokens7d: aiTokens7d._sum.totalTokens ?? 0,
     },
   });
+  } catch (error: any) {
+    console.error('[Diagnostics] GET error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 }

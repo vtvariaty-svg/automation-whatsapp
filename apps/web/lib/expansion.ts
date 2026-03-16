@@ -47,7 +47,7 @@ async function upsertExpansionEvent(
 ): Promise<ExpansionEvent> {
   const since = subDays(new Date(), 7);
 
-  const existing = await (prisma as any).expansionEvent.findFirst({
+  const existing = await prisma.expansionEvent.findFirst({
     where: {
       tenantId,
       trigger,
@@ -59,7 +59,7 @@ async function upsertExpansionEvent(
 
   if (existing) return existing as ExpansionEvent;
 
-  const created = await (prisma as any).expansionEvent.create({
+  const created = await prisma.expansionEvent.create({
     data: {
       tenantId,
       trigger,
@@ -138,7 +138,7 @@ async function checkHighLeadVolume(
   if (automationsLimit === -1) return null;
 
   const since = subDays(new Date(), 7);
-  const leadCount = await (prisma as any).conversionLead.count({
+  const leadCount = await prisma.conversionLead.count({
     where: {
       tenantId,
       createdAt: { gte: since },
@@ -165,7 +165,7 @@ async function checkPremiumBlocked(
   plan: string,
 ): Promise<ExpansionEvent | null> {
   const since = subDays(new Date(), 7);
-  const count = await (prisma as any).expansionEvent.count({
+  const count = await prisma.expansionEvent.count({
     where: {
       tenantId,
       trigger: 'premium_blocked',
@@ -195,7 +195,7 @@ async function checkMultiAgent(
   const agentsLimit = ent.limits.agents;
   if (agentsLimit === -1) return null;
 
-  const userCount = await (prisma as any).user.count({
+  const userCount = await prisma.user.count({
     where: { tenantId },
   });
 
@@ -218,9 +218,9 @@ async function checkMultiAgent(
 export async function detectExpansionTriggers(tenantId: string): Promise<ExpansionEvent[]> {
   const sub = await getSubscription(tenantId);
   const plan = sub?.plan ?? 'starter';
-  const usageMessages = (sub as any)?.usageMessages ?? 0;
+  const usageMessages = sub?.usageMessages ?? 0;
 
-  const tenant = await (prisma as any).tenant.findUnique({
+  const tenant = await prisma.tenant.findUnique({
     where: { id: tenantId },
     select: { instagramToken: true, facebookToken: true },
   });
@@ -256,7 +256,7 @@ export async function detectExpansionTriggers(tenantId: string): Promise<Expansi
 // ─── State updates ────────────────────────────────────────────────────────────
 
 export async function recordExpansionShown(eventId: string): Promise<void> {
-  await (prisma as any).expansionEvent.update({
+  await prisma.expansionEvent.update({
     where: { id: eventId },
     data: { shown: true },
   });
@@ -266,14 +266,14 @@ export async function recordExpansionConverted(
   tenantId: string,
   trigger: string,
 ): Promise<void> {
-  const event = await (prisma as any).expansionEvent.findFirst({
+  const event = await prisma.expansionEvent.findFirst({
     where: { tenantId, trigger, converted: false },
     orderBy: { createdAt: 'desc' },
   });
 
   if (!event) return;
 
-  await (prisma as any).expansionEvent.update({
+  await prisma.expansionEvent.update({
     where: { id: event.id },
     data: { converted: true, convertedAt: new Date() },
   });

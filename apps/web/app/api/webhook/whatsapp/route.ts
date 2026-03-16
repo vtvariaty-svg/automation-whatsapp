@@ -113,6 +113,15 @@ export async function POST(req: Request) {
       // Decrypt token once — supports both encrypted (new) and plaintext (legacy) values
       if (tenant.whatsappToken) tenant.whatsappToken = decrypt(tenant.whatsappToken);
 
+      // Guard: ignore messages sent by the bot itself to prevent automation loops.
+      // Meta may deliver echo-like events where `from` equals the tenant's own phone number.
+      const botPhone = tenant.phone?.replace(/\D/g, '') ?? null;
+      const senderPhone = from?.replace(/\D/g, '') ?? null;
+      if (botPhone && senderPhone && senderPhone === botPhone) {
+        channelLog.info({ channel: 'whatsapp', tenantId: tenant.id }, `Echo/self-message ignorado: ${maskPhone(from)}`);
+        return new Response('OK', { status: 200 });
+      }
+
       if (textBody) {
           // Idempotência: ignorar mensagens já processadas (retry da Meta)
           if (messageId) {

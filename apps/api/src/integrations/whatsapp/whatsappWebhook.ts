@@ -34,8 +34,11 @@ export const handleIncomingMessage = async (req: Request, res: Response) => {
 
       if (text) {
         console.log(`Received message from ${from}: ${text}`);
-        // We don't await routeMessage to respond quickly to WhatsApp
-        routeMessage(from, text).catch(err => console.error('Error routing message:', err));
+        try {
+          await routeMessage(from, text);
+        } catch (err) {
+          console.error('Error routing message:', err);
+        }
       }
     }
     res.sendStatus(200);

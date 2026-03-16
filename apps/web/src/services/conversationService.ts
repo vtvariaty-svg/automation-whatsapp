@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 /**
  * Salva a mensagem enviada pelo usuário.
  */
-export async function saveUserMessage(phoneNumber: string, messageText: string, tenantId: string, status = 'ai') {
+export async function saveUserMessage(phoneNumber: string, messageText: string, tenantId: string, status = 'ai', channel = 'whatsapp') {
   try {
     let conversation = await prisma.conversation.findFirst({
       where: { customerPhone: phoneNumber, tenantId }
@@ -11,7 +11,7 @@ export async function saveUserMessage(phoneNumber: string, messageText: string, 
 
     if (!conversation) {
       conversation = await prisma.conversation.create({
-        data: { customerPhone: phoneNumber, tenantId, status }
+        data: { customerPhone: phoneNumber, tenantId, status, channel }
       });
     }
 
@@ -21,7 +21,8 @@ export async function saveUserMessage(phoneNumber: string, messageText: string, 
         role: 'user',
         direction: 'inbound',
         content: messageText,
-        aiGenerated: false
+        aiGenerated: false,
+        channel,
       }
     });
 
@@ -45,7 +46,7 @@ export async function saveUserMessage(phoneNumber: string, messageText: string, 
 /**
  * Salva a resposta gerada pela IA.
  */
-export async function saveAIMessage(phoneNumber: string, aiResponse: string, tenantId: string, status = 'ai', aiGenerated = true) {
+export async function saveAIMessage(phoneNumber: string, aiResponse: string, tenantId: string, status = 'ai', aiGenerated = true, channel = 'whatsapp') {
   try {
     let conversation = await prisma.conversation.findFirst({
       where: { customerPhone: phoneNumber, tenantId }
@@ -53,7 +54,7 @@ export async function saveAIMessage(phoneNumber: string, aiResponse: string, ten
 
     if (!conversation) {
       conversation = await prisma.conversation.create({
-        data: { customerPhone: phoneNumber, tenantId, status }
+        data: { customerPhone: phoneNumber, tenantId, status, channel }
       });
     }
 
@@ -65,7 +66,8 @@ export async function saveAIMessage(phoneNumber: string, aiResponse: string, ten
         role: roleString,
         direction: 'outbound',
         content: aiResponse,
-        aiGenerated: aiGenerated
+        aiGenerated: aiGenerated,
+        channel,
       }
     });
 

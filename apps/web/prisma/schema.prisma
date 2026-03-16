@@ -24,6 +24,16 @@ model Tenant {
   setupStep           Int             @default(1)
   setupCompleted      Boolean         @default(false)
   createdAt           DateTime        @default(now())
+  // M0 – omnichannel
+  enabledChannels     String?         // comma-separated: "whatsapp,instagram"
+  // M1 – Instagram
+  instagramPageId     String?
+  instagramToken      String?
+  instagramAccountId  String?
+  // M4 – Facebook
+  facebookPageId      String?
+  facebookToken       String?
+  facebookConnection  FacebookConnection?
   users               User[]
   conversations       Conversation[]
   products            Product[]
@@ -35,10 +45,17 @@ model Tenant {
   services            Service[]
   aiUsages            AiUsage[]
   whatsappConnection  WhatsAppConnection?
-  salesEvents       SalesEvent[]
-  salesOpportunities SalesOpportunity[]
+  instagramConnection InstagramConnection?
+  salesEvents         SalesEvent[]
+  salesOpportunities  SalesOpportunity[]
   customerMemories    CustomerMemory[]
   conversationInsights ConversationInsight[]
+  // M2
+  instagramCommentRules    InstagramCommentRule[]
+  instagramModerationItems InstagramModerationItem[]
+  // M3
+  conversionSequences ConversionSequence[]
+  conversionLeads     ConversionLead[]
 }
 
 model BusinessConfig {
@@ -87,6 +104,7 @@ model Conversation {
   lastMessageAt DateTime  @default(now())
   assignedUser  String?
   createdAt     DateTime  @default(now())
+  channel       String    @default("whatsapp") // M0
   tenant        Tenant    @relation(fields: [tenantId], references: [id])
   messages      Message[]
 }
@@ -99,6 +117,7 @@ model Message {
   content        String
   aiGenerated    Boolean      @default(true)
   createdAt      DateTime     @default(now())
+  channel        String       @default("whatsapp") // M0
   conversation   Conversation @relation(fields: [conversationId], references: [id])
 }
 
@@ -299,4 +318,146 @@ model SalesOpportunity {
 
   tenant      Tenant   @relation(fields: [tenantId], references: [id])
   product     Product? @relation(fields: [productId], references: [id])
+}
+
+// ─── M1 Instagram ─────────────────────────────────────────────────────────────
+
+model InstagramConnection {
+  id          String   @id @default(uuid())
+  tenantId    String   @unique
+  pageId      String?
+  accessToken String?
+  igAccountId String?
+  username    String?
+  status      String   @default("connected")
+  createdAt   DateTime @default(now())
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@map("instagram_connections")
+}
+
+// ─── M2 Instagram Comments ────────────────────────────────────────────────────
+
+model InstagramCommentRule {
+  id           String   @id @default(uuid())
+  tenantId     String
+  name         String
+  scope        String   @default("global") // global, post
+  postId       String?
+  triggerType  String   // keyword, contains, ai_intent
+  triggerValue String
+  matchType    String   @default("contains") // exact, contains
+  actions      Json     // { reply_text?, hide?, send_dm?, dm_text?, start_sequence? }
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, active])
+  @@map("instagram_comment_rules")
+}
+
+model InstagramModerationItem {
+  id              String   @id @default(uuid())
+  tenantId        String
+  commentId       String   @unique
+  postId          String
+  from            String
+  fromUsername    String?
+  text            String   @db.Text
+  status          String   @default("pending") // pending, replied, hidden, dismissed
+  ruleTriggeredId String?
+  createdAt       DateTime @default(now())
+
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, status])
+  @@map("instagram_moderation_queue")
+}
+
+// ─── M3 Conversion Sequences ──────────────────────────────────────────────────
+
+model ConversionSequence {
+  id           String   @id @default(uuid())
+  tenantId     String
+  name         String
+  trigger      String   // comment, dm_keyword, manual
+  triggerValue String?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  steps        ConversionSequenceStep[]
+  leads        ConversionLead[]
+
+  @@map("conversion_sequences")
+}
+
+model ConversionSequenceStep {
+  id             String   @id @default(uuid())
+  sequenceId     String
+  order          Int
+  delayMinutes   Int      @default(0)
+  messageText    String   @db.Text
+  condition      String?  // no_reply, has_replied, always
+  action         String   @default("send_dm") // send_dm, send_offer, handoff
+  actionData     Json?
+
+  sequence       ConversionSequence @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+
+  @@index([sequenceId, order])
+  @@map("conversion_sequence_steps")
+}
+
+model ConversionLead {
+  id          String    @id @default(uuid())
+  tenantId    String
+  sequenceId  String
+  contactId   String
+  channel     String    @default("whatsapp")
+  currentStep Int       @default(0)
+  status      String    @default("active") // active, converted, lost, paused
+  nextStepAt  DateTime?
+  lastStepAt  DateTime  @default(now())
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  tenant      Tenant             @relation(fields: [tenantId], references: [id])
+  sequence    ConversionSequence @relation(fields: [sequenceId], references: [id])
+  events      ConversionLeadEvent[]
+
+  @@unique([sequenceId, contactId])
+  @@index([tenantId, status, nextStepAt])
+  @@map("conversion_leads")
+}
+
+model ConversionLeadEvent {
+  id        String   @id @default(uuid())
+  leadId    String
+  stepOrder Int
+  action    String
+  result    String   // sent, skipped, error
+  createdAt DateTime @default(now())
+
+  lead      ConversionLead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId])
+  @@map("conversion_lead_events")
+}
+
+// ─── M4 Facebook Messenger ────────────────────────────────────────────────────
+
+model FacebookConnection {
+  id          String   @id @default(uuid())
+  tenantId    String   @unique
+  pageId      String?
+  pageName    String?
+  accessToken String?
+  status      String   @default("connected")
+  createdAt   DateTime @default(now())
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@map("facebook_connections")
 }

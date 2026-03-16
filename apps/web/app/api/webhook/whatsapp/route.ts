@@ -2,6 +2,9 @@ import { createHmac, timingSafeEqual } from 'crypto';
 import { decrypt } from '@/lib/utils/crypto';
 import { isRateLimited, getClientIp } from '@/lib/webhookRateLimit';
 import { prisma } from '@/lib/prisma';
+import { normalizeWhatsAppInbound } from '@/lib/channels/normalizer';
+import { isChannelEnabled } from '@/lib/channels/featureFlags';
+import { channelLog } from '@/lib/channels/logger';
 // @ts-ignore - Importing from JS file
 import { generateAIResponse } from "@/src/services/aiService";
 // @ts-ignore - Importing from JS file
@@ -90,30 +93,27 @@ export async function POST(req: Request) {
 
     console.log(`[Webhook] Recebido — entries: ${body.entry?.length ?? 0}`);
 
-    if (body.object && body.entry && body.entry[0].changes && body.entry[0].changes[0].value.metadata) {
-      const metadata = body.entry[0].changes[0].value.metadata;
-      const phoneId = metadata.phone_number_id;
+    const event = normalizeWhatsAppInbound(body);
+    if (event) {
+      const { accountId: phoneId, from, text: textBody, messageId } = event;
 
       // Buscar Tenant
       const tenant = await getTenantByPhoneId(phoneId);
 
       if (!tenant) {
-        console.error(`[Webhook] Tenant não encontrado para phoneId: ${phoneId}`);
-        return new Response('OK', { status: 200 }); // 200 para a Meta não reenviar
+        channelLog.warn({ channel: 'whatsapp' }, `Tenant não encontrado para phoneId: ${phoneId}`);
+        return new Response('OK', { status: 200 });
+      }
+
+      if (!isChannelEnabled(tenant, 'whatsapp')) {
+        channelLog.info({ channel: 'whatsapp', tenantId: tenant.id }, 'Canal WhatsApp desativado');
+        return new Response('OK', { status: 200 });
       }
 
       // Decrypt token once — supports both encrypted (new) and plaintext (legacy) values
       if (tenant.whatsappToken) tenant.whatsappToken = decrypt(tenant.whatsappToken);
 
-      const messages = body.entry[0].changes[0].value.messages;
-
-      if (messages && messages[0]) {
-        const message = messages[0];
-        const from = message.from;
-        const textBody = message.text?.body;
-        const messageId = message.id as string | undefined;
-
-        if (textBody) {
+      if (textBody) {
           // Idempotência: ignorar mensagens já processadas (retry da Meta)
           if (messageId) {
             try {
@@ -228,7 +228,6 @@ export async function POST(req: Request) {
           }
         }
       }
-    }
 
     return new Response('OK', { status: 200 });
   } catch (error) {

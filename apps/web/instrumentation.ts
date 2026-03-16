@@ -24,6 +24,15 @@ export async function register() {
       );
     }, INTERVAL_MS);
 
-    console.log('[FollowUp] Scheduler iniciado — intervalo: 15 minutos');
+    // M3 — Sequence runner (same interval)
+    const { processSequences } = await import('@/src/services/conversionSequenceService');
+    setTimeout(() => {
+      processSequences().catch(e => console.error('[Sequences] Erro na execução inicial:', e));
+    }, 90_000);
+    setInterval(() => {
+      processSequences().catch(e => console.error('[Sequences] Erro no ciclo recorrente:', e));
+    }, INTERVAL_MS);
+
+    console.log('[Scheduler] FollowUps + Sequences iniciados — intervalo: 15 minutos');
   }
 }

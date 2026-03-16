@@ -100,7 +100,7 @@ export async function GET(request: Request) {
       maxAge: 86400,
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: 'strict',
     });
 
     // Also set localStorage-compatible script via a redirect page

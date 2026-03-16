@@ -76,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setToken(response.token);
       setUser(response.user);
       authStorage.saveToken(response.token);
-      document.cookie = `auth_token=${response.token}; path=/; max-age=86400; Secure; SameSite=Lax`;
+      document.cookie = `auth_token=${response.token}; path=/; max-age=86400; Secure; SameSite=Strict`;
       await redirectAfterAuth(response.token);
     } catch (error) {
       console.error('Login failed', error);
@@ -93,7 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setToken(response.token);
       setUser(response.user);
       authStorage.saveToken(response.token);
-      document.cookie = `auth_token=${response.token}; path=/; max-age=86400; Secure; SameSite=Lax`;
+      document.cookie = `auth_token=${response.token}; path=/; max-age=86400; Secure; SameSite=Strict`;
       await redirectAfterAuth(response.token);
     } catch (error) {
       console.error('Register failed', error);

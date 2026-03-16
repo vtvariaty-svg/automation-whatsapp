@@ -22,7 +22,7 @@ function CallbackContent() {
     localStorage.setItem("token", token);
 
     // Set cookie too for API routes
-    document.cookie = `auth_token=${token}; path=/; max-age=86400; Secure; SameSite=Lax`;
+    document.cookie = `auth_token=${token}; path=/; max-age=86400; Secure; SameSite=Strict`;
 
     setStatus(`✅ Login com ${provider === "instagram" ? "Instagram" : "Facebook"} realizado! Redirecionando...`);
 

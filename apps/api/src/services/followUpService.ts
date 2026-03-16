@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { sendMessage } from '../integrations/whatsapp/whatsappClient';
+import { sendMessage } from '@whatsapp-automation/shared';
 
 const prisma = new PrismaClient();
 

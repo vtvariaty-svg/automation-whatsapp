@@ -1,6 +1,6 @@
 import { prisma } from '../prisma';
 import { generateResponse } from './aiService';
-import { sendMessage } from '../integrations/whatsapp/whatsappClient';
+import { sendMessage } from '@whatsapp-automation/shared';
 import { checkUsageLimit, incrementUsage } from './subscriptionService';
 
 export const routeMessage = async (from: string, text: string) => {

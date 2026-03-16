@@ -9,9 +9,10 @@
   "scripts": {
     "start": "node dist/server.js",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-    "build": "npx prisma generate && tsc"
+    "build": "npx prisma generate && npm run build --workspace=packages/shared && tsc"
   },
   "dependencies": {
+    "@whatsapp-automation/shared": "*",
     "@prisma/client": "^6.0.0",
     "axios": "^1.13.6",
     "stripe": "^20.4.1",

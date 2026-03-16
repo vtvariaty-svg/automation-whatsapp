@@ -1,8 +1,7 @@
-import { createOpenAIClient } from '../integrations/openai/openaiClient';
+import { createOpenAIClient, withRetry } from '@whatsapp-automation/shared';
 import { getTenantConfig, listProducts, searchProducts } from './tenantService';
 import { createCheckoutSession } from './salesService';
 import { PrismaClient } from '@prisma/client';
-import { withRetry } from '../utils/retry';
 
 const prisma = new PrismaClient();
 

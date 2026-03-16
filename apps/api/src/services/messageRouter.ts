@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { generateResponse, generateSalesResponse } from './aiService';
 import { detectIntent } from './intentService';
-import { sendMessage } from '../integrations/whatsapp/whatsappClient';
+import { sendMessage } from '@whatsapp-automation/shared';
 
 const prisma = new PrismaClient();
 

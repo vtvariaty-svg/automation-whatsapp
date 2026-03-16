@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@whatsapp-automation/shared": "*",
     "@hello-pangea/dnd": "^18.0.1",
     "@heroicons/react": "^2.2.0",
     "@prisma/client": "6.2.1",

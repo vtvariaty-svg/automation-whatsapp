@@ -1,6 +1,5 @@
-import { createOpenAIClient } from '../integrations/openai/openaiClient';
+import { createOpenAIClient, withRetry } from '@whatsapp-automation/shared';
 import { getTenantConfig, listProducts } from './tenantService';
-import { withRetry } from '../utils/retry';
 
 const openai = createOpenAIClient();
 

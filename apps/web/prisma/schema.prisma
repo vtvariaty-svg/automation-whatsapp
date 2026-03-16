@@ -510,6 +510,71 @@ model AuditLog {
   @@map("audit_logs")
 }
 
+// ─── G5 Backup + Compliance Ops ───────────────────────────────────────────────
+
+model OpsCheck {
+  id          String   @id @default(uuid())
+  name        String   // e.g. "neon_backup", "audit_log_ok", "dead_letter_clear"
+  category    String   // backup | recovery | audit | compliance | incident
+  status      String   @default("unknown") // ok | warning | critical | unknown
+  detail      String?
+  checkedAt   DateTime @default(now())
+  checkedBy   String?  // userId or "system"
+
+  @@index([category, status])
+  @@map("ops_checks")
+}
+
+model IncidentLog {
+  id          String   @id @default(uuid())
+  title       String
+  severity    String   @default("medium") // low | medium | high | critical
+  status      String   @default("open")  // open | investigating | resolved
+  description String   @db.Text
+  resolvedAt  DateTime?
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status, severity])
+  @@map("incident_logs")
+}
+
+// ─── G4 Referral Engine ───────────────────────────────────────────────────────
+
+model ReferralCode {
+  id              String   @id @default(uuid())
+  tenantId        String
+  userId          String?  // optional — if user-level code
+  code            String   @unique
+  rewardType      String   @default("discount") // discount | credit | commission
+  rewardValue     Float    @default(0)    // % for discount/commission, R$ for credit
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+
+  conversions     ReferralConversion[]
+
+  @@index([tenantId])
+  @@map("referral_codes")
+}
+
+model ReferralConversion {
+  id              String    @id @default(uuid())
+  referralCodeId  String
+  referredTenantId String   // the new tenant that signed up
+  status          String    @default("registered") // registered | trialing | paid
+  paidAt          DateTime?
+  rewardApplied   Boolean   @default(false)
+  rewardAppliedAt DateTime?
+  createdAt       DateTime  @default(now())
+
+  code            ReferralCode @relation(fields: [referralCodeId], references: [id])
+
+  @@index([referralCodeId])
+  @@index([referredTenantId])
+  @@map("referral_conversions")
+}
+
 // ─── G6 Expansion Ops ─────────────────────────────────────────────────────────
 
 model ExpansionEvent {

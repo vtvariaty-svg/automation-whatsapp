@@ -23,6 +23,7 @@ const navItems = [
   { href: "/dashboard/settings", label: "Configurações", icon: "⚙️", section: null },
   { href: "/dashboard/activation", label: "Ativação", icon: "🚀", section: null },
   { href: "/dashboard/agency", label: "Agência", icon: "🏢", section: null },
+  { href: "/dashboard/referral", label: "Indicações", icon: "🎁", section: null },
   { href: "/dashboard/go-live", label: "Go-Live", icon: "✅", section: null },
 ];
 
@@ -121,6 +122,8 @@ export default function Sidebar() {
               <Link href="/dashboard/admin/attribution" className="inline-flex items-center gap-1 text-[11px] text-rose-400 hover:text-rose-300 font-medium transition-colors">📡 Atribuição →</Link>
               <Link href="/dashboard/admin/churn" className="inline-flex items-center gap-1 text-[11px] text-rose-400 hover:text-rose-300 font-medium transition-colors">🚨 Churn →</Link>
               <Link href="/dashboard/admin/expansion" className="inline-flex items-center gap-1 text-[11px] text-rose-400 hover:text-rose-300 font-medium transition-colors">💰 Expansão →</Link>
+              <Link href="/dashboard/admin/referral" className="inline-flex items-center gap-1 text-[11px] text-rose-400 hover:text-rose-300 font-medium transition-colors">🎁 Referral →</Link>
+              <Link href="/dashboard/admin/ops" className="inline-flex items-center gap-1 text-[11px] text-rose-400 hover:text-rose-300 font-medium transition-colors">🛡️ Ops →</Link>
             </div>
           </div>
         ) : (

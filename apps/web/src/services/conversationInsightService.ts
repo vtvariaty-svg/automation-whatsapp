@@ -35,7 +35,7 @@ export async function getOrGenerateInsight(
       where: { tenantId_period: { tenantId, period } }
     });
     if (cached && isCacheValid(cached.generatedAt)) {
-      return cached.report as InsightReport;
+      return cached.report as unknown as InsightReport;
     }
   }
 

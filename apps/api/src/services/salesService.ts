@@ -1,9 +1,14 @@
+import Stripe from 'stripe';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+if (!process.env.STRIPE_SECRET_KEY) throw new Error('STRIPE_SECRET_KEY environment variable is required');
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: '2024-11-20.acacia' as any,
+});
+
 export const createCheckoutSession = async (tenantId: string, contactId: string, productId: string) => {
-  // Verify that the product exists and belongs to the tenant
   const product = await prisma.product.findFirst({
     where: { id: productId, tenantId }
   });
@@ -12,11 +17,35 @@ export const createCheckoutSession = async (tenantId: string, contactId: string,
     throw new Error('Produto não encontrado ou não pertence a este tenant.');
   }
 
-  // Generate a mock checkout URL for the product
-  // In a real scenario, this would integrate with Stripe, Mercado Pago, Nuvemshop, etc.
-  const checkoutUrl = `https://checkout.variaty.com/${tenantId}/p/${productId}?contact=${encodeURIComponent(contactId)}`;
+  const baseUrl = process.env.BASE_URL || 'https://automation-whatsapp.onrender.com';
 
-  // Save the sales event in the database
+  const session = await stripe.checkout.sessions.create({
+    mode: 'payment',
+    payment_method_types: ['card'],
+    line_items: [
+      {
+        price_data: {
+          currency: (product.currency || 'BRL').toLowerCase(),
+          product_data: {
+            name: product.name,
+            ...(product.description && { description: product.description }),
+          },
+          unit_amount: Math.round(product.price * 100), // Stripe expects cents
+        },
+        quantity: 1,
+      },
+    ],
+    success_url: `${baseUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${baseUrl}/checkout/cancel`,
+    metadata: {
+      tenantId,
+      contactId,
+      productId,
+    },
+  });
+
+  const checkoutUrl = session.url!;
+
   const salesEvent = await prisma.salesEvent.create({
     data: {
       tenantId,
@@ -27,7 +56,6 @@ export const createCheckoutSession = async (tenantId: string, contactId: string,
     }
   });
 
-  // CRM Tracking: Update opportunity to checkout_enviado
   const openOpp = await prisma.salesOpportunity.findFirst({
     where: { tenantId, contactId, status: { in: ['novo_lead', 'interessado'] } },
     orderBy: { createdAt: 'desc' }
@@ -36,7 +64,7 @@ export const createCheckoutSession = async (tenantId: string, contactId: string,
   if (openOpp) {
     await prisma.salesOpportunity.update({
       where: { id: openOpp.id },
-      data: { 
+      data: {
         status: 'checkout_enviado',
         productId: product.id,
         value: product.price

@@ -23,14 +23,46 @@ export async function POST(req: Request) {
       case 'checkout.session.completed': {
         const session = event.data.object as any;
         const tenantId = session.metadata?.tenantId;
+        const productId = session.metadata?.productId;
+        const contactId = session.metadata?.contactId;
         const plan = session.metadata?.plan;
 
-        if (tenantId) {
+        if (!tenantId) break;
+
+        const { prisma } = await import('@/lib/prisma');
+
+        if (productId && contactId) {
+          // Product sale checkout — mark SalesEvent as paid and advance opportunity
+          const salesEvent = await prisma.salesEvent.findFirst({
+            where: { tenantId, contactId, productId, status: 'created' },
+            orderBy: { createdAt: 'desc' }
+          });
+
+          if (salesEvent) {
+            await prisma.salesEvent.update({
+              where: { id: salesEvent.id },
+              data: { status: 'paid' }
+            });
+          }
+
+          const opportunity = await prisma.salesOpportunity.findFirst({
+            where: { tenantId, contactId, status: 'checkout_enviado' },
+            orderBy: { createdAt: 'desc' }
+          });
+
+          if (opportunity) {
+            await prisma.salesOpportunity.update({
+              where: { id: opportunity.id },
+              data: { status: 'pago' }
+            });
+          }
+
+          console.log(`[Webhook] Product sale confirmed: tenantId=${tenantId} contactId=${contactId} productId=${productId}`);
+        } else {
+          // Subscription checkout
           const trialEnd = new Date();
           trialEnd.setDate(trialEnd.getDate() + 7);
 
-          // Find the planId in the DB
-          const { prisma } = await import('@/lib/prisma');
           const dbPlan = await prisma.plan.findFirst({ where: { name: { contains: plan || 'Starter', mode: 'insensitive' } } });
 
           await updateSubscriptionFromStripe(tenantId, {

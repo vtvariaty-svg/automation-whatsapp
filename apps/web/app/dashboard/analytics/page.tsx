@@ -2,14 +2,18 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { 
+import {
     InboxArrowDownIcon,
     PaperAirplaneIcon,
     CpuChipIcon,
     UserIcon,
     ChatBubbleLeftRightIcon,
     CalendarDaysIcon,
-    ArrowPathIcon
+    ArrowPathIcon,
+    ShoppingCartIcon,
+    CurrencyDollarIcon,
+    ChartBarIcon,
+    FunnelIcon
 } from "@heroicons/react/24/outline";
 
 type AnalyticsData = {
@@ -21,22 +25,31 @@ type AnalyticsData = {
     appointments_created: number;
 };
 
+type SalesAnalyticsData = {
+    sales_conversations: number;
+    checkouts_generated: number;
+    sales_completed: number;
+    conversion_rate: number;
+};
+
 export default function AnalyticsPage() {
     const { user } = useAuth();
     const tenantId = user?.tenantId;
     const [period, setPeriod] = useState("today"); // today, 7days, 30days
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState<AnalyticsData | null>(null);
+    const [salesData, setSalesData] = useState<SalesAnalyticsData | null>(null);
 
     const loadAnalytics = async () => {
         if (!tenantId) return;
         setLoading(true);
         try {
-            const res = await fetch(`/api/analytics?tenantId=${tenantId}&period=${period}`);
-            if (res.ok) {
-                const json = await res.json();
-                setData(json);
-            }
+            const [res, salesRes] = await Promise.all([
+                fetch(`/api/analytics?tenantId=${tenantId}&period=${period}`),
+                fetch(`/api/analytics/sales?tenantId=${tenantId}&period=${period}`)
+            ]);
+            if (res.ok) setData(await res.json());
+            if (salesRes.ok) setSalesData(await salesRes.json());
         } catch (e) {
             console.error("Erro ao carregar analytics", e);
         } finally {
@@ -164,11 +177,94 @@ export default function AnalyticsPage() {
                 <div>
                     <h4 className="font-semibold text-gray-900 text-sm">Resumo do Período</h4>
                     <p className="text-sm text-gray-600 mt-1">
-                        Neste intervalo, a sua Inteligência Artificial lidou com 
-                        <strong className="text-indigo-600 mx-1">{(data?.ai_responses ?? 0)}</strong> 
-                        das <strong className="text-gray-900 mx-1">{(data?.messages_outbound ?? 0)}</strong> 
+                        Neste intervalo, a sua Inteligência Artificial lidou com
+                        <strong className="text-indigo-600 mx-1">{(data?.ai_responses ?? 0)}</strong>
+                        das <strong className="text-gray-900 mx-1">{(data?.messages_outbound ?? 0)}</strong>
                         mensagens disparadas, representando uma economia de tempo e eficiência imensurável para sua equipe.
                     </p>
+                </div>
+            </div>
+
+            {/* Sales Analytics Section */}
+            <div className="mt-10">
+                <div className="mb-6">
+                    <h2 className="text-xl font-bold tracking-tight text-gray-900">Métricas de Vendas</h2>
+                    <p className="text-sm text-gray-500 mt-1">
+                        Funil de vendas gerado pela automação no período selecionado.
+                    </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className={`bg-white rounded-2xl p-6 border border-gray-100 shadow-sm relative overflow-hidden transition-all hover:shadow-md ${loading ? 'opacity-50' : ''}`}>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-sm font-medium text-gray-500">Conversas de Venda</h3>
+                            <div className="p-2 rounded-xl bg-sky-50">
+                                <ChatBubbleLeftRightIcon className="w-5 h-5 text-sky-600" />
+                            </div>
+                        </div>
+                        <span className="text-4xl font-bold tracking-tight text-gray-900">
+                            {loading ? "..." : (salesData?.sales_conversations ?? 0)}
+                        </span>
+                        <p className="text-xs text-gray-400 mt-2">Leads que entraram no funil</p>
+                    </div>
+
+                    <div className={`bg-white rounded-2xl p-6 border border-gray-100 shadow-sm relative overflow-hidden transition-all hover:shadow-md ${loading ? 'opacity-50' : ''}`}>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-sm font-medium text-gray-500">Checkouts Gerados</h3>
+                            <div className="p-2 rounded-xl bg-violet-50">
+                                <ShoppingCartIcon className="w-5 h-5 text-violet-600" />
+                            </div>
+                        </div>
+                        <span className="text-4xl font-bold tracking-tight text-gray-900">
+                            {loading ? "..." : (salesData?.checkouts_generated ?? 0)}
+                        </span>
+                        <p className="text-xs text-gray-400 mt-2">Links de pagamento enviados</p>
+                    </div>
+
+                    <div className={`bg-white rounded-2xl p-6 border border-gray-100 shadow-sm relative overflow-hidden transition-all hover:shadow-md ${loading ? 'opacity-50' : ''}`}>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-sm font-medium text-gray-500">Vendas Concluídas</h3>
+                            <div className="p-2 rounded-xl bg-emerald-50">
+                                <CurrencyDollarIcon className="w-5 h-5 text-emerald-600" />
+                            </div>
+                        </div>
+                        <span className="text-4xl font-bold tracking-tight text-gray-900">
+                            {loading ? "..." : (salesData?.sales_completed ?? 0)}
+                        </span>
+                        <p className="text-xs text-gray-400 mt-2">Pagamentos confirmados</p>
+                    </div>
+
+                    <div className={`bg-white rounded-2xl p-6 border border-gray-100 shadow-sm relative overflow-hidden transition-all hover:shadow-md ${loading ? 'opacity-50' : ''}`}>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-sm font-medium text-gray-500">Taxa de Conversão</h3>
+                            <div className="p-2 rounded-xl bg-orange-50">
+                                <FunnelIcon className="w-5 h-5 text-orange-600" />
+                            </div>
+                        </div>
+                        <span className="text-4xl font-bold tracking-tight text-gray-900">
+                            {loading ? "..." : `${salesData?.conversion_rate ?? 0}%`}
+                        </span>
+                        <p className="text-xs text-gray-400 mt-2">Vendas / checkouts gerados</p>
+                    </div>
+                </div>
+
+                <div className="mt-6 bg-emerald-50/50 rounded-2xl p-6 border border-emerald-100/50 flex gap-4 items-start">
+                    <div className="bg-white p-2 rounded-xl text-emerald-600 shadow-sm">
+                        <ChartBarIcon className="w-6 h-6" />
+                    </div>
+                    <div>
+                        <h4 className="font-semibold text-gray-900 text-sm">Resumo de Vendas</h4>
+                        <p className="text-sm text-gray-600 mt-1">
+                            Neste período,{" "}
+                            <strong className="text-sky-600">{salesData?.sales_conversations ?? 0}</strong> leads
+                            {" "}entraram no funil.{" "}
+                            <strong className="text-violet-600">{salesData?.checkouts_generated ?? 0}</strong> checkouts
+                            {" "}foram gerados e{" "}
+                            <strong className="text-emerald-600">{salesData?.sales_completed ?? 0}</strong> vendas
+                            {" "}foram confirmadas, resultando em uma taxa de conversão de{" "}
+                            <strong className="text-orange-600">{salesData?.conversion_rate ?? 0}%</strong>.
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>

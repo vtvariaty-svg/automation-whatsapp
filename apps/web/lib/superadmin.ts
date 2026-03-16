@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 
 export const SUPERADMIN_ROLE = 'superadmin';
 
@@ -22,7 +23,7 @@ export async function logSuperAdminAction(
         adminUserId,
         action,
         targetTenantId: targetTenantId ?? null,
-        metadata: metadata ?? undefined,
+        metadata: metadata as Prisma.InputJsonValue | undefined,
       },
     });
   } catch (e) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/Button";
 
 interface OrderFormDialogProps {
@@ -34,6 +34,7 @@ export function OrderFormDialog({
   origin: prefillOrigin,
 }: OrderFormDialogProps) {
   const [loading, setLoading] = useState(false);
+  const submittingRef = useRef(false);
   const [form, setForm] = useState({
     customerName: prefillName ?? "",
     customerPhone: prefillPhone ?? "",
@@ -57,6 +58,8 @@ export function OrderFormDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setLoading(true);
     setError("");
 
@@ -96,6 +99,7 @@ export function OrderFormDialog({
       setError(err.message);
     } finally {
       setLoading(false);
+      submittingRef.current = false;
     }
   };
 

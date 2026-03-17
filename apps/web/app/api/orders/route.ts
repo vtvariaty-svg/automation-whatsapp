@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getAuthTenant } from '@/lib/getAuthTenant';
 import { createOrder, listOrders } from '@/src/services/orderService';
+import { getSubscription } from '@/lib/services/subscriptionService';
+import { planAtLeast } from '@/lib/config/plans';
 
 export async function GET(request: Request) {
   const auth = await getAuthTenant(request);
@@ -28,6 +30,16 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const auth = await getAuthTenant(request);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  // Plan gate: orders require Standard+
+  const sub = await getSubscription(auth.tenantId);
+  const tenantPlan = sub?.plan || 'free';
+  if (!planAtLeast(tenantPlan, 'standard')) {
+    return NextResponse.json(
+      { error: 'Pedidos disponíveis a partir do plano Standard. Faça upgrade para continuar.' },
+      { status: 403 }
+    );
+  }
 
   try {
     const body = await request.json();

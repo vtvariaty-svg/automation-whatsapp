@@ -83,6 +83,15 @@ export async function executeOrderAutomations(
   let sent = 0;
 
   try {
+    // Idempotency guard: check if automations already fired for this order + status
+    const alreadyFired = await prisma.automationLog.findFirst({
+      where: { orderId, triggerValue: newStatus, success: true },
+    });
+    if (alreadyFired) {
+      console.log(`[OrderAutomation] Skipping duplicate: order=${orderId.slice(0, 8)} status=${newStatus} already fired at ${alreadyFired.sentAt.toISOString()}`);
+      return { triggered: 0, sent: 0 };
+    }
+
     // Find matching rules for this order status
     const rules = await prisma.automationRule.findMany({
       where: {
@@ -118,6 +127,9 @@ export async function executeOrderAutomations(
     const token = decrypt(rawToken);
 
     for (const rule of rules) {
+      let success = false;
+      let errorMessage: string | undefined;
+
       try {
         if (rule.responseType === 'template') {
           // Enviar template via Meta Graph API
@@ -132,11 +144,27 @@ export async function executeOrderAutomations(
             .replace(/\{orderId\}/g, orderId.slice(0, 8));
           await sendWhatsAppMessage(contactPhone, message, phoneId, token);
         }
+        success = true;
         sent++;
         console.log(`[OrderAutomation] Enviado "${rule.name}" (${rule.responseType}) para ${contactPhone}`);
-      } catch (err) {
+      } catch (err: any) {
+        errorMessage = err?.message || 'Erro desconhecido';
         console.error(`[OrderAutomation] Falha ao enviar regra "${rule.name}" para ${contactPhone}:`, err);
       }
+
+      // Persist automation log
+      await prisma.automationLog.create({
+        data: {
+          tenantId,
+          ruleId: rule.id,
+          orderId,
+          triggerType: 'order_status',
+          triggerValue: newStatus,
+          contactPhone,
+          success,
+          errorMessage,
+        },
+      }).catch((logErr) => console.error('[OrderAutomation] Failed to persist log:', logErr));
     }
   } catch (err) {
     console.error(`[OrderAutomation] Error processing automations for order ${orderId}:`, err);

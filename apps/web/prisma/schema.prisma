@@ -83,6 +83,8 @@ model Tenant {
   availabilityBlocks  AvailabilityBlock[]
   // AG5 Professionals
   professionals       Professional[]
+  // TD1 Template Delivery
+  templateBroadcasts  TemplateBroadcast[]
 }
 
 model BusinessConfig {
@@ -326,7 +328,7 @@ model AutomationRule {
   id            String   @id @default(uuid())
   tenantId      String
   name          String
-  triggerType   String   // keyword, contains
+  triggerType   String   // keyword, contains, order_status
   triggerValue  String
   matchType     String   // exact, contains
   responseType  String   // text, template
@@ -337,6 +339,25 @@ model AutomationRule {
   tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, active])
+  logs          AutomationLog[]
+}
+
+model AutomationLog {
+  id            String   @id @default(uuid())
+  tenantId      String
+  ruleId        String
+  orderId       String?
+  triggerType   String
+  triggerValue  String
+  contactPhone  String
+  success       Boolean  @default(false)
+  errorMessage  String?
+  sentAt        DateTime @default(now())
+
+  rule          AutomationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, sentAt])
+  @@index([orderId, triggerValue])
 }
 
 model Service {
@@ -961,4 +982,50 @@ model SandboxRun {
 
   @@index([tenantId, createdAt])
   @@map("sandbox_runs")
+}
+
+// ─── TD1 Template Delivery (Broadcasts) ───────────────────────────────────────
+
+model TemplateBroadcast {
+  id              String    @id @default(uuid())
+  tenantId        String
+  templateName    String
+  templateLang    String    @default("pt_BR")
+  variables       Json?
+  status          String    @default("draft") // draft|scheduled|processing|completed|partially_failed|failed|cancelled
+  scheduledAt     DateTime?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  totalRecipients Int       @default(0)
+  sentCount       Int       @default(0)
+  failedCount     Int       @default(0)
+  createdBy       String?
+  source          String?   // manual|automation|follow_up
+  idempotencyKey  String?   @unique
+  createdAt       DateTime  @default(now())
+
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  recipients      TemplateBroadcastRecipient[]
+
+  @@index([tenantId, status])
+  @@index([status, scheduledAt])
+  @@map("template_broadcasts")
+}
+
+model TemplateBroadcastRecipient {
+  id            String    @id @default(uuid())
+  broadcastId   String
+  phone         String
+  customerName  String?
+  variables     Json?
+  status        String    @default("pending") // pending|sent|failed|skipped
+  errorMessage  String?
+  sentAt        DateTime?
+  createdAt     DateTime  @default(now())
+
+  broadcast     TemplateBroadcast @relation(fields: [broadcastId], references: [id], onDelete: Cascade)
+
+  @@unique([broadcastId, phone])
+  @@index([broadcastId, status])
+  @@map("template_broadcast_recipients")
 }

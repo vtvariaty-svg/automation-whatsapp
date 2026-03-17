@@ -1,4 +1,8 @@
 import { createHmac, timingSafeEqual } from 'crypto';
+
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
+
 import { prisma } from '@/lib/prisma';
 import { decrypt } from '@/lib/utils/crypto';
 import { isRateLimited, getClientIp } from '@/lib/webhookRateLimit';
@@ -18,7 +22,8 @@ import { verifyAiLimits } from '@/src/services/billingService';
 function mask(id: string) { return id?.length > 4 ? `****${id.slice(-4)}` : '****'; }
 
 async function verifyHmac(raw: string, header: string | null): Promise<boolean> {
-  const secret = process.env.WHATSAPP_APP_SECRET;
+  const secret = process.env.INSTAGRAM_APP_SECRET || process.env.WHATSAPP_APP_SECRET;
+
   if (!secret) return true;
   if (!header?.startsWith('sha256=')) return false;
   const received = header.slice(7);

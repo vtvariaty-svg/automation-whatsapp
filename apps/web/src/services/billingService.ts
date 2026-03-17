@@ -11,7 +11,13 @@ export async function verifyAiLimits(tenantId: string): Promise<boolean> {
     include: { planRel: true }
   });
 
-  if (!sub) return true; // Sem subscription = trial livre
+  if (!sub) return true; // Mantemos true para simplificar, mas o uso será registrado.
+  // Se quiser limitar trial sem subscription no DB:
+  // if (!sub) {
+  //   const usage = await prisma.aiUsage.aggregate({ where: { tenantId, createdAt: { gte: new Date(Date.now() - 7*86400000) } }, _sum: { totalTokens: true } });
+  //   return (usage._sum.totalTokens || 0) < 1000;
+  // }
+
 
   // Determinar o limite: prioridade para o Plan do DB, fallback para config
   let limit: number;

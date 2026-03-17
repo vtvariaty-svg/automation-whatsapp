@@ -1,4 +1,7 @@
 import { NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
+
 import { verifyToken } from '@/lib/services/authService';
 import { getSubscription } from '@/lib/services/subscriptionService';
 import { createCustomer, createCheckoutSession } from '@/lib/services/stripeService';

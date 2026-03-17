@@ -12,7 +12,7 @@ function authHeaders(): Record<string, string> {
 
 interface Log {
   id: string; tenantId: string; question: string; answer: string;
-  route: string | null; plan: string | null; confidence: string | null;
+  route: string | null; plan: string | null; role: string | null; confidence: string | null;
   fallbackNeeded: boolean; source: string | null; helpful: boolean | null;
   createdAt: string;
 }

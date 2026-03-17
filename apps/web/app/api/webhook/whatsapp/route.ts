@@ -1,4 +1,8 @@
 import { createHmac, timingSafeEqual } from 'crypto';
+
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
+
 import { decrypt } from '@/lib/utils/crypto';
 import { isRateLimited, getClientIp } from '@/lib/webhookRateLimit';
 import { prisma } from '@/lib/prisma';

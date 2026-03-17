@@ -56,7 +56,7 @@ export async function processFollowUps(): Promise<void> {
   if (claim1.count > 0) {
     // Fetch the records we just claimed (followUp1Sent is now true, followUp2Sent still false)
     const opp1 = await prisma.salesOpportunity.findMany({
-      where: { status: 'checkout_enviado', followUp1Sent: true, followUp2Sent: false, updatedAt: { lte: hourAgo } },
+      where: { status: 'checkout_enviado', followUp1Sent: true, followUp2Sent: false },
     });
     for (const opp of opp1) {
       try {
@@ -78,7 +78,7 @@ export async function processFollowUps(): Promise<void> {
   });
   if (claim2.count > 0) {
     const opp2 = await prisma.salesOpportunity.findMany({
-      where: { status: 'checkout_enviado', followUp1Sent: true, followUp2Sent: true, followUp3Sent: false, updatedAt: { lte: dayAgo } },
+      where: { status: 'checkout_enviado', followUp1Sent: true, followUp2Sent: true, followUp3Sent: false },
     });
     for (const opp of opp2) {
       try {
@@ -99,7 +99,7 @@ export async function processFollowUps(): Promise<void> {
   });
   if (claim3.count > 0) {
     const opp3 = await prisma.salesOpportunity.findMany({
-      where: { status: 'checkout_enviado', followUp1Sent: true, followUp2Sent: true, followUp3Sent: true, updatedAt: { lte: twoDaysAgo } },
+      where: { status: 'checkout_enviado', followUp1Sent: true, followUp2Sent: true, followUp3Sent: true },
     });
     for (const opp of opp3) {
       try {

@@ -1,0 +1,375 @@
+// ─── Fiscal Module — Mock Data ──────────────────────────────────────────────
+// Realistic Brazilian business data. Replace with API calls via service.ts.
+
+import type {
+  FiscalCompanyConfig,
+  FiscalCustomer,
+  FiscalCatalogItem,
+  FiscalDocument,
+  FiscalRequest,
+  FiscalDashboardStats,
+} from './types';
+
+// ─── Company Config ─────────────────────────────────────────────────────────
+
+export const MOCK_COMPANY_CONFIG: FiscalCompanyConfig = {
+  id: 'cfg-001',
+  razaoSocial: 'Sua Empresa LTDA',
+  cnpj: '12.345.678/0001-99',
+  inscricaoEstadual: '123.456.789.000',
+  regime: 'simples',
+  serieNota: '001',
+  proximoNumero: 142,
+  naturezaOperacao: 'Venda de mercadoria',
+  observacoesPadrao: 'Obrigado pela preferência! Em caso de dúvidas, entre em contato.',
+  envioAutomatico: true,
+  canalWhatsapp: '+55 11 99999-0001',
+  integrationStatus: 'em_validacao',
+};
+
+// ─── Dashboard Stats ─────────────────────────────────────────────────────────
+
+export const MOCK_DASHBOARD_STATS: FiscalDashboardStats = {
+  solicitacoesHoje: 7,
+  documentosEmitidos: 134,
+  pendenteValidacao: 3,
+  erros: 1,
+  integrationStatus: 'em_validacao',
+};
+
+// ─── Customers ───────────────────────────────────────────────────────────────
+
+export const MOCK_CUSTOMERS: FiscalCustomer[] = [
+  {
+    id: 'cust-001',
+    nome: 'Marina Oliveira',
+    documento: '432.567.890-12',
+    tipo: 'pf',
+    email: 'marina.oliveira@email.com',
+    telefone: '+55 11 98765-4321',
+    endereco: {
+      logradouro: 'Rua das Flores',
+      numero: '123',
+      bairro: 'Jardim Paulista',
+      cidade: 'São Paulo',
+      uf: 'SP',
+      cep: '01422-000',
+    },
+    totalDocumentos: 8,
+    createdAt: '2025-10-12T10:00:00Z',
+  },
+  {
+    id: 'cust-002',
+    nome: 'Tech Solutions Comércio LTDA',
+    documento: '34.567.890/0001-23',
+    tipo: 'pj',
+    email: 'fiscal@techsolutions.com.br',
+    telefone: '+55 11 3333-4444',
+    endereco: {
+      logradouro: 'Av. Paulista',
+      numero: '1000',
+      complemento: 'Sala 201',
+      bairro: 'Bela Vista',
+      cidade: 'São Paulo',
+      uf: 'SP',
+      cep: '01310-100',
+    },
+    totalDocumentos: 22,
+    createdAt: '2025-09-05T08:30:00Z',
+  },
+  {
+    id: 'cust-003',
+    nome: 'Carlos Eduardo Mendes',
+    documento: '123.456.789-00',
+    tipo: 'pf',
+    email: 'carlos.mendes@gmail.com',
+    telefone: '+55 21 97654-3210',
+    endereco: {
+      logradouro: 'Rua Copacabana',
+      numero: '45',
+      bairro: 'Copacabana',
+      cidade: 'Rio de Janeiro',
+      uf: 'RJ',
+      cep: '22070-010',
+    },
+    totalDocumentos: 3,
+    createdAt: '2025-11-20T14:15:00Z',
+  },
+  {
+    id: 'cust-004',
+    nome: 'Mercado Bom Preço EIRELI',
+    documento: '56.789.012/0001-34',
+    tipo: 'pj',
+    email: 'contato@mercadobompreco.com.br',
+    telefone: '+55 31 2222-3333',
+    endereco: {
+      logradouro: 'Rua da Bahia',
+      numero: '500',
+      bairro: 'Centro',
+      cidade: 'Belo Horizonte',
+      uf: 'MG',
+      cep: '30160-011',
+    },
+    totalDocumentos: 15,
+    createdAt: '2025-08-01T09:00:00Z',
+  },
+  {
+    id: 'cust-005',
+    nome: 'Ana Paula Fernandes',
+    documento: '987.654.321-00',
+    tipo: 'pf',
+    email: 'anapf@outlook.com',
+    telefone: '+55 41 96543-2109',
+    totalDocumentos: 1,
+    createdAt: '2026-01-10T11:00:00Z',
+  },
+];
+
+// ─── Catalog ─────────────────────────────────────────────────────────────────
+
+export const MOCK_CATALOG: FiscalCatalogItem[] = [
+  {
+    id: 'cat-001',
+    nome: 'Consultoria Técnica — hora',
+    tipo: 'servico',
+    sku: 'SRV-001',
+    preco: 250.00,
+    unidade: 'HR',
+    cnae: '6209-1/00',
+    ativo: true,
+  },
+  {
+    id: 'cat-002',
+    nome: 'Notebook Dell Inspiron 15',
+    tipo: 'produto',
+    sku: 'PROD-NB-001',
+    preco: 3499.90,
+    unidade: 'UN',
+    ncm: '8471.30.12',
+    ativo: true,
+  },
+  {
+    id: 'cat-003',
+    nome: 'Manutenção Preventiva',
+    tipo: 'servico',
+    sku: 'SRV-002',
+    preco: 180.00,
+    unidade: 'UN',
+    cnae: '9511-8/00',
+    ativo: true,
+  },
+  {
+    id: 'cat-004',
+    nome: 'Cabo HDMI 2m',
+    tipo: 'produto',
+    sku: 'PROD-CB-001',
+    preco: 49.90,
+    unidade: 'UN',
+    ncm: '8544.42.00',
+    ativo: true,
+  },
+  {
+    id: 'cat-005',
+    nome: 'Licença Software — anual',
+    tipo: 'servico',
+    sku: 'SRV-003',
+    preco: 1200.00,
+    unidade: 'UN',
+    cnae: '6201-5/01',
+    ativo: true,
+  },
+  {
+    id: 'cat-006',
+    nome: 'Mouse Sem Fio Logitech',
+    tipo: 'produto',
+    sku: 'PROD-MS-001',
+    preco: 189.90,
+    unidade: 'UN',
+    ncm: '8471.60.52',
+    ativo: false,
+  },
+];
+
+// ─── Documents ───────────────────────────────────────────────────────────────
+
+export const MOCK_DOCUMENTS: FiscalDocument[] = [
+  {
+    id: 'doc-001',
+    numero: '000141',
+    tipo: 'nfse',
+    status: 'emitido_mock',
+    origem: 'painel',
+    customerId: 'cust-002',
+    customerNome: 'Tech Solutions Comércio LTDA',
+    customerDocumento: '34.567.890/0001-23',
+    itens: [
+      { id: 'i1', catalogItemId: 'cat-001', nome: 'Consultoria Técnica — hora', quantidade: 8, precoUnitario: 250.00, total: 2000.00 },
+    ],
+    subtotal: 2000.00,
+    desconto: 0,
+    total: 2000.00,
+    timeline: [
+      { id: 't1', evento: 'Rascunho criado', descricao: 'Documento iniciado no painel', timestamp: '2026-03-15T09:00:00Z', status: 'info' },
+      { id: 't2', evento: 'Validação concluída', descricao: 'Dados do cliente e itens verificados', timestamp: '2026-03-15T09:05:00Z', status: 'success' },
+      { id: 't3', evento: 'Emissão simulada', descricao: 'NFS-e gerada em ambiente de simulação', timestamp: '2026-03-15T09:07:00Z', status: 'success' },
+      { id: 't4', evento: 'Enviado ao cliente', descricao: 'Comprovante enviado por e-mail', timestamp: '2026-03-15T09:08:00Z', status: 'success' },
+    ],
+    createdAt: '2026-03-15T09:00:00Z',
+    updatedAt: '2026-03-15T09:08:00Z',
+  },
+  {
+    id: 'doc-002',
+    tipo: 'nfe',
+    status: 'pendente_validacao',
+    origem: 'whatsapp',
+    customerId: 'cust-001',
+    customerNome: 'Marina Oliveira',
+    customerDocumento: '432.567.890-12',
+    itens: [
+      { id: 'i1', nome: 'Notebook Dell Inspiron 15', quantidade: 1, precoUnitario: 3499.90, total: 3499.90 },
+      { id: 'i2', nome: 'Mouse Sem Fio Logitech', quantidade: 1, precoUnitario: 189.90, total: 189.90 },
+    ],
+    subtotal: 3689.80,
+    desconto: 50.00,
+    total: 3639.80,
+    timeline: [
+      { id: 't1', evento: 'Solicitação WhatsApp', descricao: 'Mensagem recebida e dados extraídos', timestamp: '2026-03-17T08:10:00Z', status: 'info' },
+      { id: 't2', evento: 'Pendente validação', descricao: 'Aguardando revisão dos dados extraídos', timestamp: '2026-03-17T08:11:00Z', status: 'pending' },
+    ],
+    createdAt: '2026-03-17T08:10:00Z',
+    updatedAt: '2026-03-17T08:11:00Z',
+  },
+  {
+    id: 'doc-003',
+    numero: '000140',
+    tipo: 'nfe',
+    status: 'emitido_mock',
+    origem: 'painel',
+    customerId: 'cust-004',
+    customerNome: 'Mercado Bom Preço EIRELI',
+    customerDocumento: '56.789.012/0001-34',
+    itens: [
+      { id: 'i1', nome: 'Cabo HDMI 2m', quantidade: 10, precoUnitario: 49.90, total: 499.00 },
+    ],
+    subtotal: 499.00,
+    desconto: 0,
+    total: 499.00,
+    timeline: [
+      { id: 't1', evento: 'Rascunho criado', descricao: '', timestamp: '2026-03-14T11:00:00Z', status: 'info' },
+      { id: 't2', evento: 'Emissão simulada', descricao: 'NF-e gerada em ambiente de simulação', timestamp: '2026-03-14T11:10:00Z', status: 'success' },
+    ],
+    createdAt: '2026-03-14T11:00:00Z',
+    updatedAt: '2026-03-14T11:10:00Z',
+  },
+  {
+    id: 'doc-004',
+    tipo: 'nfse',
+    status: 'erro_mock',
+    origem: 'painel',
+    customerId: 'cust-003',
+    customerNome: 'Carlos Eduardo Mendes',
+    customerDocumento: '123.456.789-00',
+    itens: [
+      { id: 'i1', nome: 'Manutenção Preventiva', quantidade: 1, precoUnitario: 180.00, total: 180.00 },
+    ],
+    subtotal: 180.00,
+    desconto: 0,
+    total: 180.00,
+    timeline: [
+      { id: 't1', evento: 'Rascunho criado', descricao: '', timestamp: '2026-03-16T14:00:00Z', status: 'info' },
+      { id: 't2', evento: 'Erro de emissão', descricao: 'Inscrição municipal não configurada', timestamp: '2026-03-16T14:05:00Z', status: 'error' },
+    ],
+    createdAt: '2026-03-16T14:00:00Z',
+    updatedAt: '2026-03-16T14:05:00Z',
+  },
+  {
+    id: 'doc-005',
+    tipo: 'nfse',
+    status: 'pronto_para_emitir',
+    origem: 'whatsapp',
+    customerId: 'cust-005',
+    customerNome: 'Ana Paula Fernandes',
+    customerDocumento: '987.654.321-00',
+    itens: [
+      { id: 'i1', nome: 'Licença Software — anual', quantidade: 1, precoUnitario: 1200.00, total: 1200.00 },
+    ],
+    subtotal: 1200.00,
+    desconto: 0,
+    total: 1200.00,
+    timeline: [
+      { id: 't1', evento: 'Solicitação WhatsApp', descricao: 'Dados extraídos com sucesso', timestamp: '2026-03-17T07:00:00Z', status: 'info' },
+      { id: 't2', evento: 'Validado', descricao: 'Dados confirmados pelo operador', timestamp: '2026-03-17T07:30:00Z', status: 'success' },
+      { id: 't3', evento: 'Aguardando emissão', descricao: 'Pronto para emitir', timestamp: '2026-03-17T07:31:00Z', status: 'pending' },
+    ],
+    createdAt: '2026-03-17T07:00:00Z',
+    updatedAt: '2026-03-17T07:31:00Z',
+  },
+];
+
+// ─── WhatsApp Requests ────────────────────────────────────────────────────────
+
+export const MOCK_REQUESTS: FiscalRequest[] = [
+  {
+    id: 'req-001',
+    origem: 'whatsapp',
+    status: 'pendente_validacao',
+    telefone: '+55 11 98765-4321',
+    mensagemOriginal: 'Oi, preciso de nota fiscal de serviço. Cliente: Marina Oliveira CPF 432.567.890-12. Serviço: consultoria 4 horas a R$ 250. Total R$ 1.000.',
+    dadosExtraidos: {
+      clienteNome: 'Marina Oliveira',
+      clienteDocumento: '432.567.890-12',
+      itens: 'Consultoria 4h x R$250',
+      valor: 1000.00,
+    },
+    inconsistencias: [],
+    documentId: undefined,
+    timeline: [
+      { id: 't1', evento: 'Mensagem recebida', descricao: 'Solicitação via WhatsApp identificada', timestamp: '2026-03-17T10:00:00Z', status: 'info' },
+      { id: 't2', evento: 'Dados extraídos', descricao: 'IA extraiu dados com sucesso', timestamp: '2026-03-17T10:00:10Z', status: 'success' },
+      { id: 't3', evento: 'Aguardando validação', descricao: 'Operador precisa confirmar os dados', timestamp: '2026-03-17T10:00:15Z', status: 'pending' },
+    ],
+    createdAt: '2026-03-17T10:00:00Z',
+  },
+  {
+    id: 'req-002',
+    origem: 'whatsapp',
+    status: 'emitido_mock',
+    telefone: '+55 21 97654-3210',
+    mensagemOriginal: 'Bom dia! Preciso NF produto: 1 Notebook Dell 3499,90. Carlos Eduardo Mendes, CPF 123.456.789-00.',
+    dadosExtraidos: {
+      clienteNome: 'Carlos Eduardo Mendes',
+      clienteDocumento: '123.456.789-00',
+      itens: '1x Notebook Dell R$3.499,90',
+      valor: 3499.90,
+    },
+    documentId: 'doc-003',
+    timeline: [
+      { id: 't1', evento: 'Mensagem recebida', descricao: '', timestamp: '2026-03-14T10:00:00Z', status: 'info' },
+      { id: 't2', evento: 'Dados extraídos', descricao: '', timestamp: '2026-03-14T10:00:05Z', status: 'success' },
+      { id: 't3', evento: 'Validado', descricao: 'Operador confirmou os dados', timestamp: '2026-03-14T10:10:00Z', status: 'success' },
+      { id: 't4', evento: 'Emitido', descricao: 'NF-e gerada (simulação)', timestamp: '2026-03-14T10:11:00Z', status: 'success' },
+      { id: 't5', evento: 'Comprovante enviado', descricao: 'PDF enviado via WhatsApp', timestamp: '2026-03-14T10:12:00Z', status: 'success' },
+    ],
+    createdAt: '2026-03-14T10:00:00Z',
+  },
+  {
+    id: 'req-003',
+    origem: 'whatsapp',
+    status: 'pendente_validacao',
+    telefone: '+55 11 91234-5678',
+    mensagemOriginal: 'Ola quero nota para Ana Fernandes cpf 987654321 servico manutencao 180 reais',
+    dadosExtraidos: {
+      clienteNome: 'Ana Fernandes',
+      clienteDocumento: '987.654.321-00',
+      itens: 'Manutenção',
+      valor: 180.00,
+    },
+    inconsistencias: ['CPF formatado incorretamente na mensagem', 'Tipo de serviço não identificado no catálogo'],
+    timeline: [
+      { id: 't1', evento: 'Mensagem recebida', descricao: '', timestamp: '2026-03-17T09:00:00Z', status: 'info' },
+      { id: 't2', evento: 'Dados extraídos', descricao: 'Extraídos com inconsistências', timestamp: '2026-03-17T09:00:08Z', status: 'warning' },
+      { id: 't3', evento: 'Pendente revisão', descricao: '2 inconsistências detectadas', timestamp: '2026-03-17T09:00:10Z', status: 'warning' },
+    ],
+    createdAt: '2026-03-17T09:00:00Z',
+  },
+];

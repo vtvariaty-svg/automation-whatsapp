@@ -15,6 +15,8 @@ interface NavItem {
   section: string | null;
   requiredFeature?: FeatureKey;
   minPlan?: string;
+  /** When true, the item is completely hidden for users below minPlan instead of shown locked. */
+  hideWhenLocked?: boolean;
 }
 
 const navItems: NavItem[] = [
@@ -46,6 +48,12 @@ const navItems: NavItem[] = [
   { href: "/dashboard/attribution", label: "Atribuição", icon: "🎯", section: null, requiredFeature: "advancedAnalytics", minPlan: "pro" },
   { href: "/dashboard/referral", label: "Indicações", icon: "🎁", section: null },
   { href: "/dashboard/go-live", label: "Go-Live", icon: "✅", section: null },
+
+  // ── Fiscal ──
+  { href: "/dashboard/fiscal", label: "Fiscal", icon: "🧾", section: "Fiscal", minPlan: "pro", hideWhenLocked: true },
+  { href: "/dashboard/fiscal/nova", label: "Nova emissão", icon: "📝", section: null, minPlan: "pro", hideWhenLocked: true },
+  { href: "/dashboard/fiscal/historico", label: "Histórico", icon: "📋", section: null, minPlan: "pro", hideWhenLocked: true },
+  { href: "/dashboard/fiscal/whatsapp", label: "Emissão por WhatsApp", icon: "📱", section: null, minPlan: "pro", hideWhenLocked: true },
 
   // ── Administração ──
   { href: "/dashboard/products", label: "Produtos", icon: "📦", section: "Administração", minPlan: "standard" },
@@ -122,6 +130,9 @@ export default function Sidebar() {
               lockPlanLabel = PLANS[item.minPlan]?.name ?? item.minPlan;
             }
           }
+
+          // Completely hide items that have hideWhenLocked=true when user lacks access
+          if (isLocked && item.hideWhenLocked) return null;
 
           const isActive = pathname === item.href;
           return (

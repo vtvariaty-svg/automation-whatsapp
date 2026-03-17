@@ -1,5 +1,5 @@
 import { prisma } from '../prisma';
-import { getPlanLimit } from '../config/plans';
+import { getPlanLimit, PLANS } from '../config/plans';
 
 export const getSubscription = async (tenantId: string) => {
   return await prisma.subscription.findUnique({
@@ -7,15 +7,22 @@ export const getSubscription = async (tenantId: string) => {
   });
 };
 
-export const createSubscription = async (tenantId: string, plan: string = 'starter') => {
-  const trialEnd = new Date();
-  trialEnd.setDate(trialEnd.getDate() + 7);
+/**
+ * Create a subscription record for a tenant.
+ * Trial is ONLY granted for Standard plan (hasTrial=true in plans config).
+ * All other plans start as 'active' with no trial.
+ */
+export const createSubscription = async (tenantId: string, plan: string = 'free') => {
+  const planConfig = PLANS[plan];
+  const hasTrial = planConfig?.hasTrial ?? false;
+
+  const trialEnd = hasTrial ? new Date(Date.now() + 7 * 86_400_000) : null;
 
   return await prisma.subscription.create({
     data: {
       tenantId,
       plan,
-      status: 'trialing',
+      status: hasTrial ? 'trialing' : 'active',
       trialEnd,
       usageMessages: 0,
     },
@@ -30,7 +37,7 @@ export const updateSubscriptionFromStripe = async (
     plan?: string;
     planId?: string;
     status?: string;
-    trialEnd?: Date;
+    trialEnd?: Date | null;
     currentPeriodStart?: Date;
     currentPeriodEnd?: Date;
   }
@@ -41,8 +48,8 @@ export const updateSubscriptionFromStripe = async (
     create: {
       tenantId,
       ...data,
-      plan: data.plan || 'starter',
-      status: data.status || 'trialing',
+      plan: data.plan || 'free',
+      status: data.status || 'active',
       usageMessages: 0,
     },
   });
@@ -59,15 +66,16 @@ export const checkUsageLimit = async (tenantId: string): Promise<{ allowed: bool
     return { allowed: false, message: 'Sua assinatura foi cancelada. Acesse o painel para reativar.' };
   }
 
-  // Check trial expiry
+  // Trial expiry check — only Standard can be in trial
   if (subscription.status === 'trialing' && subscription.trialEnd) {
     if (new Date() > subscription.trialEnd) {
-      return { allowed: false, message: 'Seu período de teste expirou. Acesse o painel para assinar um plano.' };
+      return { allowed: false, message: 'Seu período de teste expirou. Acesse o painel para assinar o plano Standard.' };
     }
   }
 
   const limit = getPlanLimit(subscription.plan);
-  if (subscription.usageMessages >= limit) {
+  // -1 = unlimited
+  if (limit !== -1 && subscription.usageMessages >= limit) {
     return {
       allowed: false,
       message: `Seu plano atingiu o limite mensal de ${limit} mensagens IA. Faça upgrade para continuar.`,
@@ -80,23 +88,16 @@ export const checkUsageLimit = async (tenantId: string): Promise<{ allowed: bool
 export const incrementUsage = async (tenantId: string) => {
   return await prisma.subscription.update({
     where: { tenantId },
-    data: {
-      usageMessages: { increment: 1 },
-    },
+    data: { usageMessages: { increment: 1 } },
   });
 };
 
 export const resetUsage = async (tenantId: string) => {
-  // Reset the counter on the subscription
   await prisma.subscription.update({
     where: { tenantId },
     data: { usageMessages: 0 },
   });
-
-  // Also clear the ai_usage table for this tenant (new billing cycle)
-  await prisma.aiUsage.deleteMany({
-    where: { tenantId },
-  });
+  await prisma.aiUsage.deleteMany({ where: { tenantId } });
 };
 
 export const markCanceled = async (tenantId: string) => {

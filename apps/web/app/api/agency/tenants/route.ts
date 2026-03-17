@@ -95,7 +95,7 @@ export async function POST(request: Request) {
       await tx.subscription.create({
         data: {
           tenantId: tenant.id,
-          plan: plan ?? 'starter',
+          plan: plan ?? 'free',
           status: 'trialing',
           trialEnd,
         },

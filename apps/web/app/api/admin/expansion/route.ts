@@ -1,22 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthTenant } from '@/lib/getAuthTenant';
 import { prisma } from '@/lib/prisma';
-
-const PLAN_PRICES: Record<string, number> = {
-  starter: 39.9,
-  pro: 79.9,
-  business: 149.0,
-};
+import { PLANS, PLAN_ORDER } from '@/lib/config/plans';
 
 function suggestNextPlan(plan: string): string | null {
-  if (plan === 'starter') return 'pro';
-  if (plan === 'pro') return 'business';
+  const idx = PLAN_ORDER.indexOf(plan);
+  if (idx !== -1 && idx < PLAN_ORDER.length - 1) return PLAN_ORDER[idx + 1];
+  // Legacy: starter → standard
+  if (plan === 'starter') return 'standard';
   return null;
 }
 
 function potentialRevenue(currentPlan: string, suggestedPlan: string): number {
-  const current = PLAN_PRICES[currentPlan] ?? 0;
-  const suggested = PLAN_PRICES[suggestedPlan] ?? 0;
+  const current = PLANS[currentPlan]?.price ?? 0;
+  const suggested = PLANS[suggestedPlan]?.price ?? 0;
   return Math.max(0, suggested - current);
 }
 
@@ -93,7 +90,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   for (const t of tenants) {
     tenantMap.set(t.id, {
       name: t.name,
-      plan: t.subscription?.plan ?? 'starter',
+      plan: t.subscription?.plan ?? 'free',
     });
   }
 
@@ -101,7 +98,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const result = Array.from(byTenant.entries())
     .map(([tenantId, data]) => {
       const tenant = tenantMap.get(tenantId);
-      const plan = tenant?.plan ?? 'starter';
+      const plan = tenant?.plan ?? 'free';
       const suggested = data.suggestedPlan ?? suggestNextPlan(plan);
 
       return {

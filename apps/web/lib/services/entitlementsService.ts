@@ -26,9 +26,9 @@ export async function getEntitlements(tenantId: string, role?: string): Promise<
   const isCanceled = sub?.status === 'canceled';
 
   const planKey =
-    isCanceled || isExpiredTrial ? 'starter' : sub?.plan || 'starter';
+    isCanceled || isExpiredTrial ? 'free' : sub?.plan || 'free';
   const base: PlanEntitlements =
-    PLAN_ENTITLEMENTS[planKey] ?? PLAN_ENTITLEMENTS['starter'];
+    PLAN_ENTITLEMENTS[planKey] ?? PLAN_ENTITLEMENTS['free'];
 
   // Admin override stored on Subscription.entitlementsOverride (Json?)
   const override = (sub as any)?.entitlementsOverride as Partial<PlanEntitlements> | null;

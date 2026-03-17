@@ -34,7 +34,7 @@ export const createCheckoutSession = async (
       },
     ],
     subscription_data: {
-      trial_period_days: TRIAL_DAYS,
+      ...(planConfig.hasTrial ? { trial_period_days: TRIAL_DAYS } : {}),
       metadata: {
         tenantId,
         plan,

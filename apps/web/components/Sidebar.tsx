@@ -5,6 +5,19 @@ import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 
+function usePlanName() {
+  const [planName, setPlanName] = useState<string>('Free');
+  useEffect(() => {
+    const token = localStorage.getItem('auth_token') ?? localStorage.getItem('token') ?? '';
+    if (!token) return;
+    fetch('/api/billing/subscription', { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => { if (d?.planName) setPlanName(d.planName); })
+      .catch(() => {});
+  }, []);
+  return planName;
+}
+
 const navItems = [
   // ── Principal ──
   { href: "/dashboard", label: "Dashboard", icon: "📊", section: "Principal" },
@@ -43,6 +56,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const { isSuperAdmin } = useAuth();
+  const planName = usePlanName();
 
   useEffect(() => {
     setIsOpen(false);
@@ -145,7 +159,7 @@ export default function Sidebar() {
         ) : (
           <div className="bg-gradient-to-r from-indigo-500/10 to-purple-500/10 rounded-xl p-4 border border-indigo-500/10">
             <p className="text-xs text-indigo-300 font-semibold mb-1">Plano Atual</p>
-            <p className="text-white font-bold text-sm">Starter</p>
+            <p className="text-white font-bold text-sm">{planName}</p>
             <Link href="/dashboard/billing" className="inline-flex items-center gap-1 text-[11px] text-indigo-400 hover:text-indigo-300 font-medium mt-2 transition-colors">
               Fazer upgrade →
             </Link>

@@ -261,7 +261,7 @@ export async function addContactEvent(
       contactId,
       type,
       title,
-      metadata: metadata ?? null,
+      metadata: (metadata ?? undefined) as any,
       occurredAt: occurredAt ?? new Date(),
     },
   });

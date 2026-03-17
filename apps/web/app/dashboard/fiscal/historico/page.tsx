@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { getFiscalDocuments } from '@/lib/fiscal/service';
 import type { FiscalDocument } from '@/lib/fiscal/types';
 import FiscalHistoryTable from '@/components/fiscal/FiscalHistoryTable';
 import FiscalEmptyState from '@/components/fiscal/FiscalEmptyState';
 
 export default function HistoricoPage() {
+  const router = useRouter();
   const [documents, setDocuments] = useState<FiscalDocument[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -44,7 +46,7 @@ export default function HistoricoPage() {
           icon="📋"
           title="Nenhum documento emitido"
           description="Crie sua primeira emissão e ela aparecerá aqui com status e histórico completo."
-          cta={{ label: '+ Nova emissão', onClick: () => {} }}
+          cta={{ label: '+ Nova emissão', onClick: () => router.push('/dashboard/fiscal/nova') }}
         />
       ) : (
         <div className="bg-white border border-gray-200/60 rounded-2xl p-6">

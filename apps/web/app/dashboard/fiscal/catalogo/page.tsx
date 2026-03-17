@@ -261,6 +261,20 @@ export default function CatalogoFiscalPage() {
                 className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20 focus:border-[#4f46e5]" />
             </div>
           )}
+
+          {/* Ativo toggle */}
+          <button
+            type="button"
+            role="switch"
+            aria-checked={form.ativo}
+            onClick={() => setForm((f) => ({ ...f, ativo: !f.ativo }))}
+            className="flex items-center gap-3 cursor-pointer bg-transparent border-0 p-0 pt-1"
+          >
+            <div className={`w-10 h-5 rounded-full transition-all relative ${form.ativo ? 'bg-[#4f46e5]' : 'bg-gray-300'}`}>
+              <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${form.ativo ? 'translate-x-5' : 'translate-x-0.5'}`} />
+            </div>
+            <span className="text-sm font-medium text-gray-700">Item ativo no catálogo</span>
+          </button>
         </div>
         <div className="flex justify-end gap-3 mt-6">
           <button onClick={() => setShowModal(false)} className="px-4 py-2 border border-gray-200 text-gray-600 rounded-xl font-semibold text-sm hover:bg-gray-50 transition-all">Cancelar</button>

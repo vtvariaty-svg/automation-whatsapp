@@ -63,7 +63,7 @@ export default function FiscalRequestTimeline({ events }: FiscalRequestTimelineP
             )}
           </div>
           {/* Content */}
-          <div className={`pb-4 ${idx < events.length - 1 ? '' : ''}`}>
+          <div className="pb-4">
             <p className="text-sm font-semibold text-gray-900 leading-tight">{event.evento}</p>
             {event.descricao && (
               <p className="text-xs text-gray-500 mt-0.5">{event.descricao}</p>

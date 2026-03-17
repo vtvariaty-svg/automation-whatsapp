@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { getFiscalRequests } from '@/lib/fiscal/service';
 import type { FiscalRequest } from '@/lib/fiscal/types';
-import { FISCAL_STATUS_LABELS } from '@/lib/fiscal/types';
 import FiscalStatusBadge from '@/components/fiscal/FiscalStatusBadge';
 import FiscalRequestTimeline from '@/components/fiscal/FiscalRequestTimeline';
 import FiscalEmptyState from '@/components/fiscal/FiscalEmptyState';

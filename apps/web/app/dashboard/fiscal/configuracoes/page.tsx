@@ -112,15 +112,18 @@ export default function ConfiguracoesFiscalPage() {
         <h2 className="font-semibold text-gray-900 flex items-center gap-2">
           <span className="text-base">📨</span> Envio ao cliente
         </h2>
-        <label className="flex items-center gap-3 cursor-pointer">
-          <div
-            onClick={() => setConfig((c) => c ? { ...c, envioAutomatico: !c.envioAutomatico } : c)}
-            className={`w-10 h-5 rounded-full transition-all relative cursor-pointer ${config.envioAutomatico ? 'bg-[#4f46e5]' : 'bg-gray-300'}`}
-          >
+        <button
+          type="button"
+          role="switch"
+          aria-checked={config.envioAutomatico}
+          onClick={() => setConfig((c) => c ? { ...c, envioAutomatico: !c.envioAutomatico } : c)}
+          className="flex items-center gap-3 cursor-pointer bg-transparent border-0 p-0"
+        >
+          <div className={`w-10 h-5 rounded-full transition-all relative ${config.envioAutomatico ? 'bg-[#4f46e5]' : 'bg-gray-300'}`}>
             <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${config.envioAutomatico ? 'translate-x-5' : 'translate-x-0.5'}`} />
           </div>
           <span className="text-sm font-medium text-gray-700">Envio automático após emissão</span>
-        </label>
+        </button>
         {f('Canal WhatsApp para emissão (opcional)', 'canalWhatsapp', 'tel')}
       </section>
 

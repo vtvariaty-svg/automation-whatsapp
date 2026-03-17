@@ -12,12 +12,14 @@ const navItems = [
 
   // ── Atendimento ──
   { href: "/dashboard/conversations", label: "Conversas", icon: "💬", section: "Atendimento" },
+  { href: "/dashboard/sales", label: "Vendas", icon: "💰", section: null },
   { href: "/dashboard/appointments", label: "Agenda", icon: "📅", section: null },
   { href: "/dashboard/orders", label: "Pedidos", icon: "🛍️", section: null },
   { href: "/dashboard/services", label: "Serviços", icon: "✂️", section: null },
 
   // ── Canais & IA ──
   { href: "/dashboard/integrations", label: "Canais", icon: "📡", section: "Canais & IA" },
+  { href: "/dashboard/instagram-comments", label: "Comentários Instagram", icon: "💬", section: null },
   { href: "/dashboard/ai", label: "Configuração de IA", icon: "🤖", section: null },
   { href: "/dashboard/automations", label: "Respostas Rápidas", icon: "⚡", section: null },
   { href: "/dashboard/templates", label: "Templates WhatsApp", icon: "📋", section: null },

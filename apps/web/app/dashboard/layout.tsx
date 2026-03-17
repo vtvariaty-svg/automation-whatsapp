@@ -5,6 +5,7 @@ import TrialBanner from "@/components/TrialBanner";
 import ChurnNudge from "@/components/ChurnNudge";
 import ExpansionBanner from "@/components/ExpansionBanner";
 import FeedbackWidget from "@/components/FeedbackWidget";
+import SupportCopilot from "@/components/SupportCopilot";
 
 export default function DashboardLayout({
   children,
@@ -27,6 +28,7 @@ export default function DashboardLayout({
         </main>
       </div>
       <FeedbackWidget />
+      <SupportCopilot />
     </div>
   );
 }

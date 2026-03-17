@@ -77,6 +77,8 @@ model Tenant {
   leadAttributions    LeadAttribution[]
   // R6 Health
   healthScore         TenantHealthScore?
+  // SC1 Support Copilot
+  supportCopilotLogs  SupportCopilotLog[]
 }
 
 model BusinessConfig {
@@ -133,6 +135,7 @@ model Conversation {
 
   @@index([tenantId, status])
   @@index([tenantId, lastMessageAt])
+  @@index([tenantId, customerPhone, channel])
 }
 
 model Message {
@@ -771,6 +774,29 @@ model TenantHealthScore {
   tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@map("tenant_health_scores")
+}
+
+// ─── SC1 Support Copilot Logs ─────────────────────────────────────────────────
+
+model SupportCopilotLog {
+  id             String   @id @default(uuid())
+  tenantId       String
+  question       String   @db.VarChar(500)
+  answer         String   @db.Text
+  route          String?  @db.VarChar(100)
+  plan           String?
+  role           String?
+  confidence     String?  // high | medium | low
+  fallbackNeeded Boolean  @default(false)
+  source         String?  // faq | ai
+  helpful        Boolean?
+  createdAt      DateTime @default(now())
+
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+  @@index([fallbackNeeded, createdAt])
+  @@map("support_copilot_logs")
 }
 
 // ─── L3 Sandbox / E2E QA ──────────────────────────────────────────────────────

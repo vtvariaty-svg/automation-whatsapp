@@ -79,16 +79,23 @@ model Tenant {
   healthScore         TenantHealthScore?
   // SC1 Support Copilot
   supportCopilotLogs  SupportCopilotLog[]
+  // AG1 Availability
+  availabilityBlocks  AvailabilityBlock[]
 }
 
 model BusinessConfig {
-  id           String   @id @default(uuid())
-  tenantId     String   @unique
-  openingHours String?
-  address      String?
-  faqJson      String?  @db.Text
-  createdAt    DateTime @default(now())
-  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id                   String   @id @default(uuid())
+  tenantId             String   @unique
+  openingHours         String?  // "HH:MM - HH:MM" single range, same every open day
+  address              String?
+  faqJson              String?  @db.Text
+  createdAt            DateTime @default(now())
+  // AG1 — availability engine
+  timezone             String   @default("America/Sao_Paulo")
+  bufferBetweenMinutes Int      @default(0)  // gap forced between any two appointments
+  slotStrideMinutes    Int      @default(0)  // 0 = use service duration as stride
+  closedWeekdays       String   @default("") // comma-separated weekday numbers 0=Sun…6=Sat
+  tenant               Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
 model Product {
@@ -213,18 +220,24 @@ model Order {
 }
 
 model Appointment {
-  id            String   @id @default(uuid())
-  tenantId      String
-  customerPhone String
-  customerName  String?
-  service       String?
-  date          String?  // YYYY-MM-DD
-  time          String?  // HH:MM
-  status        String   @default("agendado") // agendado, confirmado, cancelado, concluido
-  createdAt     DateTime @default(now())
-  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id              String    @id @default(uuid())
+  tenantId        String
+  customerPhone   String
+  customerName    String?
+  service         String?
+  date            String?   // YYYY-MM-DD
+  time            String?   // HH:MM
+  status          String    @default("agendado") // agendado, confirmado, cancelado, concluido
+  createdAt       DateTime  @default(now())
+  // AG1 — availability engine
+  durationMinutes Int?      // snapshot of service duration at booking time
+  notes           String?   @db.Text
+  cancelledAt     DateTime?
+  confirmedAt     DateTime?
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, status])
+  @@index([tenantId, date])
 }
 
 model AutomationRule {
@@ -245,16 +258,35 @@ model AutomationRule {
 }
 
 model Service {
-  id              String   @id @default(uuid())
-  tenantId        String
-  name            String
-  durationMinutes Int      @default(30)
-  active          Boolean  @default(true)
-  createdAt       DateTime @default(now())
+  id                  String   @id @default(uuid())
+  tenantId            String
+  name                String
+  durationMinutes     Int      @default(30)
+  active              Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  // AG1 — per-service buffers (override global)
+  bufferBeforeMinutes Int      @default(0)
+  bufferAfterMinutes  Int      @default(0)
 
-  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant              Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
+}
+
+// AG1 — blocks specific dates or time windows (holidays, lunch, maintenance)
+model AvailabilityBlock {
+  id        String   @id @default(uuid())
+  tenantId  String
+  date      String   // YYYY-MM-DD
+  startTime String?  // HH:MM — null = full-day block
+  endTime   String?  // HH:MM — null = full-day block
+  reason    String?
+  createdAt DateTime @default(now())
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, date])
+  @@map("availability_blocks")
 }
 
 model WhatsAppConnection {

@@ -32,11 +32,14 @@ export default function AppointmentsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const fetchAppointments = async () => {
-    if (!user?.tenantId) return;
+    const token = localStorage.getItem("auth_token") ?? localStorage.getItem("token") ?? "";
+    if (!token) return;
     try {
       setLoading(true);
       setError(false);
-      const res = await fetch(`/api/appointments?tenantId=${user.tenantId}`);
+      const res = await fetch("/api/appointments", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (res.ok) {
         const data = await res.json();
         setAppointments(data);
@@ -56,11 +59,12 @@ export default function AppointmentsPage() {
   }, [user?.tenantId]);
 
   const updateStatus = async (id: string, newStatus: string) => {
+    const token = localStorage.getItem("auth_token") ?? localStorage.getItem("token") ?? "";
     try {
       const res = await fetch(`/api/appointments/${id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus, tenantId: user?.tenantId }),
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status: newStatus }), // tenantId comes from JWT now
       });
       if (res.ok) {
         setAppointments((prev) =>

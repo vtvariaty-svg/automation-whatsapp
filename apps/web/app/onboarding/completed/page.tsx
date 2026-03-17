@@ -87,12 +87,20 @@ export default function OnboardingCompleted() {
             </div>
           )}
 
-          <Link
-            href="/dashboard"
-            className="inline-flex items-center gap-2 px-10 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-bold text-base hover:shadow-xl hover:shadow-indigo-200/50 transition-all"
-          >
-            Ir para o Dashboard 🚀
-          </Link>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center gap-2 px-10 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-bold text-base hover:shadow-xl hover:shadow-indigo-200/50 transition-all"
+            >
+              Ir para o Dashboard 🚀
+            </Link>
+            <Link
+              href="/dashboard/setup"
+              className="inline-flex items-center gap-2 px-6 py-4 border border-indigo-200 text-indigo-700 bg-indigo-50 rounded-xl font-semibold text-sm hover:bg-indigo-100 transition-all"
+            >
+              Ver checklist de setup →
+            </Link>
+          </div>
 
           {planInfo.status === 'trialing' && (
             <p className="text-xs text-indigo-500 mt-4 font-medium">

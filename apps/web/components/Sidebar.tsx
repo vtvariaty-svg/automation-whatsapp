@@ -41,7 +41,8 @@ const navItems: NavItem[] = [
   { href: "/dashboard/insights", label: "Insights de IA", icon: "🔍", section: null, requiredFeature: "aiCopilot", minPlan: "pro" },
 
   // ── Crescimento ──
-  { href: "/dashboard/activation", label: "Ativação", icon: "🚀", section: "Crescimento" },
+  { href: "/dashboard/setup", label: "Setup & Ativação", icon: "✅", section: "Crescimento" },
+  { href: "/dashboard/activation", label: "Métricas", icon: "🚀", section: null },
   { href: "/dashboard/attribution", label: "Atribuição", icon: "🎯", section: null, requiredFeature: "advancedAnalytics", minPlan: "pro" },
   { href: "/dashboard/referral", label: "Indicações", icon: "🎁", section: null },
   { href: "/dashboard/go-live", label: "Go-Live", icon: "✅", section: null },

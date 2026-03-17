@@ -251,28 +251,73 @@ function HowItWorksSection() {
 function PricingSection() {
   const plans = [
     {
-      name: "Starter",
-      price: "39,90",
-      description: "Ideal para profissionais autônomos",
-      features: ["1.000 mensagens IA/mês", "WhatsApp integrado", "Painel de conversas", "Suporte por email"],
+      name: "Free",
+      price: null,
+      description: "Comece sem pagar nada",
+      trial: false,
+      features: [
+        "Instagram DM automatizado",
+        "Até 1.000 contatos",
+        "500 mensagens IA/mês",
+        "5 automações",
+        "Painel de conversas básico",
+      ],
+      missing: ["WhatsApp Business", "Facebook Messenger"],
       popular: false,
-      cta: "Assinar",
+      cta: "Começar grátis",
+    },
+    {
+      name: "Standard",
+      price: "49,90",
+      description: "Para quem quer crescer com WhatsApp",
+      trial: true,
+      features: [
+        "Instagram + WhatsApp Business",
+        "Comentários Instagram com auto-DM",
+        "Até 5.000 contatos",
+        "3.000 mensagens IA/mês",
+        "15 automações",
+        "CRM básico, agenda e pedidos",
+        "Follow-up automático",
+      ],
+      missing: ["Facebook Messenger", "AI Copilot"],
+      popular: true,
+      cta: "Testar 7 dias grátis",
     },
     {
       name: "Pro",
-      price: "79,90",
-      description: "Para pequenas empresas em crescimento",
-      features: ["4.000 mensagens IA/mês", "WhatsApp integrado", "Painel de conversas", "Inbox com atendimento humano", "Suporte prioritário"],
-      popular: true,
-      cta: "Assinar",
+      price: "97,00",
+      description: "Para times que precisam de mais",
+      trial: false,
+      features: [
+        "Instagram + WhatsApp + Facebook",
+        "Até 20.000 contatos",
+        "10.000 mensagens IA/mês",
+        "Automações ilimitadas",
+        "CRM avançado + segmentos dinâmicos",
+        "Testes A/B",
+        "AI Copilot + Insights",
+      ],
+      missing: ["White-label"],
+      popular: false,
+      cta: "Assinar Pro",
     },
     {
       name: "Business",
-      price: "149,00",
-      description: "Para operações de alto volume",
-      features: ["15.000 mensagens IA/mês", "WhatsApp integrado", "Painel completo", "Inbox com atendimento humano", "Integrações avançadas", "Suporte dedicado"],
+      price: "197,00",
+      description: "Escala total e white-label",
+      trial: false,
+      features: [
+        "Tudo do Pro",
+        "Contatos e mensagens ilimitados",
+        "White-label e marca própria",
+        "Painel de agência / revenda",
+        "Suporte prioritário",
+        "Onboarding dedicado",
+      ],
+      missing: [],
       popular: false,
-      cta: "Assinar",
+      cta: "Assinar Business",
     },
   ];
 
@@ -282,42 +327,62 @@ function PricingSection() {
         <div className="text-center mb-16">
           <span className="inline-flex items-center bg-indigo-50 text-[#4f46e5] text-sm font-semibold px-4 py-1 rounded-full mb-4">Planos</span>
           <h2 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-4">Invista menos que um funcionário</h2>
-          <p className="text-xl text-gray-500">Todos os planos incluem 7 dias grátis. Cancele quando quiser.</p>
+          <p className="text-xl text-gray-500">Comece grátis. O plano Standard inclui 7 dias de trial. Cancele quando quiser.</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 max-w-7xl mx-auto">
           {plans.map((plan, i) => (
-            <div key={i} className={`relative rounded-2xl p-8 transition-all duration-300 hover:-translate-y-2 ${
+            <div key={i} className={`relative rounded-2xl p-7 transition-all duration-300 hover:-translate-y-1 flex flex-col ${
               plan.popular
-                ? "bg-gradient-to-b from-[#4f46e5] to-[#3730a3] text-white shadow-2xl shadow-indigo-300/30 scale-105 border-0"
+                ? "bg-gradient-to-b from-[#4f46e5] to-[#3730a3] text-white shadow-2xl shadow-indigo-300/30 border-0"
                 : "bg-white border border-gray-200 hover:shadow-xl"
             }`}>
               {plan.popular && (
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-400 to-orange-400 text-gray-900 text-xs font-bold px-4 py-1.5 rounded-full shadow-lg">
+                <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-400 to-orange-400 text-gray-900 text-xs font-bold px-4 py-1.5 rounded-full shadow-lg whitespace-nowrap">
                   MAIS POPULAR
                 </div>
               )}
-              <h3 className={`text-xl font-bold mb-1 ${plan.popular ? "text-white" : "text-gray-900"}`}>{plan.name}</h3>
-              <p className={`text-sm mb-6 ${plan.popular ? "text-indigo-200" : "text-gray-500"}`}>{plan.description}</p>
 
-              <div className="flex items-baseline gap-1 mb-8">
-                <span className={`text-lg font-bold ${plan.popular ? "text-indigo-200" : "text-gray-400"}`}>R$</span>
-                <span className={`text-4xl font-extrabold ${plan.popular ? "text-white" : "text-gray-900"}`}>{plan.price}</span>
-                <span className={`text-sm ${plan.popular ? "text-indigo-200" : "text-gray-400"}`}>/mês</span>
+              <h3 className={`text-xl font-bold mb-1 ${plan.popular ? "text-white" : "text-gray-900"}`}>{plan.name}</h3>
+              <p className={`text-sm mb-4 ${plan.popular ? "text-indigo-200" : "text-gray-500"}`}>{plan.description}</p>
+
+              <div className="flex items-baseline gap-1 mb-1">
+                {plan.price === null ? (
+                  <span className={`text-3xl font-extrabold ${plan.popular ? "text-white" : "text-gray-900"}`}>Grátis</span>
+                ) : (
+                  <>
+                    <span className={`text-base font-bold ${plan.popular ? "text-indigo-200" : "text-gray-400"}`}>R$</span>
+                    <span className={`text-3xl font-extrabold ${plan.popular ? "text-white" : "text-gray-900"}`}>{plan.price}</span>
+                    <span className={`text-sm ${plan.popular ? "text-indigo-200" : "text-gray-400"}`}>/mês</span>
+                  </>
+                )}
               </div>
 
-              <ul className="space-y-3 mb-8">
+              {plan.trial && (
+                <p className={`text-xs font-semibold mb-4 ${plan.popular ? "text-emerald-300" : "text-emerald-600"}`}>✓ 7 dias grátis para testar</p>
+              )}
+              {!plan.trial && <div className="mb-4" />}
+
+              <ul className="space-y-2.5 flex-1 mb-6">
                 {plan.features.map((feature, j) => (
-                  <li key={j} className="flex items-start gap-3 text-sm">
-                    <span className={`mt-0.5 ${plan.popular ? "text-emerald-300" : "text-emerald-500"}`}>✓</span>
+                  <li key={j} className="flex items-start gap-2.5 text-sm">
+                    <span className={`mt-0.5 shrink-0 ${plan.popular ? "text-emerald-300" : "text-emerald-500"}`}>✓</span>
                     <span className={plan.popular ? "text-indigo-100" : "text-gray-600"}>{feature}</span>
+                  </li>
+                ))}
+                {plan.missing.map((feature, j) => (
+                  <li key={`m-${j}`} className="flex items-start gap-2.5 text-sm">
+                    <span className={`mt-0.5 shrink-0 ${plan.popular ? "text-indigo-400" : "text-gray-300"}`}>—</span>
+                    <span className={plan.popular ? "text-indigo-400" : "text-gray-300"}>{feature}</span>
                   </li>
                 ))}
               </ul>
 
-              <Link href="/register" className={`block w-full text-center py-3 rounded-xl font-semibold transition-all ${
+              <Link href="/register" className={`block w-full text-center py-3 rounded-xl font-semibold transition-all text-sm ${
                 plan.popular
                   ? "bg-white text-[#4f46e5] hover:bg-gray-100 shadow-lg"
+                  : plan.price === null
+                  ? "bg-indigo-50 text-[#4f46e5] hover:bg-indigo-100 border border-indigo-100"
                   : "bg-gray-900 text-white hover:bg-gray-800"
               }`}>
                 {plan.cta}
@@ -325,6 +390,10 @@ function PricingSection() {
             </div>
           ))}
         </div>
+
+        <p className="text-center text-xs text-gray-400 mt-8">
+          Trial de 7 dias exclusivo do plano Standard. Sem cartão de crédito durante o trial.
+        </p>
       </div>
     </section>
   );
@@ -373,8 +442,8 @@ function FAQSection() {
   const faqs = [
     { q: "Preciso ter WhatsApp Business?", a: "Sim, usamos a API Oficial do WhatsApp Business da Meta. Você precisa de uma conta WhatsApp Business vinculada. Ajudamos no processo de configuração." },
     { q: "A IA responde de forma natural?", a: "Sim! Utilizamos GPT-4o da OpenAI, que gera respostas naturais e contextualizadas. Você configura o tom de voz e regras de negócio." },
-    { q: "Posso testar antes de assinar?", a: "Todos os planos incluem 7 dias grátis. Sem cartão de crédito. Se não gostar, basta não continuar." },
-    { q: "E se eu precisar de ajuda na configuração?", a: "Nosso suporte te acompanha em todo o processo. No plano Enterprise, você tem um gerente de sucesso dedicado." },
+    { q: "Posso testar antes de assinar?", a: "O plano Standard inclui 7 dias grátis. Sem cartão de crédito durante o trial. O plano Free é gratuito para sempre — comece por ele e faça upgrade quando quiser." },
+    { q: "E se eu precisar de ajuda na configuração?", a: "Nosso suporte te acompanha em todo o processo. No plano Business, você tem um gerente de sucesso dedicado e onboarding exclusivo." },
     { q: "Funciona com qualquer tipo de negócio?", a: "Sim! Clínicas, e-commerces, escritórios, restaurantes, salões de beleza — qualquer negócio que atende clientes pelo WhatsApp." },
     { q: "Os dados dos meus clientes são seguros?", a: "Absolutamente. Usamos criptografia, servidores seguros e seguimos as diretrizes da LGPD. Seus dados nunca são compartilhados." },
   ];
@@ -419,7 +488,7 @@ function CTASection() {
         <Link href="/register" className="inline-flex items-center gap-2 text-lg font-bold bg-white text-[#4f46e5] px-10 py-4 rounded-xl hover:shadow-2xl hover:shadow-white/20 transition-all hover:-translate-y-1">
           🚀 Começar Agora — É Grátis
         </Link>
-        <p className="mt-4 text-sm text-indigo-300">7 dias grátis • Sem compromisso • Cancele quando quiser</p>
+        <p className="mt-4 text-sm text-indigo-300">Plano Free grátis para sempre • Standard com 7 dias grátis • Cancele quando quiser</p>
       </div>
     </section>
   );

@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { upsertContactByPhone } from '@/lib/services/contactService';
 
 /**
  * Salva a mensagem enviada pelo usuário.
@@ -35,6 +36,31 @@ export async function saveUserMessage(phoneNumber: string, messageText: string, 
        where: { id: conversation.id },
        data: updateData
     });
+
+    // Sync contact non-blocking — structured error, never silent
+    upsertContactByPhone({ tenantId, phone: phoneNumber, source: channel, channel })
+      .then((contact) => {
+        if (contact && !conversation!.contactId) {
+          prisma.conversation
+            .update({ where: { id: conversation!.id }, data: { contactId: contact.id } })
+            .catch((err) =>
+              console.error('[ContactSync] Failed to link conversation to contact', {
+                tenantId,
+                conversationId: conversation!.id,
+                contactId: contact.id,
+                error: err?.message ?? err,
+              })
+            );
+        }
+      })
+      .catch((err) =>
+        console.error('[ContactSync] Failed to upsert contact from conversation', {
+          tenantId,
+          phone: phoneNumber,
+          channel,
+          error: err?.message ?? err,
+        })
+      );
 
     console.log(`Mensagem do usuário ${phoneNumber} salva no banco.`);
     return msg;

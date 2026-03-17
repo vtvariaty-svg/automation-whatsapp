@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { parse, addMinutes, addDays, isBefore, isAfter, format } from 'date-fns';
+import { upsertContactByPhone } from '@/lib/services/contactService';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -118,7 +119,7 @@ export async function createAppointment(tenantId: string, data: CreateAppointmen
   }
   // ────────────────────────────────────────────────────────────────────────
 
-  return prisma.appointment.create({
+  const appointment = await prisma.appointment.create({
     data: {
       tenantId,
       customerPhone: data.phone,
@@ -135,6 +136,38 @@ export async function createAppointment(tenantId: string, data: CreateAppointmen
       professionalName: data.professionalName ?? null,
     },
   });
+
+  // Sync contact and link to appointment — functional, not just structural
+  upsertContactByPhone({
+    tenantId,
+    phone: data.phone,
+    name: data.customerName,
+    source: data.source ?? 'manual',
+    channel: data.source,
+  })
+    .then((contact) => {
+      if (contact) {
+        prisma.appointment
+          .update({ where: { id: appointment.id }, data: { contactId: contact.id } })
+          .catch((err) =>
+            console.error('[ContactSync] Failed to link appointment to contact', {
+              tenantId,
+              appointmentId: appointment.id,
+              contactId: contact.id,
+              error: err?.message ?? err,
+            })
+          );
+      }
+    })
+    .catch((err) =>
+      console.error('[ContactSync] Failed to upsert contact from appointment', {
+        tenantId,
+        phone: data.phone,
+        error: err?.message ?? err,
+      })
+    );
+
+  return appointment;
 }
 
 // ─── Availability engine ─────────────────────────────────────────────────────

@@ -45,6 +45,7 @@ model Tenant {
   facebookToken       String?
   facebookConnection  FacebookConnection?
   users               User[]
+  contacts            Contact[]
   conversations       Conversation[]
   products            Product[]
   orders              Order[]
@@ -87,6 +88,45 @@ model Tenant {
   templateBroadcasts  TemplateBroadcast[]
 }
 
+// ─── Contacts Module (Phase 1) ────────────────────────────────────────────────
+
+model Contact {
+  id                String    @id @default(uuid())
+  tenantId          String
+  phone             String?
+  normalizedPhone   String?
+  email             String?
+  name              String?
+  firstName         String?
+  lastName          String?
+  waId              String?
+  instagramScopedId String?
+  facebookScopedId  String?
+  status            String    @default("active") // active | archived | blocked
+  source            String?   // whatsapp | instagram | facebook | manual | import | order | appointment
+  notes             String?   @db.Text
+  lastInteractionAt DateTime?
+  lastChannelUsed   String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  tenant            Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  conversations     Conversation[]
+  orders            Order[]
+  appointments      Appointment[]
+  memory            CustomerMemory? @relation("ContactMemory")
+
+  @@unique([tenantId, normalizedPhone])
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt])
+  @@index([tenantId, lastInteractionAt])
+  @@index([tenantId, waId])
+  @@index([tenantId, instagramScopedId])
+  @@index([tenantId, facebookScopedId])
+  @@index([tenantId, source])
+  @@map("contacts")
+}
+
 model BusinessConfig {
   id                   String   @id @default(uuid())
   tenantId             String   @unique
@@ -99,6 +139,10 @@ model BusinessConfig {
   bufferBetweenMinutes Int      @default(0)  // gap forced between any two appointments
   slotStrideMinutes    Int      @default(0)  // 0 = use service duration as stride
   closedWeekdays       String   @default("") // comma-separated weekday numbers 0=Sun…6=Sat
+  // AG6 — Templates Mapping WhatsApp
+  templateBookingConfirmed String?
+  templateReminder24h      String?
+  templateReminder2h       String?
   tenant               Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
@@ -141,12 +185,15 @@ model Conversation {
   assignedUser  String?
   createdAt     DateTime  @default(now())
   channel       String    @default("whatsapp") // M0
+  contactId     String?   // nullable FK → Contact (phase 1)
   tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contact       Contact?  @relation(fields: [contactId], references: [id], onDelete: SetNull)
   messages      Message[]
 
   @@index([tenantId, status])
   @@index([tenantId, lastMessageAt])
   @@index([tenantId, customerPhone, channel])
+  @@index([tenantId, contactId])
 }
 
 model Message {
@@ -220,7 +267,7 @@ model Order {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   // ORDERS_V2 — extended fields
-  contactId       String?   // links to customerPhone/contactId from conversations
+  contactId       String?   // FK → Contact (real UUID, set by contactService)
   conversationId  String?   // link to the originating conversation
   origin          String    @default("manual") // manual, whatsapp, instagram, facebook, checkout, agenda
   subtotal        Float     @default(0.0)
@@ -234,6 +281,7 @@ model Order {
   cancelledAt     DateTime?
   refundedAt      DateTime?
   tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contact         Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
   items           OrderItem[]
   statusHistory   OrderStatusHistory[]
 
@@ -299,12 +347,16 @@ model Appointment {
   // AG5 — professional assignment
   professionalId   String?
   professionalName String?  // snapshot at booking time
+  // Contacts Module — FK → Contact (nullable, phase 1)
+  contactId       String?
   tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   professional    Professional? @relation(fields: [professionalId], references: [id], onDelete: SetNull)
+  contact         Contact?  @relation(fields: [contactId], references: [id], onDelete: SetNull)
   notifications   AppointmentNotification[]
 
   @@index([tenantId, status])
   @@index([tenantId, date])
+  @@index([tenantId, contactId])
 }
 
 // AG3 — full history of notifications sent per appointment
@@ -489,12 +541,16 @@ model ConversationInsight {
 model CustomerMemory {
   id          String   @id @default(uuid())
   tenantId    String
-  contactId   String
+  contactId   String   // historically: phone string. After phase 1: may be Contact.id
   name        String?
   preferences String?  @db.Text
   notes       String?  @db.Text
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  // nullable FK → Contact (set during backfill / new creates)
+  realContactId String? @unique
+  contact       Contact? @relation("ContactMemory", fields: [realContactId], references: [id], onDelete: SetNull)
 
   tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 

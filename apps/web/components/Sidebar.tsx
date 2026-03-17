@@ -26,6 +26,7 @@ const navItems: NavItem[] = [
 
   // ── Atendimento ──
   { href: "/dashboard/conversations", label: "Conversas", icon: "💬", section: "Atendimento" },
+  { href: "/dashboard/contacts", label: "Contatos", icon: "👥", section: null },
   { href: "/dashboard/sales", label: "Vendas", icon: "💰", section: null, requiredFeature: "advancedCRM", minPlan: "pro" },
   { href: "/dashboard/appointments", label: "Agenda", icon: "📅", section: null, minPlan: "standard" },
   { href: "/dashboard/orders", label: "Pedidos", icon: "🛍️", section: null, minPlan: "standard" },

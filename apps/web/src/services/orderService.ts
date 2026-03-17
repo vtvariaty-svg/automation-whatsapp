@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { executeOrderAutomations } from '@/src/services/automationService';
+import { upsertContactByPhone } from '@/lib/services/contactService';
 
 // ── Emit order event (trigger automations) ────────────────────────────────────
 async function emitOrderEvent(
@@ -141,6 +142,38 @@ export async function createOrder(input: CreateOrderInput, userId?: string) {
     origin: input.origin,
     conversationId: input.conversationId,
   }).catch(() => {});
+
+  // Sync contact and link to order — functional, not just structural
+  if (!input.contactId && input.customerPhone) {
+    upsertContactByPhone({
+      tenantId: input.tenantId,
+      phone: input.customerPhone,
+      name: input.customerName,
+      source: input.origin ?? 'manual',
+      channel: input.origin,
+    })
+      .then((contact) => {
+        if (contact) {
+          prisma.order
+            .update({ where: { id: order.id }, data: { contactId: contact.id } })
+            .catch((err) =>
+              console.error('[ContactSync] Failed to link order to contact', {
+                tenantId: input.tenantId,
+                orderId: order.id,
+                contactId: contact.id,
+                error: err?.message ?? err,
+              })
+            );
+        }
+      })
+      .catch((err) =>
+        console.error('[ContactSync] Failed to upsert contact from order', {
+          tenantId: input.tenantId,
+          phone: input.customerPhone,
+          error: err?.message ?? err,
+        })
+      );
+  }
 
   return order;
 }

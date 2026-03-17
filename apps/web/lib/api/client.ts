@@ -86,3 +86,19 @@ export const billingApi = {
     });
   },
 };
+
+export const contactsApi = {
+  list: async (params?: Record<string, string>) => {
+    const qs = params ? '?' + new URLSearchParams(params).toString() : '';
+    return apiClient(`/contacts${qs}`);
+  },
+  get: async (id: string) => {
+    return apiClient(`/contacts/${id}`);
+  },
+  create: async (data: { phone: string; name?: string; email?: string; source?: string }) => {
+    return apiClient('/contacts', { method: 'POST', body: JSON.stringify(data) });
+  },
+  update: async (id: string, data: Record<string, unknown>) => {
+    return apiClient(`/contacts/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+  },
+};

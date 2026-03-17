@@ -5,12 +5,13 @@ import { getBroadcastDetail, cancelBroadcast } from '@/src/services/broadcastSer
 export const dynamic = 'force-dynamic';
 
 // GET /api/broadcasts/[id] — detalhes do broadcast com recipients
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const auth = await getAuthTenant(request);
     if (!auth) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
 
-    const broadcast = await getBroadcastDetail(auth.tenantId, params.id);
+    const broadcast = await getBroadcastDetail(auth.tenantId, id);
     if (!broadcast) {
       return NextResponse.json({ error: 'Envio não encontrado' }, { status: 404 });
     }
@@ -23,12 +24,13 @@ export async function GET(request: Request, { params }: { params: { id: string }
 }
 
 // DELETE /api/broadcasts/[id] — cancela broadcast
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const auth = await getAuthTenant(request);
     if (!auth) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
 
-    const broadcast = await cancelBroadcast(auth.tenantId, params.id);
+    const broadcast = await cancelBroadcast(auth.tenantId, id);
     return NextResponse.json(broadcast);
   } catch (error: any) {
     console.error('[Broadcasts] Erro ao cancelar:', error);

@@ -20,6 +20,26 @@ export default function OnboardingStep1() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
+  // Redirect to plan selection if no subscription has been chosen yet
+  useEffect(() => {
+    const check = async () => {
+      const token = localStorage.getItem("auth_token");
+      if (!token) return;
+      try {
+        const res = await fetch("/api/billing/subscription", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (!data.hasSubscription) {
+            router.replace("/onboarding/plan");
+          }
+        }
+      } catch {}
+    };
+    check();
+  }, [router]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!companyName.trim()) { setError("Nome da empresa é obrigatório"); return; }

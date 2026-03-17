@@ -10,7 +10,20 @@ export default function OnboardingStep2() {
   const [connected, setConnected] = useState(false);
   const [message, setMessage] = useState("");
   const [sdkReady, setSdkReady] = useState(false);
+  const [planSlug, setPlanSlug] = useState<string | null>(null);
   const appId = process.env.NEXT_PUBLIC_FB_APP_ID;
+
+  // Read chosen plan (localStorage is fastest; API is authoritative)
+  useEffect(() => {
+    const cached = localStorage.getItem("onboarding_plan");
+    if (cached) { setPlanSlug(cached); return; }
+    const token = localStorage.getItem("auth_token");
+    if (!token) return;
+    fetch("/api/billing/subscription", { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(d => { if (d.plan) { setPlanSlug(d.plan); localStorage.setItem("onboarding_plan", d.plan); } })
+      .catch(() => {});
+  }, []);
 
   const initFbSdk = useCallback(() => {
     if (!appId) return;
@@ -119,6 +132,30 @@ export default function OnboardingStep2() {
         </div>
 
         <div className="p-8 space-y-6">
+          {/* Free plan: WhatsApp not included — prompt to skip or upgrade */}
+          {planSlug === 'free' && (
+            <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
+              <p className="text-sm font-semibold text-amber-800 mb-1">WhatsApp não está no plano Free</p>
+              <p className="text-xs text-amber-700 mb-3">
+                O WhatsApp Business está disponível a partir do plano Standard. Você pode pular esta etapa e conectar o Instagram, ou fazer upgrade agora.
+              </p>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleSkip}
+                  className="px-4 py-2 bg-amber-600 text-white rounded-lg text-xs font-semibold hover:bg-amber-700 transition-colors"
+                >
+                  Pular e continuar →
+                </button>
+                <a
+                  href="/dashboard/billing"
+                  className="text-xs text-amber-700 hover:text-amber-900 font-medium underline underline-offset-2"
+                >
+                  Fazer upgrade
+                </a>
+              </div>
+            </div>
+          )}
+
           {message && (
             <div className={`p-4 rounded-xl text-sm font-medium border ${
               message.includes("❌") ? "bg-red-50 text-red-700 border-red-100"

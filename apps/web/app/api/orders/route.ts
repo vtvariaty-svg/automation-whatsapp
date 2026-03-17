@@ -1,16 +1,23 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
 import { getAuthTenant } from '@/lib/getAuthTenant';
+import { createOrder, listOrders } from '@/src/services/orderService';
 
 export async function GET(request: Request) {
   const auth = await getAuthTenant(request);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
-    const orders = await prisma.order.findMany({
-      where: { tenantId: auth.tenantId },
-      orderBy: { createdAt: 'desc' },
-    });
+    const { searchParams } = new URL(request.url);
+    const filters = {
+      status: searchParams.get('status') || undefined,
+      origin: searchParams.get('origin') || undefined,
+      contactId: searchParams.get('contactId') || undefined,
+      search: searchParams.get('search') || undefined,
+      dateFrom: searchParams.get('dateFrom') ? new Date(searchParams.get('dateFrom')!) : undefined,
+      dateTo: searchParams.get('dateTo') ? new Date(searchParams.get('dateTo')!) : undefined,
+    };
+
+    const orders = await listOrders(auth.tenantId, filters);
     return NextResponse.json(orders);
   } catch (error: any) {
     console.error('Erro ao buscar pedidos:', error);
@@ -24,22 +31,29 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { customerPhone, customerName, product, price } = body;
 
-    if (!customerPhone) {
+    if (!body.customerPhone) {
       return NextResponse.json({ error: 'customerPhone é obrigatório' }, { status: 400 });
     }
 
-    const order = await prisma.order.create({
-      data: {
+    const order = await createOrder(
+      {
         tenantId: auth.tenantId,
-        customerPhone,
-        customerName,
-        product,
-        price: price ? parseFloat(price) : 0,
-        status: 'novo'
-      }
-    });
+        customerPhone: body.customerPhone,
+        customerName: body.customerName,
+        contactId: body.contactId,
+        conversationId: body.conversationId,
+        origin: body.origin ?? 'manual',
+        currency: body.currency,
+        notes: body.notes,
+        status: body.status,
+        items: body.items,
+        // Legacy compat
+        product: body.product,
+        price: body.price ? parseFloat(body.price) : undefined,
+      },
+      auth.userId
+    );
 
     return NextResponse.json(order, { status: 201 });
   } catch (error: any) {

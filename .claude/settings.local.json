@@ -10,7 +10,14 @@
       "Bash(npx tsc:*)",
       "Bash(./node_modules/.bin/tsc --noEmit -p apps/web/tsconfig.json 2>&1 | head -80)",
       "Bash(ls:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(git commit:*)",
+      "Bash(git:*)",
+      "Bash(xargs grep:*)",
+      "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")",
+      "Bash(grep -r \"SalesOpportunity\\\\|SalesEvent\\\\|LeadAttribution\" /c/Users/vinic/Documents/automation-whatsapp/apps/web/app --include=*.ts --include=*.tsx -l)",
+      "Bash(2)",
+      "Bash(npx prisma:*)"
     ]
   }
 }

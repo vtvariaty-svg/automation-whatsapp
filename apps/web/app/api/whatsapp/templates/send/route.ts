@@ -3,18 +3,20 @@ import { prisma } from '@/lib/prisma';
 import { getAuthTenant } from '@/lib/getAuthTenant';
 import { decrypt } from '@/lib/utils/crypto';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: Request) {
   try {
     const auth = await getAuthTenant(request);
     if (!auth) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+      return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
     }
 
     const body = await request.json();
     const { to, templateName, language, variables } = body;
 
     if (!to || !templateName || !language) {
-      return NextResponse.json({ error: 'Missing required fields: to, templateName, language' }, { status: 400 });
+      return NextResponse.json({ error: 'Campos obrigatórios: to, templateName, language' }, { status: 400 });
     }
 
     // Get tenant WhatsApp credentials
@@ -29,7 +31,7 @@ export async function POST(request: Request) {
     });
 
     if (!tenant) {
-      return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Tenant não encontrado' }, { status: 404 });
     }
 
     const rawToken = tenant.whatsappConnection?.accessToken || tenant.whatsappToken;
@@ -37,7 +39,7 @@ export async function POST(request: Request) {
     const phoneId = tenant.whatsappConnection?.phoneNumberId || tenant.whatsappPhoneNumberId || tenant.whatsappPhoneId;
 
     if (!token || !phoneId) {
-      return NextResponse.json({ error: 'WhatsApp not configured. Connect your WhatsApp Business Account first.' }, { status: 400 });
+      return NextResponse.json({ error: 'WhatsApp não configurado. Conecte sua conta WhatsApp Business primeiro.' }, { status: 400 });
     }
 
     // Build the template message payload
@@ -81,7 +83,7 @@ export async function POST(request: Request) {
       console.error('Meta send error:', responseData);
       return NextResponse.json({
         success: false,
-        error: responseData.error?.message || 'Failed to send template',
+        error: responseData.error?.message || 'Falha ao enviar template',
         details: responseData,
       }, { status: response.status });
     }

@@ -148,9 +148,61 @@ model Order {
   customerName  String?
   product       String?
   price         Float    @default(0.0)
-  status        String   @default("novo") // novo, confirmado, preparando, enviado, finalizado
+  status        String   @default("draft") // draft, pending_payment, paid, processing, completed, cancelled, refunded, failed
   createdAt     DateTime @default(now())
-  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  updatedAt     DateTime @updatedAt
+  // ORDERS_V2 — extended fields
+  contactId       String?
+  conversationId  String?
+  origin          String    @default("manual")
+  subtotal        Float     @default(0.0)
+  discount        Float     @default(0.0)
+  currency        String    @default("BRL")
+  externalPaymentRef String? @unique
+  cancelReason    String?
+  notes           String?   @db.Text
+  paidAt          DateTime?
+  completedAt     DateTime?
+  cancelledAt     DateTime?
+  refundedAt      DateTime?
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  items           OrderItem[]
+  statusHistory   OrderStatusHistory[]
+
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt])
+  @@index([tenantId, contactId])
+  @@index([externalPaymentRef])
+}
+
+model OrderItem {
+  id         String  @id @default(uuid())
+  orderId    String
+  productId  String?
+  name       String
+  quantity   Int     @default(1)
+  unitPrice  Float   @default(0.0)
+  totalPrice Float   @default(0.0)
+
+  order      Order   @relation(fields: [orderId], references: [id])
+
+  @@index([orderId])
+  @@map("order_items")
+}
+
+model OrderStatusHistory {
+  id         String   @id @default(uuid())
+  orderId    String
+  fromStatus String
+  toStatus   String
+  changedBy  String?
+  reason     String?
+  createdAt  DateTime @default(now())
+
+  order      Order    @relation(fields: [orderId], references: [id])
+
+  @@index([orderId, createdAt])
+  @@map("order_status_history")
 }
 
 model Appointment {

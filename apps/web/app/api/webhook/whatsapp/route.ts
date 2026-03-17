@@ -18,6 +18,7 @@ import { saveUserMessage, saveAIMessage, getConversationHistory, getConversation
 import { getTenantByPhoneId } from "@/src/services/tenantService";
 import { buildCustomerContext, upsertCustomerMemory, extractNameFromText } from "@/src/services/customerMemoryService";
 import { checkAutomationMatch } from "@/src/services/automationService";
+import { sendTemplateMessage } from "@/src/services/automationService";
 import { verifyAiLimits } from "@/src/services/billingService";
 import { handleAppointmentMessage } from "@/src/services/appointmentBookingService";
 
@@ -174,8 +175,22 @@ export async function POST(req: Request) {
           if (automation) {
             console.log(`[Webhook] Automação "${automation.name}" acionada para ${maskPhone(from)}`);
             const replyPhoneId = tenant.whatsappPhoneNumberId || tenant.whatsappPhoneId;
-            await sendWhatsAppMessage(from, automation.responseText, replyPhoneId, tenant.whatsappToken);
-            await saveAIMessage(from, automation.responseText, tenant.id, status, false);
+
+            if (automation.responseType === 'template') {
+              // Enviar template via Meta Graph API
+              try {
+                await sendTemplateMessage(from, automation.responseText, replyPhoneId!, tenant.whatsappToken!);
+                await saveAIMessage(from, `[Template: ${automation.responseText}]`, tenant.id, status, false);
+              } catch (tplErr) {
+                console.error(`[Webhook] Falha ao enviar template "${automation.responseText}":`, tplErr);
+                // Fallback: envia texto da regra como mensagem normal
+                await sendWhatsAppMessage(from, automation.responseText, replyPhoneId, tenant.whatsappToken);
+                await saveAIMessage(from, automation.responseText, tenant.id, status, false);
+              }
+            } else {
+              await sendWhatsAppMessage(from, automation.responseText, replyPhoneId, tenant.whatsappToken);
+              await saveAIMessage(from, automation.responseText, tenant.id, status, false);
+            }
             return new Response('OK', { status: 200 });
           }
 

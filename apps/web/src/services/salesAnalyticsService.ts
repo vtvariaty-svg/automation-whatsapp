@@ -39,6 +39,25 @@ export async function getSalesAnalytics(tenantId: string, period: string) {
     })
   ]);
 
+  // ORDERS_V2 — order-level metrics
+  const [
+    orders_total,
+    orders_paid,
+    orders_cancelled,
+    orders_refunded,
+    orders_revenue,
+  ] = await Promise.all([
+    prisma.order.count({ where: { tenantId, createdAt: dateFilter } }),
+    prisma.order.count({ where: { tenantId, status: { in: ['paid', 'processing', 'completed'] }, createdAt: dateFilter } }),
+    prisma.order.count({ where: { tenantId, status: 'cancelled', createdAt: dateFilter } }),
+    prisma.order.count({ where: { tenantId, status: 'refunded', createdAt: dateFilter } }),
+    prisma.order.aggregate({
+      where: { tenantId, status: { in: ['paid', 'processing', 'completed'] }, createdAt: dateFilter },
+      _sum: { price: true },
+      _avg: { price: true },
+    }),
+  ]);
+
   const conversion_rate =
     checkouts_generated > 0
       ? Math.round((sales_completed / checkouts_generated) * 100 * 10) / 10
@@ -48,6 +67,13 @@ export async function getSalesAnalytics(tenantId: string, period: string) {
     sales_conversations,
     checkouts_generated,
     sales_completed,
-    conversion_rate
+    conversion_rate,
+    // ORDERS_V2
+    orders_total,
+    orders_paid,
+    orders_cancelled,
+    orders_refunded,
+    orders_revenue: orders_revenue._sum.price ?? 0,
+    orders_avg_ticket: orders_revenue._avg.price ?? 0,
   };
 }

@@ -1,10 +1,148 @@
 import { prisma } from '@/lib/prisma';
 
+/**
+ * Envia um template WhatsApp via Meta Graph API.
+ * @param to - número de destino (formato internacional)
+ * @param templateName - nome do template conforme cadastrado na WABA
+ * @param phoneId - Phone Number ID da WABA
+ * @param token - token de acesso descriptografado
+ * @param variables - valores das variáveis do template (opcionais)
+ * @param language - código do idioma (padrão: pt_BR)
+ */
+export async function sendTemplateMessage(
+  to: string,
+  templateName: string,
+  phoneId: string,
+  token: string,
+  variables: string[] = [],
+  language: string = 'pt_BR'
+): Promise<any> {
+  const payload: any = {
+    messaging_product: 'whatsapp',
+    to,
+    type: 'template',
+    template: {
+      name: templateName,
+      language: { code: language },
+    },
+  };
+
+  if (variables.length > 0) {
+    payload.template.components = [
+      {
+        type: 'BODY',
+        parameters: variables.filter(v => v).map((val) => ({
+          type: 'text',
+          text: val,
+        })),
+      },
+    ];
+  }
+
+  const url = `https://graph.facebook.com/v20.0/${phoneId}/messages`;
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(`[Template] Falha ao enviar "${templateName}": ${data.error?.message || 'Erro desconhecido'}`);
+  }
+
+  return data;
+}
+
 export async function getAutomations(tenantId: string) {
   return prisma.automationRule.findMany({
     where: { tenantId },
     orderBy: { createdAt: 'desc' }
   });
+}
+
+// ── Order status automation triggers ──────────────────────────────────────────
+
+/**
+ * Execute automation rules triggered by order status changes.
+ * Matches rules with triggerType='order_status' and triggerValue matching the new status.
+ * Sends WhatsApp message to the order's contact if credentials are available.
+ * Idempotent: skips if the order already had this status in history (re-entry guard).
+ */
+export async function executeOrderAutomations(
+  tenantId: string,
+  orderId: string,
+  newStatus: string,
+  contactPhone: string,
+  context?: { origin?: string; conversationId?: string }
+): Promise<{ triggered: number; sent: number }> {
+  let triggered = 0;
+  let sent = 0;
+
+  try {
+    // Find matching rules for this order status
+    const rules = await prisma.automationRule.findMany({
+      where: {
+        tenantId,
+        active: true,
+        triggerType: 'order_status',
+        triggerValue: newStatus,
+      },
+    });
+
+    if (rules.length === 0) return { triggered: 0, sent: 0 };
+
+    triggered = rules.length;
+
+    // Get tenant WhatsApp credentials
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { whatsappPhoneNumberId: true, whatsappPhoneId: true, whatsappToken: true },
+    });
+
+    const phoneId = tenant?.whatsappPhoneNumberId || tenant?.whatsappPhoneId;
+    const rawToken = tenant?.whatsappToken;
+
+    if (!phoneId || !rawToken) {
+      console.log(`[OrderAutomation] Tenant ${tenantId} sem credenciais WhatsApp — ${triggered} regras matched mas não enviadas`);
+      return { triggered, sent: 0 };
+    }
+
+    // Dynamic imports to avoid circular deps
+    const { decrypt } = await import('@/lib/utils/crypto');
+    // @ts-ignore
+    const { sendWhatsAppMessage } = await import('@/src/services/whatsappService');
+    const token = decrypt(rawToken);
+
+    for (const rule of rules) {
+      try {
+        if (rule.responseType === 'template') {
+          // Enviar template via Meta Graph API
+          await sendTemplateMessage(contactPhone, rule.responseText, phoneId, token, [
+            context?.origin || '',
+            orderId.slice(0, 8),
+          ]);
+        } else {
+          // Enviar texto normal com placeholders substituídos
+          const message = rule.responseText
+            .replace(/\{status\}/g, newStatus)
+            .replace(/\{orderId\}/g, orderId.slice(0, 8));
+          await sendWhatsAppMessage(contactPhone, message, phoneId, token);
+        }
+        sent++;
+        console.log(`[OrderAutomation] Enviado "${rule.name}" (${rule.responseType}) para ${contactPhone}`);
+      } catch (err) {
+        console.error(`[OrderAutomation] Falha ao enviar regra "${rule.name}" para ${contactPhone}:`, err);
+      }
+    }
+  } catch (err) {
+    console.error(`[OrderAutomation] Error processing automations for order ${orderId}:`, err);
+  }
+
+  return { triggered, sent };
 }
 
 export async function createAutomation(tenantId: string, data: any) {

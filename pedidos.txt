@@ -1,0 +1,187 @@
+Use CONTEXTO_MESTRE + CONTEXTO_STABILIZATION, se já existirem no projeto.
+
+Implemente ORDERS_V2 = evolução completa do módulo de pedidos.
+
+Contexto:
+Projeto SaaS omnichannel em monólito Next.js, com multi-tenant, roles, billing, inbox, IA, automations, CRM, agenda, catálogo, checkout, analytics e módulo de orders já existente.
+
+Objetivo:
+Transformar o módulo de pedidos em um sistema robusto de fechamento comercial, operação e pós-venda, sem re-arquitetar o projeto e com patch mínimo.
+
+Regras obrigatórias:
+- NÃO reescrever o módulo do zero.
+- Reaproveitar models, services, rotas, telas e lógica já existentes.
+- Priorizar consistência de estado, integração com conversa/CRM/checkout e visão operacional.
+- Preservar multi-tenant, roles, billing e entitlements.
+- Não criar complexidade fiscal/logística desnecessária nesta fase.
+- Corrigir apenas problemas reais e expandir apenas o necessário para operação sólida.
+- Toda mudança deve considerar backend + frontend + regras de negócio.
+- Se algo já estiver bom, não mexer.
+
+Escopo completo:
+
+1. AUDITORIA DO MÓDULO ATUAL
+- Revisar models, services, rotas, server actions, telas e fluxos atuais de orders.
+- Identificar lacunas em:
+  - estados do pedido
+  - itens e valores
+  - vínculo com contact/conversation
+  - vínculo com checkout/pagamento
+  - origem do pedido
+  - operação manual
+  - cancelamento/reembolso
+  - automations
+  - analytics
+- Determinar se hoje o módulo é só listagem/cadastro ou se já suporta operação real.
+
+2. MODELO DE PEDIDO E ESTADOS
+- Revisar e consolidar lifecycle do pedido com estados consistentes, por exemplo:
+  - draft
+  - pending_payment
+  - paid
+  - processing
+  - completed
+  - cancelled
+  - refunded
+  - failed
+- Garantir transições válidas de estado.
+- Revisar estrutura de:
+  - itens
+  - subtotal
+  - desconto
+  - total
+  - moeda
+  - origem
+  - observações
+  - referências externas
+- Registrar timestamps relevantes por estado.
+
+3. CRIAÇÃO DE PEDIDO A PARTIR DA CONVERSA
+- Permitir criar/vincular pedido a:
+  - tenant
+  - contact
+  - conversation
+- Registrar origem do pedido:
+  - instagram
+  - whatsapp
+  - facebook
+  - manual
+  - agenda
+  - checkout
+- Permitir gerar pedido a partir de produto/serviço/oferta enviada no chat.
+- Permitir que operador visualize e continue o fluxo do pedido a partir da conversa.
+- Integrar com CRM e memória do cliente quando aplicável.
+
+4. SINCRONISMO COM CHECKOUT E PAGAMENTO
+- Revisar vínculo entre pedido e checkout/link de pagamento.
+- Revisar atualização por webhook/status de pagamento.
+- Garantir transições corretas:
+  - pending_payment -> paid
+  - pending_payment -> failed
+  - pending_payment -> cancelled
+- Evitar duplicação de pedido por múltiplos eventos.
+- Reforçar idempotência.
+- Registrar referência externa do pagamento quando existir.
+- NÃO alterar billing de assinatura do SaaS; tratar apenas pedidos do cliente final.
+
+5. OPERAÇÃO DE PEDIDO
+- Melhorar listagem de pedidos.
+- Adicionar filtros mínimos por:
+  - status
+  - origem
+  - cliente
+  - período
+- Criar/ajustar tela ou drawer de detalhes do pedido.
+- Adicionar ações manuais seguras:
+  - marcar processing
+  - marcar completed
+  - cancelar
+  - adicionar nota interna
+- Adicionar timeline simples do pedido.
+- Exibir vínculo visual com conversa, contato e pagamento.
+
+6. CANCELAMENTO, REEMBOLSO E RECUPERAÇÃO
+- Implementar fluxo de cancelamento com motivo opcional.
+- Implementar fluxo de refund quando aplicável.
+- Registrar pedido falho ou abandonado.
+- Preparar reengajamento para pedido não concluído.
+- Evitar estados quebrados entre pedido e pagamento.
+- Atualizar CRM e analytics conforme o desfecho.
+
+7. AUTOMAÇÕES DE PÓS-VENDA E RECUPERAÇÃO
+- Integrar com automationService e followUpService já existentes.
+- Criar gatilhos por status:
+  - created
+  - pending_payment
+  - paid
+  - completed
+  - cancelled
+  - refunded
+- Criar follow-up para:
+  - pagamento pendente
+  - pedido concluído
+  - recuperação de pedido perdido
+- Registrar origem e resultado dessas automações.
+
+8. ANALYTICS DE PEDIDOS
+- Integrar com analytics atual.
+- Medir por tenant/canal/origem:
+  - pedidos criados
+  - pending_payment
+  - pagos
+  - cancelados
+  - refunds
+  - ticket médio
+  - taxa de conversão de pedido
+  - receita por canal
+  - receita por origem
+  - tempo entre conversa e pedido
+- Criar painel simples, sem BI complexo.
+
+9. INTEGRAÇÕES EXTERNAS OPCIONAIS
+- Preparar base opcional para sync/import de pedidos externos quando aplicável.
+- Evitar duplicação.
+- Mapear origem externa.
+- Implementar fallback seguro se integração falhar.
+- Não tornar integração externa dependência central do módulo.
+
+10. FRONTEND E REGRAS DE NEGÓCIO
+- Garantir que o frontend exponha corretamente o módulo melhorado.
+- Validar menus, listagens, detalhes, ações, feedbacks e estados vazios/erro/loading.
+- Garantir coerência com roles e planos.
+- Garantir que o pedido esteja navegável a partir de:
+  - conversa
+  - CRM
+  - agenda
+  - checkout, quando aplicável
+
+11. CONFIABILIDADE
+- Reforçar idempotência onde houver criação/atualização por eventos.
+- Evitar race conditions e duplicação de pedidos.
+- Preservar isolamento por tenant.
+- Manter patch mínimo e sem refactor amplo.
+
+Entregue em formato objetivo:
+1. auditoria curta do módulo atual
+2. problemas/lacunas encontrados
+3. severidade e impacto
+4. plano de implementação
+5. arquivos alterados
+6. models/migrations ajustados, se necessários
+7. services/rotas/telas ajustados
+8. patch mínimo aplicado
+9. checklist final de aceite
+10. bugs restantes ou riscos que ainda exigem atenção
+
+Checklist mínimo de aceite:
+- pedido tem lifecycle consistente
+- pedido pode nascer da conversa
+- pedido fica vinculado a contact/conversation
+- pedido sincroniza corretamente com checkout/pagamento
+- não duplica por webhook/evento repetido
+- operador consegue filtrar e operar pedidos
+- cancelamento/reembolso não quebram estado
+- automations reagem a status do pedido
+- analytics de pedidos funcionam
+- roles/tenant continuam corretos
+- frontend e backend ficam coerentes

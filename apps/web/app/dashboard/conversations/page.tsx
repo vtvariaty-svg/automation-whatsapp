@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useEntitlements } from "@/hooks/useEntitlements";
+import { planAtLeast } from "@/lib/config/plans";
+import { OrderFormDialog } from "@/components/orders/OrderFormDialog";
 
 type Conversation = {
   id: string;
@@ -12,6 +14,15 @@ type Conversation = {
   timestamp: string;
   channel?: string;
   assigned_user?: string;
+};
+
+type LinkedOrder = {
+  id: string;
+  status: string;
+  price: number;
+  product: string | null;
+  createdAt: string;
+  origin: string;
 };
 
 type Message = {
@@ -56,6 +67,12 @@ export default function InboxPage() {
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Order states
+  const [linkedOrders, setLinkedOrders] = useState<LinkedOrder[]>([]);
+  const [showOrderDialog, setShowOrderDialog] = useState(false);
+  const [creatingOrder, setCreatingOrder] = useState(false);
+  const canCreateOrder = !ent.loading && planAtLeast(ent.plan, "standard");
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -95,6 +112,17 @@ export default function InboxPage() {
     }
   }, [tenantId]);
 
+  const loadLinkedOrders = useCallback(async (phone: string) => {
+    if (!canCreateOrder) return;
+    try {
+      const res = await fetch(`/api/conversations/${phone}/orders`, { headers: authHeaders() });
+      if (res.ok) setLinkedOrders(await res.json());
+      else setLinkedOrders([]);
+    } catch {
+      setLinkedOrders([]);
+    }
+  }, [canCreateOrder]);
+
   const loadMessages = async (phone: string, status: string) => {
     setSelectedPhone(phone);
     setCurrentStatus(status);
@@ -112,6 +140,8 @@ export default function InboxPage() {
     } finally {
       setLoadingChat(false);
     }
+    // Load linked orders for this contact
+    loadLinkedOrders(phone);
   };
 
   useEffect(() => {
@@ -454,8 +484,38 @@ export default function InboxPage() {
                       <span>✅</span> Encerrar
                     </button>
                   )}
+                  {canCreateOrder && (
+                    <button
+                      onClick={() => setShowOrderDialog(true)}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-xl text-sm font-semibold hover:bg-emerald-100 transition-all border border-emerald-100"
+                    >
+                      <span>🛍️</span> Criar Pedido
+                    </button>
+                  )}
                 </div>
               </div>
+
+              {/* Linked orders bar */}
+              {linkedOrders.length > 0 && (
+                <div className="px-6 py-2 border-b border-gray-100 bg-gray-50/50 flex items-center gap-2 overflow-x-auto shrink-0">
+                  <span className="text-xs font-semibold text-gray-500 shrink-0">Pedidos:</span>
+                  {linkedOrders.map((o) => (
+                    <a
+                      key={o.id}
+                      href={`/dashboard/orders?detail=${o.id}`}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-white border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 transition-all shrink-0"
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full ${
+                        o.status === "paid" || o.status === "completed" ? "bg-emerald-500" :
+                        o.status === "cancelled" || o.status === "refunded" ? "bg-red-400" :
+                        o.status === "pending_payment" ? "bg-amber-500" : "bg-gray-400"
+                      }`} />
+                      <span className="text-gray-700">#{o.id.slice(0, 6)}</span>
+                      <span className="text-gray-400">R$ {Number(o.price).toFixed(2).replace(".", ",")}</span>
+                    </a>
+                  ))}
+                </div>
+              )}
 
               {/* Messages */}
               <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gradient-to-b from-slate-50/50 to-white">
@@ -600,6 +660,28 @@ export default function InboxPage() {
           )}
         </div>
       </div>
+
+      {/* Order creation dialog from conversation */}
+      {showOrderDialog && selectedPhone && (
+        <OrderFormDialog
+          isOpen={showOrderDialog}
+          onClose={() => setShowOrderDialog(false)}
+          onSuccess={() => {
+            setShowOrderDialog(false);
+            showFeedback("success", "Pedido criado com sucesso");
+            if (selectedPhone) loadLinkedOrders(selectedPhone);
+          }}
+          tenantId={tenantId || ""}
+          contactId={selectedPhone}
+          customerPhone={selectedPhone}
+          origin={
+            conversations.find((c) => c.phone_number === selectedPhone)?.channel ?? "whatsapp"
+          }
+          conversationId={
+            conversations.find((c) => c.phone_number === selectedPhone)?.id
+          }
+        />
+      )}
     </div>
   );
 }

@@ -50,6 +50,41 @@ export async function POST(req: Request) {
           if (opportunity) {
             await prisma.salesOpportunity.update({ where: { id: opportunity.id }, data: { status: 'pago' } });
           }
+
+          // ORDERS_V2 — Create Order from checkout (idempotent via externalPaymentRef)
+          try {
+            const { createOrderFromCheckout } = await import('@/src/services/orderService');
+            const product = await prisma.product.findUnique({ where: { id: productId } });
+            const stripeSessionId = session.id ?? session.payment_intent ?? `stripe_${Date.now()}`;
+
+            // Find conversation for this contact to link the order
+            const conversation = await prisma.conversation.findFirst({
+              where: { tenantId, customerPhone: contactId },
+              orderBy: { lastMessageAt: 'desc' },
+            });
+
+            await createOrderFromCheckout(
+              tenantId,
+              contactId,
+              productId,
+              product?.name ?? 'Produto',
+              product?.price ?? 0,
+              stripeSessionId,
+              conversation?.id
+            );
+
+            // Update attribution with orderId
+            const { touchAttribution, markConverted } = await import('@/lib/attribution');
+            const order = await prisma.order.findUnique({ where: { externalPaymentRef: stripeSessionId } });
+            if (order) {
+              await touchAttribution(tenantId, contactId, 'whatsapp', 'direct', undefined, { orderId: order.id });
+              await markConverted(tenantId, contactId, order.price);
+            }
+          } catch (orderErr) {
+            console.error('[Webhook] Error creating Order from checkout:', orderErr);
+            // Non-blocking — SalesEvent/Opportunity already updated
+          }
+
           console.log(`[Webhook] Product sale: tenantId=${tenantId} contactId=${contactId} productId=${productId}`);
         } else {
           // ── Subscription checkout ─────────────────────────────────────────

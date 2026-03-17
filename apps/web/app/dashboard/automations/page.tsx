@@ -38,6 +38,16 @@ export default function AutomationsPage() {
         responseText: "",
     });
 
+    const ORDER_STATUS_OPTIONS = [
+        { value: "draft", label: "Pedido criado (draft)" },
+        { value: "pending_payment", label: "Aguardando pagamento" },
+        { value: "paid", label: "Pedido pago" },
+        { value: "processing", label: "Em processamento" },
+        { value: "completed", label: "Pedido concluído" },
+        { value: "cancelled", label: "Pedido cancelado" },
+        { value: "refunded", label: "Pedido reembolsado" },
+    ];
+
     const showToast = (msg: string) => {
         setToastMessage(msg);
         setTimeout(() => setToastMessage(""), 3000);
@@ -146,7 +156,7 @@ export default function AutomationsPage() {
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight text-gray-900">Automações Rápidas</h1>
                     <p className="text-sm text-gray-500 mt-1">
-                        Crie respostas automáticas por palavras-chave antes da IA ser acionada.
+                        Crie respostas automáticas por palavras-chave ou por mudança de status de pedido.
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -178,7 +188,7 @@ export default function AutomationsPage() {
                             className="inline-flex items-center gap-2 bg-[#4f46e5] text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-[#4338ca] hover:shadow-lg hover:shadow-[#4f46e5]/20 transition-all focus:ring-2 focus:ring-[#4f46e5] focus:ring-offset-2"
                         >
                             <PlusIcon className="w-5 h-5" />
-                            Nova Automação
+                            Nova Automação (Keyword ou Pedido)
                         </button>
                     )}
                 </div>
@@ -234,13 +244,19 @@ export default function AutomationsPage() {
                                         <div className="font-medium text-gray-900">{rule.name}</div>
                                     </div>
                                     <div className="col-span-3">
-                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                                            "{rule.triggerValue}"
-                                        </span>
+                                        {rule.triggerType === "order_status" ? (
+                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                                                🛍️ {rule.triggerValue}
+                                            </span>
+                                        ) : (
+                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                                                &quot;{rule.triggerValue}&quot;
+                                            </span>
+                                        )}
                                     </div>
                                     <div className="col-span-1">
                                         <span className="text-xs text-gray-500">
-                                            {rule.matchType === 'exact' ? 'Exata' : 'Contém'}
+                                            {rule.triggerType === "order_status" ? "Pedido" : rule.matchType === 'exact' ? 'Exata' : 'Contém'}
                                         </span>
                                     </div>
                                     <div className="col-span-3">
@@ -306,30 +322,62 @@ export default function AutomationsPage() {
                                 />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-900 mb-1.5">Tipo de Gatilho</label>
+                                <select
+                                    value={formData.triggerType}
+                                    onChange={(e) => setFormData({ ...formData, triggerType: e.target.value, triggerValue: "", matchType: e.target.value === "order_status" ? "exact" : formData.matchType })}
+                                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20 focus:border-[#4f46e5]/50 transition-all appearance-none"
+                                >
+                                    <option value="keyword">Palavra-chave (mensagem)</option>
+                                    <option value="order_status">Status de pedido</option>
+                                </select>
+                            </div>
+
+                            {formData.triggerType === "order_status" ? (
                                 <div>
-                                    <label className="block text-sm font-semibold text-gray-900 mb-1.5">Gatilho (Mensagem)</label>
-                                    <input
+                                    <label className="block text-sm font-semibold text-gray-900 mb-1.5">Quando o pedido mudar para</label>
+                                    <select
                                         required
-                                        type="text"
-                                        placeholder="Ex: preço"
                                         value={formData.triggerValue}
                                         onChange={(e) => setFormData({ ...formData, triggerValue: e.target.value })}
-                                        className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20 focus:border-[#4f46e5]/50 transition-all placeholder:text-gray-400"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-900 mb-1.5">Correspondência</label>
-                                    <select
-                                        value={formData.matchType}
-                                        onChange={(e) => setFormData({ ...formData, matchType: e.target.value })}
                                         className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20 focus:border-[#4f46e5]/50 transition-all appearance-none"
                                     >
-                                        <option value="exact">Mensagem exata</option>
-                                        <option value="contains">Contém a palavra</option>
+                                        <option value="">Selecione o status...</option>
+                                        {ORDER_STATUS_OPTIONS.map((opt) => (
+                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                        ))}
                                     </select>
+                                    <p className="text-xs text-gray-400 mt-1.5">
+                                        Use <code className="bg-gray-100 px-1 rounded">{"{orderId}"}</code> e <code className="bg-gray-100 px-1 rounded">{"{status}"}</code> na resposta para personalizar.
+                                    </p>
                                 </div>
-                            </div>
+                            ) : (
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-900 mb-1.5">Gatilho (Mensagem)</label>
+                                        <input
+                                            required
+                                            type="text"
+                                            placeholder="Ex: preço"
+                                            value={formData.triggerValue}
+                                            onChange={(e) => setFormData({ ...formData, triggerValue: e.target.value })}
+                                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20 focus:border-[#4f46e5]/50 transition-all placeholder:text-gray-400"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-900 mb-1.5">Correspondência</label>
+                                        <select
+                                            value={formData.matchType}
+                                            onChange={(e) => setFormData({ ...formData, matchType: e.target.value })}
+                                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20 focus:border-[#4f46e5]/50 transition-all appearance-none"
+                                        >
+                                            <option value="exact">Mensagem exata</option>
+                                            <option value="contains">Contém a palavra</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            )}
 
                             <div>
                                 <label className="block text-sm font-semibold text-gray-900 mb-1.5">Resposta Automática</label>

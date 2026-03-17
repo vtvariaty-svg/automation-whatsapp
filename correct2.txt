@@ -1,0 +1,161 @@
+Use CONTEXTO_MESTRE + CONTEXTO_STABILIZATION + CONTEXTO_PEDIDOS_V2, se já existirem no projeto.
+
+Implemente ORDERS_PENDING_FINISH = concluir os itens pendentes do módulo de pedidos, sem quebrar o projeto, com patch mínimo e preservando compatibilidade.
+
+Contexto:
+O módulo de pedidos já foi evoluído e o checklist principal foi concluído:
+- lifecycle consistente
+- pedido vinculado a contact/conversation
+- sync com checkout/pagamento
+- idempotência por webhook
+- operação manual e analytics básicos
+- roles/tenant corretos
+- migration compatível com legacy
+
+Pendências confirmadas:
+1. automações por status de pedido
+   - triggers como order_paid e order_completed
+   - requer expansão do automationService
+2. botão "Criar pedido" dentro da tela de conversa
+   - requer alteração na conversations page
+
+Objetivo:
+Finalizar essas pendências e acrescentar apenas o que for necessário para funcionamento bom, coerente e seguro do fluxo conversa -> pedido -> automação, sem re-arquitetar o sistema.
+
+Regras obrigatórias:
+- NÃO reescrever módulos do zero.
+- NÃO fazer refactor amplo.
+- Reaproveitar orders, automationService, followUpService, inbox/conversations e models existentes.
+- Corrigir e expandir apenas o necessário.
+- Preservar multi-tenant, roles, billing, entitlements e integrações já existentes.
+- Garantir compatibilidade com dados legados.
+- Se algo já estiver bom, não mexer.
+- Toda mudança deve considerar frontend + backend + regra de negócio.
+- Evitar duplicação de lógica entre orders e automations.
+- Reforçar idempotência e prevenção de duplicidade onde houver eventos.
+
+Escopo completo:
+
+1. AUTOMAÇÕES POR STATUS DE PEDIDO
+Expandir o automationService para suportar eventos de pedido sem quebrar automações existentes.
+
+Implementar suporte mínimo e consistente para triggers de pedido:
+- order_created
+- order_pending_payment
+- order_paid
+- order_completed
+- order_cancelled
+- order_refunded
+
+Requisitos:
+- usar modelo de trigger compatível com engine atual
+- não criar engine paralela
+- garantir que apenas transições válidas disparem eventos
+- evitar disparo duplicado em updates repetidos/webhooks repetidos
+- registrar origem e contexto do evento
+- permitir uso desses triggers em fluxos existentes quando aplicável
+- integrar com followUpService quando fizer sentido
+
+2. BOTÃO "CRIAR PEDIDO" NA CONVERSA
+Adicionar entrada operacional dentro da tela de conversa para criar pedido de forma natural.
+
+Requisitos:
+- adicionar botão/CTA "Criar pedido" na conversations page
+- visível apenas quando:
+  - usuário tiver role/permissão adequada
+  - tenant/plano permitir uso do módulo
+- ao clicar, abrir fluxo leve e seguro para:
+  - selecionar produto/serviço quando aplicável
+  - criar pedido vinculado ao contact/conversation atuais
+  - preencher dados mínimos necessários
+- após criação:
+  - atualizar UI da conversa
+  - exibir vínculo com pedido criado
+  - permitir navegar para detalhes do pedido
+- não poluir a tela de conversa nem quebrar UX do inbox
+
+3. MELHORIAS NECESSÁRIAS PARA BOM FUNCIONAMENTO
+Além das pendências explícitas, acrescentar somente o essencial para deixar o fluxo sólido:
+
+3.1 Vínculo visual pedido <-> conversa
+- exibir referência do pedido dentro da conversa
+- mostrar status atual do pedido
+- permitir acesso rápido ao detalhe do pedido
+
+3.2 Guardas e permissões
+- garantir checagem de role/tenant/plano tanto no frontend quanto no backend
+- impedir criação de pedido por usuário sem permissão
+- impedir acesso indevido por URL/action
+
+3.3 Estados e feedbacks
+- loading, erro, sucesso e disabled states no fluxo de criação pela conversa
+- mensagens claras quando faltar produto/serviço, permissão ou contexto suficiente
+- evitar criação silenciosa com erro parcial
+
+3.4 Idempotência e consistência
+- garantir que automações por status não disparem duplicadas
+- garantir que criação de pedido via conversa não gere pedidos duplicados por clique duplo/reload/evento repetido
+- reforçar logs estruturados mínimos
+
+3.5 Analytics/Event tracking mínimo
+- registrar criação de pedido originada da conversa
+- registrar disparo de automação por status do pedido
+- manter compatibilidade com analytics atual
+
+4. FRONTEND
+Revisar apenas o necessário em:
+- conversations page
+- componentes relacionados à conversa/pedido
+- feedbacks visuais
+- navegação para detalhes do pedido
+- possível painel/drawer/modal leve para criação
+
+5. BACKEND
+Revisar apenas o necessário em:
+- orders service
+- automationService
+- followUpService, se aplicável
+- rotas/server actions envolvidas
+- guards de permissão
+- emissão de eventos de status de pedido
+
+6. REGRA DE NEGÓCIO
+Garantir coerência dos fluxos:
+- conversa -> criar pedido
+- pedido criado -> status correto
+- mudança de status -> trigger correto
+- trigger correto -> automação correta
+- sem disparo duplicado
+- sem quebrar fluxos manuais existentes
+
+7. NÃO FAZER NESTA ETAPA
+- não criar builder novo de automações
+- não redesenhar a tela inteira de conversas
+- não alterar billing de assinatura do SaaS
+- não adicionar complexidade fiscal/logística
+- não criar dependência de integrações externas
+
+Entregue em formato objetivo:
+1. auditoria curta das pendências
+2. causa raiz ou lacunas atuais
+3. plano de implementação curto
+4. arquivos alterados
+5. services/rotas/telas ajustados
+6. patch mínimo aplicado
+7. validações de idempotência/permissão
+8. checklist final de aceite
+9. riscos restantes, se houver
+
+Checklist mínimo de aceite:
+- automationService suporta triggers de pedido sem quebrar automações existentes
+- order_paid e order_completed funcionam
+- triggers adicionais mínimos de pedido ficam coerentes
+- não há duplicidade de disparo por evento repetido
+- botão "Criar pedido" aparece na conversa quando permitido
+- pedido criado pela conversa fica vinculado a contact/conversation
+- conversa mostra referência/status do pedido
+- usuário consegue navegar da conversa para o pedido
+- roles, tenant e plano continuam corretos
+- frontend tem feedback adequado
+- backend continua protegido
+- fluxo conversa -> pedido -> automação funciona ponta a ponta

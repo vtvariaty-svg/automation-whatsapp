@@ -17,7 +17,15 @@
       "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")",
       "Bash(grep -r \"SalesOpportunity\\\\|SalesEvent\\\\|LeadAttribution\" /c/Users/vinic/Documents/automation-whatsapp/apps/web/app --include=*.ts --include=*.tsx -l)",
       "Bash(2)",
-      "Bash(npx prisma:*)"
+      "Bash(npx prisma:*)",
+      "Bash(find /c/Users/vinic/Documents/automation-whatsapp/apps/api/src -type f \\\\\\(-name *.ts -o -name *.tsx \\\\\\))",
+      "Bash(find /c/Users/vinic/Documents/automation-whatsapp/apps/web/src -type f \\\\\\(-name *.ts -o -name *.tsx \\\\\\))",
+      "Bash(grep -r triggerType.*order_status C:UsersvinicDocumentsautomation-whatsapp/apps/web)",
+      "Bash(npx.cmd prisma:*)",
+      "Bash(node_modules/.bin/prisma generate:*)",
+      "Bash(./node_modules/.bin/prisma generate:*)",
+      "Bash(cmd.exe /c \"git push origin main 2>&1\")",
+      "Bash(cmd.exe /c \"git push origin main\")"
     ]
   }
 }

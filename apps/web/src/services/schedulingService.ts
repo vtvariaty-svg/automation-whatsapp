@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { parse, addMinutes, addDays, isBefore, isAfter, format } from 'date-fns';
-import { upsertContactByPhone } from '@/lib/services/contactService';
+import { upsertContactByPhone, addContactEvent } from '@/lib/services/contactService';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -76,10 +76,35 @@ export async function updateAppointmentStatus(
   if (status === 'cancelado') timestamps.cancelledAt = new Date();
   if (status === 'no_show') timestamps.cancelledAt = new Date(); // treat no_show as de-facto cancel for slot availability
 
-  return prisma.appointment.update({
+  const appt = await prisma.appointment.update({
     where: { id, tenantId },
     data: { status, ...timestamps },
   });
+
+  // Fire contact event for relevant status changes (non-blocking)
+  if (appt.contactId) {
+    const eventMap: Record<string, { type: string; title: string }> = {
+      confirmado: { type: 'appointment_confirmed', title: 'Agendamento confirmado' },
+      cancelado: { type: 'appointment_cancelled', title: 'Agendamento cancelado' },
+      concluido: { type: 'appointment_completed', title: 'Agendamento concluído' },
+      no_show: { type: 'appointment_no_show', title: 'Não compareceu ao agendamento' },
+    };
+    const ev = eventMap[status];
+    if (ev) {
+      addContactEvent(tenantId, appt.contactId, ev.type, ev.title, {
+        appointmentId: id,
+        service: appt.service,
+        date: appt.date,
+        time: appt.time,
+      }).catch((err) =>
+        console.error('[ContactEvent] Failed to add appointment status event', {
+          tenantId, appointmentId: id, error: err?.message ?? err,
+        })
+      );
+    }
+  }
+
+  return appt;
 }
 
 /**
@@ -149,6 +174,15 @@ export async function createAppointment(tenantId: string, data: CreateAppointmen
       if (contact) {
         prisma.appointment
           .update({ where: { id: appointment.id }, data: { contactId: contact.id } })
+          .then(() =>
+            addContactEvent(
+              tenantId,
+              contact.id,
+              'appointment_created',
+              `Agendamento criado: ${data.service} em ${data.date} às ${data.time}`,
+              { appointmentId: appointment.id, service: data.service, date: data.date, time: data.time }
+            )
+          )
           .catch((err) =>
             console.error('[ContactSync] Failed to link appointment to contact', {
               tenantId,

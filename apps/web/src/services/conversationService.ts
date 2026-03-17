@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import { upsertContactByPhone } from '@/lib/services/contactService';
+import { upsertContactByPhone, addContactEvent } from '@/lib/services/contactService';
 
 /**
  * Salva a mensagem enviada pelo usuário.
@@ -43,6 +43,15 @@ export async function saveUserMessage(phoneNumber: string, messageText: string, 
         if (contact && !conversation!.contactId) {
           prisma.conversation
             .update({ where: { id: conversation!.id }, data: { contactId: contact.id } })
+            .then(() =>
+              addContactEvent(
+                tenantId,
+                contact.id,
+                'conversation_started',
+                `Conversa iniciada via ${channel}`,
+                { conversationId: conversation!.id, channel }
+              )
+            )
             .catch((err) =>
               console.error('[ContactSync] Failed to link conversation to contact', {
                 tenantId,

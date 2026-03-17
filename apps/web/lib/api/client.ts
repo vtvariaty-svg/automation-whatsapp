@@ -101,4 +101,19 @@ export const contactsApi = {
   update: async (id: string, data: Record<string, unknown>) => {
     return apiClient(`/contacts/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
   },
+  timeline: async (id: string) => {
+    return apiClient(`/contacts/${id}/timeline`);
+  },
+  duplicates: async (id: string) => {
+    return apiClient(`/contacts/${id}/duplicates`);
+  },
+  merge: async (survivorId: string, mergedId: string) => {
+    return apiClient(`/contacts/${survivorId}/merge`, { method: 'POST', body: JSON.stringify({ mergedId }) });
+  },
+  updateTags: async (id: string, tags: string[]) => {
+    return apiClient(`/contacts/${id}/tags`, { method: 'PATCH', body: JSON.stringify({ tags }) });
+  },
+  analytics: async () => {
+    return apiClient('/contacts/analytics');
+  },
 };

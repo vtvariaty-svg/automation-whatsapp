@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { executeOrderAutomations } from '@/src/services/automationService';
-import { upsertContactByPhone } from '@/lib/services/contactService';
+import { upsertContactByPhone, addContactEvent } from '@/lib/services/contactService';
 
 // ── Emit order event (trigger automations) ────────────────────────────────────
 async function emitOrderEvent(
@@ -156,6 +156,15 @@ export async function createOrder(input: CreateOrderInput, userId?: string) {
         if (contact) {
           prisma.order
             .update({ where: { id: order.id }, data: { contactId: contact.id } })
+            .then(() =>
+              addContactEvent(
+                input.tenantId,
+                contact.id,
+                'order_created',
+                `Pedido criado${input.customerName ? ` para ${input.customerName}` : ''}`,
+                { orderId: order.id, status, origin: input.origin }
+              )
+            )
             .catch((err) =>
               console.error('[ContactSync] Failed to link order to contact', {
                 tenantId: input.tenantId,
@@ -218,6 +227,30 @@ export async function updateOrderStatus(
     origin: order.origin,
     conversationId: order.conversationId ?? undefined,
   }).catch(() => {});
+
+  // Fire contact event for relevant status transitions (non-blocking)
+  if (order.contactId) {
+    const eventMap: Record<string, string> = {
+      paid: 'order_paid',
+      cancelled: 'order_cancelled',
+      completed: 'order_completed',
+      refunded: 'order_refunded',
+    };
+    const eventType = eventMap[newStatus];
+    if (eventType) {
+      addContactEvent(
+        tenantId,
+        order.contactId,
+        eventType,
+        `Pedido ${newStatus === 'paid' ? 'pago' : newStatus === 'cancelled' ? 'cancelado' : newStatus === 'completed' ? 'concluído' : 'reembolsado'}`,
+        { orderId, fromStatus: currentStatus, toStatus: newStatus }
+      ).catch((err) =>
+        console.error('[ContactEvent] Failed to add order status event', {
+          tenantId, orderId, error: err?.message ?? err,
+        })
+      );
+    }
+  }
 
   return updated;
 }

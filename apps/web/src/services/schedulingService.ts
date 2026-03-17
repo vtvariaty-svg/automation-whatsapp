@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma';
-import { parse, addMinutes, isBefore, isAfter, format } from 'date-fns';
+import { parse, addMinutes, addDays, isBefore, isAfter, format } from 'date-fns';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -10,6 +10,12 @@ export interface CreateAppointmentData {
   date: string;       // YYYY-MM-DD
   time: string;       // HH:MM
   notes?: string;
+  // AG2 — conversational booking
+  source?: string;         // manual | whatsapp | instagram | facebook
+  conversationId?: string;
+  // AG5 — professional assignment
+  professionalId?: string;
+  professionalName?: string;
 }
 
 // ─── Services ────────────────────────────────────────────────────────────────
@@ -67,6 +73,7 @@ export async function updateAppointmentStatus(
   const timestamps: any = {};
   if (status === 'confirmado') timestamps.confirmedAt = new Date();
   if (status === 'cancelado') timestamps.cancelledAt = new Date();
+  if (status === 'no_show') timestamps.cancelledAt = new Date(); // treat no_show as de-facto cancel for slot availability
 
   return prisma.appointment.update({
     where: { id, tenantId },
@@ -122,6 +129,10 @@ export async function createAppointment(tenantId: string, data: CreateAppointmen
       notes: data.notes,
       durationMinutes,          // snapshot at booking time
       status: 'agendado',       // FIX C3: was 'scheduled' (English), now matches schema
+      source: data.source ?? 'manual',
+      conversationId: data.conversationId ?? null,
+      professionalId: data.professionalId ?? null,
+      professionalName: data.professionalName ?? null,
     },
   });
 }
@@ -143,7 +154,8 @@ export async function createAppointment(tenantId: string, data: CreateAppointmen
 export async function getAvailableSlots(
   tenantId: string,
   date: string,
-  serviceName: string
+  serviceName: string,
+  professionalId?: string  // AG5: filter to specific professional
 ): Promise<string[]> {
   // ── Load service ──────────────────────────────────────────────────────
   const service = await prisma.service.findFirst({
@@ -155,9 +167,19 @@ export async function getAvailableSlots(
   const bufferBefore = service.bufferBeforeMinutes ?? 0;
   const bufferAfter = service.bufferAfterMinutes ?? 0;
 
+  // ── AG5: Load professional if specified ───────────────────────────────
+  let professional: { openingHours: string | null; closedWeekdays: string } | null = null;
+  if (professionalId) {
+    professional = await prisma.professional.findUnique({
+      where: { id: professionalId, tenantId },
+      select: { openingHours: true, closedWeekdays: true },
+    });
+  }
+
   // ── Load business config ──────────────────────────────────────────────
   const config = await prisma.businessConfig.findUnique({ where: { tenantId } });
-  const openingHours = config?.openingHours ?? '09:00 - 18:00';
+  // Professional hours override business config hours if set
+  const openingHours = professional?.openingHours ?? config?.openingHours ?? '09:00 - 18:00';
   const timezone = config?.timezone ?? 'America/Sao_Paulo';
   const bufferBetween = config?.bufferBetweenMinutes ?? 0;
   // Stride: how far apart slots are offered. Default = service duration (non-overlapping)
@@ -165,10 +187,12 @@ export async function getAvailableSlots(
     ? config.slotStrideMinutes
     : serviceDuration;
 
-  const closedWeekdays = (config?.closedWeekdays ?? '')
-    .split(',')
-    .map((s) => parseInt(s.trim(), 10))
-    .filter((n) => !isNaN(n));
+  // Merge global + professional closed weekdays
+  const globalClosed = (config?.closedWeekdays ?? '').split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n));
+  const professionalClosed = professional
+    ? (professional.closedWeekdays ?? '').split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n))
+    : [];
+  const closedWeekdays = [...new Set([...globalClosed, ...professionalClosed])];
 
   // ── Closed weekday check ──────────────────────────────────────────────
   // Use noon to avoid TZ edge cases in getDay()
@@ -190,12 +214,13 @@ export async function getAvailableSlots(
   const openStart = parse(startHourStr, 'HH:mm', base);
   const openEnd = parse(endHourStr, 'HH:mm', base);
 
-  // ── Existing appointments that day ────────────────────────────────────
+  // ── Existing appointments that day (AG5: filter by professional if given) ──
   const existingAppts = await prisma.appointment.findMany({
     where: {
       tenantId,
       date,
       status: { in: ['agendado', 'confirmado'] },
+      ...(professionalId ? { professionalId } : {}),
     },
     select: { time: true, durationMinutes: true },
   });
@@ -261,6 +286,166 @@ export async function getAvailableSlots(
   }
 
   return slots;
+}
+
+// ─── AG4: Safe reschedule ─────────────────────────────────────────────────────
+
+/**
+ * Moves an appointment to a new date/time after verifying no conflict.
+ * Resets confirmation and reminder flags so notifications fire again for the new slot.
+ * Throws if the new slot is occupied or the appointment doesn't belong to the tenant.
+ */
+export async function rescheduleAppointment(
+  tenantId: string,
+  appointmentId: string,
+  newDate: string,
+  newTime: string
+) {
+  const existing = await prisma.appointment.findUnique({
+    where: { id: appointmentId, tenantId },
+  });
+  if (!existing) throw new Error('Agendamento não encontrado.');
+  if (!['agendado', 'confirmado'].includes(existing.status)) {
+    throw new Error('Apenas agendamentos ativos podem ser remarcados.');
+  }
+
+  const service = await prisma.service.findFirst({
+    where: { tenantId, name: { equals: existing.service ?? '', mode: 'insensitive' }, active: true },
+  });
+  const durationMinutes = service?.durationMinutes ?? existing.durationMinutes ?? 30;
+
+  // Conflict check — exclude the appointment being rescheduled
+  const baseDate = new Date();
+  const newStart = parse(newTime, 'HH:mm', baseDate);
+  const newEnd = addMinutes(newStart, durationMinutes);
+
+  const sameDay = await prisma.appointment.findMany({
+    where: {
+      tenantId,
+      date: newDate,
+      status: { in: ['agendado', 'confirmado'] },
+      id: { not: appointmentId },
+    },
+    select: { time: true, durationMinutes: true },
+  });
+
+  for (const appt of sameDay) {
+    if (!appt.time) continue;
+    const apptStart = parse(appt.time, 'HH:mm', baseDate);
+    const apptEnd = addMinutes(apptStart, appt.durationMinutes ?? durationMinutes);
+    if (isBefore(newStart, apptEnd) && isAfter(newEnd, apptStart)) {
+      throw new Error('Este horário já está ocupado. Por favor, escolha outro horário.');
+    }
+  }
+
+  return prisma.appointment.update({
+    where: { id: appointmentId, tenantId },
+    data: {
+      date: newDate,
+      time: newTime,
+      status: 'agendado',
+      confirmedAt: null,
+      confirmationReceivedAt: null,
+      reminderSentAt: null, // reset so reminders fire again for new date
+    },
+  });
+}
+
+// ─── AG4: Cancel with reason ──────────────────────────────────────────────────
+
+export async function cancelAppointment(
+  tenantId: string,
+  appointmentId: string,
+  reason?: string
+) {
+  return prisma.appointment.update({
+    where: { id: appointmentId, tenantId },
+    data: {
+      status: 'cancelado',
+      cancelledAt: new Date(),
+      cancelReason: reason ?? null,
+    },
+  });
+}
+
+// ─── AG2: Next available slots across days ───────────────────────────────────
+
+/**
+ * Returns the next `count` available slots starting from `fromDate`.
+ * Looks ahead up to 30 days. Used by the conversational booking flow.
+ */
+export async function suggestNextSlots(
+  tenantId: string,
+  serviceName: string,
+  fromDate: string, // YYYY-MM-DD
+  count = 5,
+  professionalId?: string  // AG5: filter to specific professional
+): Promise<Array<{ date: string; time: string; professionalId?: string; professionalName?: string }>> {
+  const results: Array<{ date: string; time: string; professionalId?: string; professionalName?: string }> = [];
+  const MAX_DAYS_AHEAD = 30;
+
+  let base: Date;
+  try {
+    const [y, m, d] = fromDate.split('-').map(Number);
+    base = new Date(y, m - 1, d);
+  } catch {
+    return results;
+  }
+
+  // AG5: If no specific professional, check if service has professionals assigned
+  // Auto-assign: collect slots across all assigned professionals, return earliest N
+  if (!professionalId) {
+    const service = await prisma.service.findFirst({
+      where: { tenantId, name: { equals: serviceName, mode: 'insensitive' }, active: true },
+      include: {
+        professionals: {
+          include: { professional: { select: { id: true, name: true, active: true } } },
+        },
+      },
+    });
+    const activeProfessionals = service?.professionals
+      .map(ps => ps.professional)
+      .filter(p => p.active) ?? [];
+
+    if (activeProfessionals.length > 0) {
+      // Collect slots from all professionals, sort by date+time, take first N
+      const allSlots: Array<{ date: string; time: string; professionalId: string; professionalName: string }> = [];
+      for (const prof of activeProfessionals) {
+        for (let i = 0; i < MAX_DAYS_AHEAD; i++) {
+          const dateStr = format(addDays(base, i), 'yyyy-MM-dd');
+          try {
+            const slots = await getAvailableSlots(tenantId, dateStr, serviceName, prof.id);
+            for (const time of slots) {
+              allSlots.push({ date: dateStr, time, professionalId: prof.id, professionalName: prof.name });
+            }
+          } catch { /* skip */ }
+        }
+      }
+      allSlots.sort((a, b) => {
+        const da = new Date(`${a.date}T${a.time}`).getTime();
+        const db = new Date(`${b.date}T${b.time}`).getTime();
+        return da - db;
+      });
+      return allSlots.slice(0, count);
+    }
+  }
+
+  // No professionals assigned — use global availability
+  for (let i = 0; i < MAX_DAYS_AHEAD && results.length < count; i++) {
+    const day = addDays(base, i);
+    const dateStr = format(day, 'yyyy-MM-dd');
+    try {
+      const slots = await getAvailableSlots(tenantId, dateStr, serviceName, professionalId);
+      for (const time of slots) {
+        if (results.length >= count) break;
+        results.push({ date: dateStr, time, professionalId, professionalName: undefined });
+      }
+    } catch {
+      break;
+    }
+  }
+
+  return results;
 }
 
 // ─── Availability Blocks ──────────────────────────────────────────────────────

@@ -81,6 +81,8 @@ model Tenant {
   supportCopilotLogs  SupportCopilotLog[]
   // AG1 Availability
   availabilityBlocks  AvailabilityBlock[]
+  // AG5 Professionals
+  professionals       Professional[]
 }
 
 model BusinessConfig {
@@ -227,17 +229,47 @@ model Appointment {
   service         String?
   date            String?   // YYYY-MM-DD
   time            String?   // HH:MM
-  status          String    @default("agendado") // agendado, confirmado, cancelado, concluido
+  status          String    @default("agendado") // agendado, confirmado, cancelado, concluido, no_show
   createdAt       DateTime  @default(now())
   // AG1 — availability engine
   durationMinutes Int?      // snapshot of service duration at booking time
   notes           String?   @db.Text
   cancelledAt     DateTime?
   confirmedAt     DateTime?
+  // AG2 — conversational booking origin
+  source          String    @default("manual") // manual | whatsapp | instagram | facebook
+  conversationId  String?
+  reminderSentAt  DateTime?
+  // AG3 — confirmations & no-show
+  confirmationReceivedAt DateTime? // when customer replied confirming presence
+  // AG4 — cancellation & reschedule
+  cancelReason    String?
+  // AG5 — professional assignment
+  professionalId   String?
+  professionalName String?  // snapshot at booking time
   tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  professional    Professional? @relation(fields: [professionalId], references: [id], onDelete: SetNull)
+  notifications   AppointmentNotification[]
 
   @@index([tenantId, status])
   @@index([tenantId, date])
+}
+
+// AG3 — full history of notifications sent per appointment
+model AppointmentNotification {
+  id            String   @id @default(uuid())
+  appointmentId String
+  tenantId      String
+  type          String   // booking_confirmed | reminder_24h | reminder_2h | noshow_followup
+  channel       String   @default("whatsapp")
+  status        String   @default("sent") // sent | failed
+  sentAt        DateTime @default(now())
+
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@index([appointmentId, type])
+  @@index([tenantId, type, sentAt])
+  @@map("appointment_notifications")
 }
 
 model AutomationRule {
@@ -269,8 +301,42 @@ model Service {
   bufferAfterMinutes  Int      @default(0)
 
   tenant              Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  // AG5 — professionals assigned to this service
+  professionals       ProfessionalService[]
 
   @@index([tenantId])
+}
+
+// ─── AG5 Professionals ────────────────────────────────────────────────────────
+
+model Professional {
+  id             String   @id @default(uuid())
+  tenantId       String
+  name           String
+  active         Boolean  @default(true)
+  // Optional own schedule — overrides BusinessConfig when set
+  openingHours   String?  // "HH:MM - HH:MM"
+  closedWeekdays String   @default("") // comma-separated 0=Sun…6=Sat
+  createdAt      DateTime @default(now())
+
+  tenant         Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  services       ProfessionalService[]
+  appointments   Appointment[]
+
+  @@index([tenantId])
+  @@map("professionals")
+}
+
+model ProfessionalService {
+  id             String       @id @default(uuid())
+  professionalId String
+  serviceId      String
+
+  professional   Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  service        Service      @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([professionalId, serviceId])
+  @@map("professional_services")
 }
 
 // AG1 — blocks specific dates or time windows (holidays, lunch, maintenance)

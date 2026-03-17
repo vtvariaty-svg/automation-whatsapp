@@ -29,6 +29,7 @@ const navItems = [
   { href: "/dashboard/appointments", label: "Agenda", icon: "📅", section: null },
   { href: "/dashboard/orders", label: "Pedidos", icon: "🛍️", section: null },
   { href: "/dashboard/services", label: "Serviços", icon: "✂️", section: null },
+  { href: "/dashboard/professionals", label: "Profissionais", icon: "👤", section: null },
 
   // ── Canais & IA ──
   { href: "/dashboard/integrations", label: "Canais", icon: "📡", section: "Canais & IA" },

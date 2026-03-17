@@ -44,7 +44,9 @@ export async function buildCustomerContext(
   tenantId: string,
   contactId: string
 ): Promise<string> {
-  const [memory, conversation, openOpportunities, paidEvents, recentOrders] =
+  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+
+  const [memory, conversation, openOpportunities, paidEvents, recentOrders, upcomingAppointments] =
     await Promise.all([
       // Perfil salvo
       prisma.customerMemory.findUnique({
@@ -87,7 +89,19 @@ export async function buildCustomerContext(
         where: { tenantId, customerPhone: contactId },
         orderBy: { createdAt: 'desc' },
         take: 3
-      })
+      }),
+
+      // AG2 — Agendamentos futuros/ativos
+      prisma.appointment.findMany({
+        where: {
+          tenantId,
+          customerPhone: contactId,
+          status: { in: ['agendado', 'confirmado'] },
+          date: { gte: today },
+        },
+        orderBy: [{ date: 'asc' }, { time: 'asc' }],
+        take: 3,
+      }),
     ]);
 
   const lines: string[] = ['CONTEXTO DO CLIENTE:'];
@@ -134,6 +148,16 @@ export async function buildCustomerContext(
     lines.push('\nPedidos recentes:');
     for (const order of recentOrders) {
       lines.push(`- ${order.product ?? 'item'} — ${order.status} (R$ ${order.price.toFixed(2)})`);
+    }
+  }
+
+  // Agendamentos futuros
+  if (upcomingAppointments.length > 0) {
+    lines.push('\nAgendamentos próximos:');
+    for (const appt of upcomingAppointments) {
+      const dateStr = appt.date ?? '?';
+      const timeStr = appt.time ? ` às ${appt.time}h` : '';
+      lines.push(`- ${appt.service ?? 'Serviço'}${timeStr} em ${dateStr} [${appt.status}]`);
     }
   }
 

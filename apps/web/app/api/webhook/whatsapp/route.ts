@@ -19,6 +19,7 @@ import { getTenantByPhoneId } from "@/src/services/tenantService";
 import { buildCustomerContext, upsertCustomerMemory, extractNameFromText } from "@/src/services/customerMemoryService";
 import { checkAutomationMatch } from "@/src/services/automationService";
 import { verifyAiLimits } from "@/src/services/billingService";
+import { handleAppointmentMessage } from "@/src/services/appointmentBookingService";
 
 // Mascara todos os dígitos exceto os últimos 4 para logs seguros
 function maskPhone(phone: string): string {
@@ -176,6 +177,25 @@ export async function POST(req: Request) {
             await sendWhatsAppMessage(from, automation.responseText, replyPhoneId, tenant.whatsappToken);
             await saveAIMessage(from, automation.responseText, tenant.id, status, false);
             return new Response('OK', { status: 200 });
+          }
+
+          // AG2/AG3/AG4 — Unified appointment message handler
+          // Handles: booking, presence confirmation, cancel, reschedule
+          try {
+            const conv = await prisma.conversation.findFirst({
+              where: { tenantId: tenant.id, customerPhone: from },
+              orderBy: { lastMessageAt: 'desc' },
+              select: { id: true },
+            });
+            const apptReply = await handleAppointmentMessage(tenant.id, from, textBody, conv?.id);
+            if (apptReply) {
+              const replyPhoneId = tenant.whatsappPhoneNumberId || tenant.whatsappPhoneId;
+              await sendWhatsAppMessage(from, apptReply, replyPhoneId, tenant.whatsappToken);
+              await saveAIMessage(from, apptReply, tenant.id, status, false);
+              return new Response('OK', { status: 200 });
+            }
+          } catch (apptErr) {
+            console.error('[Webhook] Erro no fluxo de agendamentos (continuando para IA):', apptErr);
           }
 
           // Verificar limites de IA

@@ -1,6 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useEntitlements } from '@/hooks/useEntitlements';
+import { FEATURE_UPGRADE_MESSAGES } from '@/lib/config/plans';
+import UpgradeGate from '@/components/UpgradeGate';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -149,6 +152,7 @@ function BarRow({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AttributionPage() {
+  const ent = useEntitlements();
   const [period, setPeriod] = useState<'7days' | '30days' | 'all'>('30days');
   const [data, setData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -173,6 +177,10 @@ export default function AttributionPage() {
   useEffect(() => {
     fetchReport();
   }, [fetchReport]);
+
+  if (!ent.loading && !ent.features.advancedAnalytics) {
+    return <UpgradeGate icon="🎯" title="Atribuição de Receita" message={FEATURE_UPGRADE_MESSAGES.advancedAnalytics} ctaPlan="Pro" />;
+  }
 
   const maxSourceLeads = data?.bySource.length ? Math.max(...data.bySource.map((r) => r.leads)) : 1;
   const maxMediumLeads = data?.byMedium.length ? Math.max(...data.byMedium.map((r) => r.leads)) : 1;

@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useEntitlements } from "@/hooks/useEntitlements";
+import Link from "next/link";
 import {
     InboxArrowDownIcon,
     PaperAirplaneIcon,
@@ -34,6 +36,7 @@ type SalesAnalyticsData = {
 
 export default function AnalyticsPage() {
     const { user } = useAuth();
+    const ent = useEntitlements();
     const tenantId = user?.tenantId;
     const [period, setPeriod] = useState("today"); // today, 7days, 30days
     const [loading, setLoading] = useState(true);
@@ -186,87 +189,100 @@ export default function AnalyticsPage() {
             </div>
 
             {/* Sales Analytics Section */}
-            <div className="mt-10">
-                <div className="mb-6">
-                    <h2 className="text-xl font-bold tracking-tight text-gray-900">Métricas de Vendas</h2>
-                    <p className="text-sm text-gray-500 mt-1">
-                        Funil de vendas gerado pela automação no período selecionado.
-                    </p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <div className={`bg-white rounded-2xl p-6 border border-gray-100 shadow-sm relative overflow-hidden transition-all hover:shadow-md ${loading ? 'opacity-50' : ''}`}>
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-sm font-medium text-gray-500">Conversas de Venda</h3>
-                            <div className="p-2 rounded-xl bg-sky-50">
-                                <ChatBubbleLeftRightIcon className="w-5 h-5 text-sky-600" />
-                            </div>
-                        </div>
-                        <span className="text-4xl font-bold tracking-tight text-gray-900">
-                            {loading ? "..." : (salesData?.sales_conversations ?? 0)}
-                        </span>
-                        <p className="text-xs text-gray-400 mt-2">Leads que entraram no funil</p>
-                    </div>
-
-                    <div className={`bg-white rounded-2xl p-6 border border-gray-100 shadow-sm relative overflow-hidden transition-all hover:shadow-md ${loading ? 'opacity-50' : ''}`}>
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-sm font-medium text-gray-500">Checkouts Gerados</h3>
-                            <div className="p-2 rounded-xl bg-violet-50">
-                                <ShoppingCartIcon className="w-5 h-5 text-violet-600" />
-                            </div>
-                        </div>
-                        <span className="text-4xl font-bold tracking-tight text-gray-900">
-                            {loading ? "..." : (salesData?.checkouts_generated ?? 0)}
-                        </span>
-                        <p className="text-xs text-gray-400 mt-2">Links de pagamento enviados</p>
-                    </div>
-
-                    <div className={`bg-white rounded-2xl p-6 border border-gray-100 shadow-sm relative overflow-hidden transition-all hover:shadow-md ${loading ? 'opacity-50' : ''}`}>
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-sm font-medium text-gray-500">Vendas Concluídas</h3>
-                            <div className="p-2 rounded-xl bg-emerald-50">
-                                <CurrencyDollarIcon className="w-5 h-5 text-emerald-600" />
-                            </div>
-                        </div>
-                        <span className="text-4xl font-bold tracking-tight text-gray-900">
-                            {loading ? "..." : (salesData?.sales_completed ?? 0)}
-                        </span>
-                        <p className="text-xs text-gray-400 mt-2">Pagamentos confirmados</p>
-                    </div>
-
-                    <div className={`bg-white rounded-2xl p-6 border border-gray-100 shadow-sm relative overflow-hidden transition-all hover:shadow-md ${loading ? 'opacity-50' : ''}`}>
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-sm font-medium text-gray-500">Taxa de Conversão</h3>
-                            <div className="p-2 rounded-xl bg-orange-50">
-                                <FunnelIcon className="w-5 h-5 text-orange-600" />
-                            </div>
-                        </div>
-                        <span className="text-4xl font-bold tracking-tight text-gray-900">
-                            {loading ? "..." : `${salesData?.conversion_rate ?? 0}%`}
-                        </span>
-                        <p className="text-xs text-gray-400 mt-2">Vendas / checkouts gerados</p>
-                    </div>
-                </div>
-
-                <div className="mt-6 bg-emerald-50/50 rounded-2xl p-6 border border-emerald-100/50 flex gap-4 items-start">
-                    <div className="bg-white p-2 rounded-xl text-emerald-600 shadow-sm">
-                        <ChartBarIcon className="w-6 h-6" />
-                    </div>
-                    <div>
-                        <h4 className="font-semibold text-gray-900 text-sm">Resumo de Vendas</h4>
-                        <p className="text-sm text-gray-600 mt-1">
-                            Neste período,{" "}
-                            <strong className="text-sky-600">{salesData?.sales_conversations ?? 0}</strong> leads
-                            {" "}entraram no funil.{" "}
-                            <strong className="text-violet-600">{salesData?.checkouts_generated ?? 0}</strong> checkouts
-                            {" "}foram gerados e{" "}
-                            <strong className="text-emerald-600">{salesData?.sales_completed ?? 0}</strong> vendas
-                            {" "}foram confirmadas, resultando em uma taxa de conversão de{" "}
-                            <strong className="text-orange-600">{salesData?.conversion_rate ?? 0}%</strong>.
+            {!ent.loading && ent.features.advancedAnalytics ? (
+                <div className="mt-10">
+                    <div className="mb-6">
+                        <h2 className="text-xl font-bold tracking-tight text-gray-900">Métricas de Vendas</h2>
+                        <p className="text-sm text-gray-500 mt-1">
+                            Funil de vendas gerado pela automação no período selecionado.
                         </p>
                     </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div className={`bg-white rounded-2xl p-6 border border-gray-100 shadow-sm relative overflow-hidden transition-all hover:shadow-md ${loading ? 'opacity-50' : ''}`}>
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-sm font-medium text-gray-500">Conversas de Venda</h3>
+                                <div className="p-2 rounded-xl bg-sky-50">
+                                    <ChatBubbleLeftRightIcon className="w-5 h-5 text-sky-600" />
+                                </div>
+                            </div>
+                            <span className="text-4xl font-bold tracking-tight text-gray-900">
+                                {loading ? "..." : (salesData?.sales_conversations ?? 0)}
+                            </span>
+                            <p className="text-xs text-gray-400 mt-2">Leads que entraram no funil</p>
+                        </div>
+
+                        <div className={`bg-white rounded-2xl p-6 border border-gray-100 shadow-sm relative overflow-hidden transition-all hover:shadow-md ${loading ? 'opacity-50' : ''}`}>
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-sm font-medium text-gray-500">Checkouts Gerados</h3>
+                                <div className="p-2 rounded-xl bg-violet-50">
+                                    <ShoppingCartIcon className="w-5 h-5 text-violet-600" />
+                                </div>
+                            </div>
+                            <span className="text-4xl font-bold tracking-tight text-gray-900">
+                                {loading ? "..." : (salesData?.checkouts_generated ?? 0)}
+                            </span>
+                            <p className="text-xs text-gray-400 mt-2">Links de pagamento enviados</p>
+                        </div>
+
+                        <div className={`bg-white rounded-2xl p-6 border border-gray-100 shadow-sm relative overflow-hidden transition-all hover:shadow-md ${loading ? 'opacity-50' : ''}`}>
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-sm font-medium text-gray-500">Vendas Concluídas</h3>
+                                <div className="p-2 rounded-xl bg-emerald-50">
+                                    <CurrencyDollarIcon className="w-5 h-5 text-emerald-600" />
+                                </div>
+                            </div>
+                            <span className="text-4xl font-bold tracking-tight text-gray-900">
+                                {loading ? "..." : (salesData?.sales_completed ?? 0)}
+                            </span>
+                            <p className="text-xs text-gray-400 mt-2">Pagamentos confirmados</p>
+                        </div>
+
+                        <div className={`bg-white rounded-2xl p-6 border border-gray-100 shadow-sm relative overflow-hidden transition-all hover:shadow-md ${loading ? 'opacity-50' : ''}`}>
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-sm font-medium text-gray-500">Taxa de Conversão</h3>
+                                <div className="p-2 rounded-xl bg-orange-50">
+                                    <FunnelIcon className="w-5 h-5 text-orange-600" />
+                                </div>
+                            </div>
+                            <span className="text-4xl font-bold tracking-tight text-gray-900">
+                                {loading ? "..." : `${salesData?.conversion_rate ?? 0}%`}
+                            </span>
+                            <p className="text-xs text-gray-400 mt-2">Vendas / checkouts gerados</p>
+                        </div>
+                    </div>
+
+                    <div className="mt-6 bg-emerald-50/50 rounded-2xl p-6 border border-emerald-100/50 flex gap-4 items-start">
+                        <div className="bg-white p-2 rounded-xl text-emerald-600 shadow-sm">
+                            <ChartBarIcon className="w-6 h-6" />
+                        </div>
+                        <div>
+                            <h4 className="font-semibold text-gray-900 text-sm">Resumo de Vendas</h4>
+                            <p className="text-sm text-gray-600 mt-1">
+                                Neste período,{" "}
+                                <strong className="text-sky-600">{salesData?.sales_conversations ?? 0}</strong> leads
+                                {" "}entraram no funil.{" "}
+                                <strong className="text-violet-600">{salesData?.checkouts_generated ?? 0}</strong> checkouts
+                                {" "}foram gerados e{" "}
+                                <strong className="text-emerald-600">{salesData?.sales_completed ?? 0}</strong> vendas
+                                {" "}foram confirmadas, resultando em uma taxa de conversão de{" "}
+                                <strong className="text-orange-600">{salesData?.conversion_rate ?? 0}%</strong>.
+                            </p>
+                        </div>
+                    </div>
                 </div>
-            </div>
+            ) : !ent.loading ? (
+                <div className="mt-10 bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center">
+                    <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-indigo-50 to-purple-50 flex items-center justify-center">
+                        <span className="text-3xl">📊</span>
+                    </div>
+                    <h2 className="text-lg font-bold text-gray-900 mb-2">Métricas de Vendas</h2>
+                    <p className="text-sm text-gray-500 mb-4">Analytics avançado (atribuição, funis e métricas de vendas) está disponível nos planos Pro e Business.</p>
+                    <Link href="/dashboard/billing" className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] text-white rounded-xl font-semibold text-sm hover:shadow-lg transition-all">
+                        Fazer upgrade para Pro →
+                    </Link>
+                </div>
+            ) : null}
         </div>
     );
 }

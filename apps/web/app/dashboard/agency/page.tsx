@@ -2,6 +2,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { useEntitlements } from '@/hooks/useEntitlements';
+import { FEATURE_UPGRADE_MESSAGES } from '@/lib/config/plans';
+import UpgradeGate from '@/components/UpgradeGate';
+import { useAuth } from '@/hooks/useAuth';
 
 function authHeaders(): Record<string, string> {
   return { Authorization: `Bearer ${localStorage.getItem('token') ?? ''}` };
@@ -678,6 +682,8 @@ function PerformanceTab() {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function AgencyPage() {
+  const ent = useEntitlements();
+  const { isSuperAdmin } = useAuth();
   const [agency, setAgency] = useState<Agency | null | undefined>(undefined);
   const [subTenants, setSubTenants] = useState<SubTenant[]>([]);
   const [activeTab, setActiveTab] = useState<'overview' | 'subtenants' | 'members' | 'performance'>(
@@ -712,6 +718,10 @@ export default function AgencyPage() {
   useEffect(() => {
     if (agency) loadSubTenants();
   }, [agency, loadSubTenants]);
+
+  if (!ent.loading && !ent.features.agencyReseller && !isSuperAdmin) {
+    return <UpgradeGate icon="🏢" title="Painel de Agência" message={FEATURE_UPGRADE_MESSAGES.agencyReseller} ctaPlan="Business" />;
+  }
 
   if (agency === undefined) {
     return (

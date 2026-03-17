@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
+import { useEntitlements } from "@/hooks/useEntitlements";
 import { PlusIcon, TrashIcon, PencilIcon, CheckCircleIcon, XCircleIcon } from "@heroicons/react/24/outline";
 
 type AutomationRule = {
@@ -18,6 +19,7 @@ type AutomationRule = {
 
 export default function AutomationsPage() {
     const { user } = useAuth();
+    const ent = useEntitlements();
     const tenantId = user?.tenantId;
     const [rules, setRules] = useState<AutomationRule[]>([]);
     const [loading, setLoading] = useState(false);
@@ -148,23 +150,37 @@ export default function AutomationsPage() {
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
+                    {!ent.loading && ent.limits.automations !== -1 && (
+                        <span className="text-xs font-semibold text-gray-500 bg-gray-100 px-3 py-1.5 rounded-lg">
+                            {rules.length}/{ent.limits.automations} automações
+                        </span>
+                    )}
                     <Link
                         href="/dashboard/conversations"
                         className="inline-flex items-center gap-2 border border-gray-200 text-gray-600 px-4 py-2.5 rounded-xl font-semibold text-sm hover:bg-gray-50 transition-all"
                     >
                         💬 Ir para Inbox →
                     </Link>
-                    <button
-                        onClick={() => {
-                            setEditingRule(null);
-                            setFormData({ name: "", triggerType: "keyword", triggerValue: "", matchType: "exact", responseType: "text", responseText: "" });
-                            setIsModalOpen(true);
-                        }}
-                        className="inline-flex items-center gap-2 bg-[#4f46e5] text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-[#4338ca] hover:shadow-lg hover:shadow-[#4f46e5]/20 transition-all focus:ring-2 focus:ring-[#4f46e5] focus:ring-offset-2"
-                    >
-                        <PlusIcon className="w-5 h-5" />
-                        Nova Automação
-                    </button>
+                    {!ent.loading && ent.limits.automations !== -1 && rules.length >= ent.limits.automations ? (
+                        <Link
+                            href="/dashboard/billing"
+                            className="inline-flex items-center gap-2 bg-gray-200 text-gray-500 px-5 py-2.5 rounded-xl font-semibold text-sm cursor-not-allowed"
+                        >
+                            Limite atingido. Faça upgrade.
+                        </Link>
+                    ) : (
+                        <button
+                            onClick={() => {
+                                setEditingRule(null);
+                                setFormData({ name: "", triggerType: "keyword", triggerValue: "", matchType: "exact", responseType: "text", responseText: "" });
+                                setIsModalOpen(true);
+                            }}
+                            className="inline-flex items-center gap-2 bg-[#4f46e5] text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-[#4338ca] hover:shadow-lg hover:shadow-[#4f46e5]/20 transition-all focus:ring-2 focus:ring-[#4f46e5] focus:ring-offset-2"
+                        >
+                            <PlusIcon className="w-5 h-5" />
+                            Nova Automação
+                        </button>
+                    )}
                 </div>
             </div>
 

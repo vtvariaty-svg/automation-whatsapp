@@ -3,6 +3,9 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { PlusIcon, TrashIcon, PencilIcon } from "@heroicons/react/24/outline";
+import { useEntitlements } from "@/hooks/useEntitlements";
+import { planAtLeast } from "@/lib/config/plans";
+import UpgradeGate from "@/components/UpgradeGate";
 
 type Service = {
     id: string;
@@ -13,6 +16,7 @@ type Service = {
 
 export default function ServicesPage() {
     const { user } = useAuth();
+    const ent = useEntitlements();
     const tenantId = user?.tenantId;
     const [services, setServices] = useState<Service[]>([]);
     const [loading, setLoading] = useState(false);
@@ -49,6 +53,10 @@ export default function ServicesPage() {
     useEffect(() => {
         loadServices();
     }, [tenantId]);
+
+    if (!ent.loading && !planAtLeast(ent.plan, 'standard')) {
+        return <UpgradeGate icon="✂️" title="Catálogo de Serviços" message="Serviços disponíveis a partir do plano Standard." ctaPlan="Standard" />;
+    }
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();

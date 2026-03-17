@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
+import { useEntitlements } from '@/hooks/useEntitlements';
+import { FEATURE_UPGRADE_MESSAGES } from '@/lib/config/plans';
+import UpgradeGate from '@/components/UpgradeGate';
 
 interface Product {
   name: string;
@@ -28,8 +31,13 @@ const KANBAN_COLUMNS = [
 
 export default function SalesCRM() {
   const { token } = useAuth();
+  const ent = useEntitlements();
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  if (!ent.loading && !ent.features.advancedCRM) {
+    return <UpgradeGate icon="💰" title="Pipeline de Vendas" message={FEATURE_UPGRADE_MESSAGES.advancedCRM} ctaPlan="Pro" />;
+  }
 
   useEffect(() => {
     fetchOpportunities();

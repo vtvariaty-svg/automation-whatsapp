@@ -2,6 +2,9 @@
 
 import { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '@/context/AuthContext';
+import { useEntitlements } from '@/hooks/useEntitlements';
+import { FEATURE_UPGRADE_MESSAGES } from '@/lib/config/plans';
+import UpgradeGate from '@/components/UpgradeGate';
 
 interface Template {
   name: string;
@@ -18,6 +21,11 @@ type SendStatus = 'idle' | 'loading' | 'success' | 'error';
 export default function TemplatesPage() {
   const authContext = useContext(AuthContext);
   const token = authContext?.token;
+  const ent = useEntitlements();
+
+  if (!ent.loading && !ent.features.whatsapp) {
+    return <UpgradeGate icon="📋" title="Templates WhatsApp" message={FEATURE_UPGRADE_MESSAGES.whatsapp} ctaPlan="Standard" />;
+  }
 
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(true);

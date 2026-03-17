@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyToken } from '@/lib/services/authService';
+import { checkFeature } from '@/lib/services/entitlementsService';
 
 export async function GET(req: Request) {
   try {
@@ -9,8 +10,11 @@ export async function GET(req: Request) {
 
     const token = authHeader.replace('Bearer ', '');
     const decoded = verifyToken(token);
-    
+
     if (!decoded) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+
+    const check = await checkFeature(decoded.tenantId, 'advancedCRM', decoded.role);
+    if (!check.allowed) return NextResponse.json({ error: check.upgradeMessage }, { status: 403 });
 
     const opportunities = await prisma.salesOpportunity.findMany({
       where: { tenantId: decoded.tenantId },

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useEntitlements } from "@/hooks/useEntitlements";
 
 type Conversation = {
   id: string;
@@ -23,11 +24,11 @@ type Message = {
   timestamp: string;
 };
 
-const CHANNELS = [
-  { key: "all", label: "Todos" },
-  { key: "whatsapp", label: "WhatsApp" },
-  { key: "instagram", label: "Instagram" },
-  { key: "facebook", label: "Facebook" },
+const ALL_CHANNELS = [
+  { key: "all", label: "Todos", feature: null },
+  { key: "whatsapp", label: "WhatsApp", feature: "whatsapp" as const },
+  { key: "instagram", label: "Instagram", feature: null },
+  { key: "facebook", label: "Facebook", feature: "facebook" as const },
 ];
 
 function authHeaders(): Record<string, string> {
@@ -40,6 +41,7 @@ function authHeaders(): Record<string, string> {
 
 export default function InboxPage() {
   const { user } = useAuth();
+  const ent = useEntitlements();
   const tenantId = user?.tenantId;
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedPhone, setSelectedPhone] = useState<string | null>(null);
@@ -258,19 +260,34 @@ export default function InboxPage() {
 
             {/* Channel filter */}
             <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
-              {CHANNELS.map((ch) => (
-                <button
-                  key={ch.key}
-                  onClick={() => setChannelFilter(ch.key)}
-                  className={`flex-1 py-1 text-xs font-semibold rounded-lg transition-colors ${
-                    channelFilter === ch.key
-                      ? "bg-white text-gray-900 shadow-sm"
-                      : "text-gray-500 hover:text-gray-700"
-                  }`}
-                >
-                  {ch.label}
-                </button>
-              ))}
+              {ALL_CHANNELS.map((ch) => {
+                const isDisabled = !ent.loading && ch.feature && !ent.features[ch.feature];
+                if (isDisabled) {
+                  return (
+                    <button
+                      key={ch.key}
+                      disabled
+                      className="flex-1 py-1 text-xs font-semibold rounded-lg text-gray-300 cursor-not-allowed"
+                      title={`Disponível no plano ${ch.feature === 'facebook' ? 'Pro' : 'Standard'}`}
+                    >
+                      {ch.label} <span className="text-[9px]">🔒</span>
+                    </button>
+                  );
+                }
+                return (
+                  <button
+                    key={ch.key}
+                    onClick={() => setChannelFilter(ch.key)}
+                    className={`flex-1 py-1 text-xs font-semibold rounded-lg transition-colors ${
+                      channelFilter === ch.key
+                        ? "bg-white text-gray-900 shadow-sm"
+                        : "text-gray-500 hover:text-gray-700"
+                    }`}
+                  >
+                    {ch.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 

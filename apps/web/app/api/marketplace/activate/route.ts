@@ -2,12 +2,16 @@ import { NextResponse } from 'next/server';
 import { getAuthTenant } from '@/lib/getAuthTenant';
 import { prisma } from '@/lib/prisma';
 import { marketplaceBots } from '@/lib/marketplace/bots';
+import { checkFeature } from '@/lib/services/entitlementsService';
 
 export async function POST(request: Request) {
   const auth = await getAuthTenant(request);
   if (!auth) {
     return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
   }
+
+  const check = await checkFeature(auth.tenantId, 'premiumTemplates', auth.role);
+  if (!check.allowed) return NextResponse.json({ error: check.upgradeMessage }, { status: 403 });
 
   try {
     const { botId } = await request.json();

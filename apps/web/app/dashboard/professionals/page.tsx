@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useEntitlements } from "@/hooks/useEntitlements";
+import { planAtLeast } from "@/lib/config/plans";
+import UpgradeGate from "@/components/UpgradeGate";
 
 interface Service { id: string; name: string; }
 interface Professional {
@@ -15,6 +18,7 @@ interface Professional {
 const WEEKDAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 export default function ProfessionalsPage() {
+  const ent = useEntitlements();
   const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,6 +43,10 @@ export default function ProfessionalsPage() {
   };
 
   useEffect(() => { load(); }, []);
+
+  if (!ent.loading && !planAtLeast(ent.plan, 'standard')) {
+    return <UpgradeGate icon="👤" title="Gestão de Profissionais" message="Profissionais disponíveis a partir do plano Standard." ctaPlan="Standard" />;
+  }
 
   const openCreate = () => {
     setEditing(null);

@@ -1,11 +1,15 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthTenant } from '@/lib/getAuthTenant';
+import { checkFeature } from '@/lib/services/entitlementsService';
 
 // GET /api/agency — get current tenant's agency info
 export async function GET(request: Request) {
   const auth = await getAuthTenant(request);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const check = await checkFeature(auth.tenantId, 'agencyReseller', auth.role);
+  if (!check.allowed) return NextResponse.json({ error: check.upgradeMessage }, { status: 403 });
 
   try {
     const agency = await prisma.agency.findUnique({
@@ -31,6 +35,9 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const auth = await getAuthTenant(request);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const checkPost = await checkFeature(auth.tenantId, 'agencyReseller', auth.role);
+  if (!checkPost.allowed) return NextResponse.json({ error: checkPost.upgradeMessage }, { status: 403 });
 
   try {
     const body = await request.json();

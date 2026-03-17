@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@/hooks/useAuth";
+import { useEntitlements } from "@/hooks/useEntitlements";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
@@ -13,6 +14,8 @@ type Stats = {
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const ent = useEntitlements();
+  const hasWhatsapp = ent.loading || ent.features.whatsapp;
   const [stats, setStats] = useState<Stats>({
     totalConversations: 0,
     activeConversations: 0,
@@ -127,17 +130,30 @@ export default function DashboardPage() {
             </p>
 
             <div className="mt-5 inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-full px-4 py-2">
-              <span className="relative flex h-2.5 w-2.5">
-                {whatsappStatus === "connected" && (
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                )}
-                <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
-                  whatsappStatus === "connected" ? "bg-green-400" : whatsappStatus === "loading" ? "bg-yellow-400" : "bg-red-400"
-                }`}></span>
-              </span>
-              <span className="text-sm font-medium">
-                WhatsApp {whatsappStatus === "connected" ? "Conectado" : whatsappStatus === "loading" ? "Verificando..." : "Desconectado"}
-              </span>
+              {hasWhatsapp ? (
+                <>
+                  <span className="relative flex h-2.5 w-2.5">
+                    {whatsappStatus === "connected" && (
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                    )}
+                    <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
+                      whatsappStatus === "connected" ? "bg-green-400" : whatsappStatus === "loading" ? "bg-yellow-400" : "bg-red-400"
+                    }`}></span>
+                  </span>
+                  <span className="text-sm font-medium">
+                    WhatsApp {whatsappStatus === "connected" ? "Conectado" : whatsappStatus === "loading" ? "Verificando..." : "Desconectado"}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-gray-400"></span>
+                  </span>
+                  <span className="text-sm font-medium text-white/70">
+                    WhatsApp — Disponível no plano Standard
+                  </span>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -167,7 +183,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Setup Checklist */}
-      <SetupChecklist tenantId={user?.tenantId} />
+      <SetupChecklist tenantId={user?.tenantId} hasWhatsappFeature={hasWhatsapp} />
 
       {/* Quick Actions */}
       <div>
@@ -333,7 +349,7 @@ function UsageCard({ tenantId }: { tenantId?: string }) {
   );
 }
 
-function SetupChecklist({ tenantId }: { tenantId?: string }) {
+function SetupChecklist({ tenantId, hasWhatsappFeature }: { tenantId?: string; hasWhatsappFeature: boolean }) {
   const [checklist, setChecklist] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -403,18 +419,23 @@ function SetupChecklist({ tenantId }: { tenantId?: string }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {items.map(item => {
           const done = checklist[item.key];
+          const isWhatsappGated = item.key === "whatsappConnected" && !hasWhatsappFeature;
           return (
             <div key={item.key} className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
-              done ? "bg-emerald-50 border-emerald-100" : "bg-amber-50/50 border-amber-100"
+              isWhatsappGated ? "bg-gray-50 border-gray-200" : done ? "bg-emerald-50 border-emerald-100" : "bg-amber-50/50 border-amber-100"
             }`}>
               <span className="text-lg">{item.icon}</span>
               <div className="flex-1 min-w-0">
-                <p className={`text-xs font-semibold truncate ${done ? "text-emerald-700" : "text-amber-700"}`}>
-                  {item.label}
+                <p className={`text-xs font-semibold truncate ${
+                  isWhatsappGated ? "text-gray-400" : done ? "text-emerald-700" : "text-amber-700"
+                }`}>
+                  {isWhatsappGated ? "Requer plano Standard" : item.label}
                 </p>
               </div>
-              <span className={`text-sm font-bold ${done ? "text-emerald-500" : "text-amber-500"}`}>
-                {done ? "✓" : "⚠"}
+              <span className={`text-sm font-bold ${
+                isWhatsappGated ? "text-gray-300" : done ? "text-emerald-500" : "text-amber-500"
+              }`}>
+                {isWhatsappGated ? "🔒" : done ? "✓" : "⚠"}
               </span>
             </div>
           );

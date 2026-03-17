@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useEntitlements } from "@/hooks/useEntitlements";
+import Link from "next/link";
 import { CheckCircleIcon, BoltIcon, SparklesIcon } from "@heroicons/react/24/outline";
 
 const BOTS = [
@@ -61,6 +63,8 @@ const BOTS = [
 
 export default function MarketplacePage() {
   const { user } = useAuth();
+  const ent = useEntitlements();
+  const hasPremiumTemplates = ent.loading || ent.features.premiumTemplates;
   const [activating, setActivating] = useState<string | null>(null);
   const [activated, setActivated] = useState<Record<string, { automationsCreated: number; automationsSkipped: number }>>({});
   const [error, setError] = useState<string | null>(null);
@@ -211,13 +215,20 @@ export default function MarketplacePage() {
                         </button>
                       </div>
                     </div>
-                  ) : (
+                  ) : hasPremiumTemplates ? (
                     <button
                       onClick={() => setSelectedBot(bot.id)}
                       className={`w-full py-2.5 text-sm font-semibold text-white rounded-xl bg-gradient-to-r ${bot.color} hover:shadow-lg hover:scale-[1.01] transition-all`}
                     >
                       Ativar este bot
                     </button>
+                  ) : (
+                    <Link
+                      href="/dashboard/billing"
+                      className="w-full block py-2.5 text-sm font-semibold text-center text-gray-500 rounded-xl bg-gray-100 border border-gray-200 hover:bg-gray-200 transition-all"
+                    >
+                      Requer Pro — Fazer upgrade
+                    </Link>
                   )}
                 </div>
               </div>

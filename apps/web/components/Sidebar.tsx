@@ -4,51 +4,50 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useEntitlements } from "@/hooks/useEntitlements";
+import type { FeatureKey } from "@/lib/config/plans";
+import { planAtLeast, PLANS } from "@/lib/config/plans";
 
-function usePlanName() {
-  const [planName, setPlanName] = useState<string>('Free');
-  useEffect(() => {
-    const token = localStorage.getItem('auth_token') ?? localStorage.getItem('token') ?? '';
-    if (!token) return;
-    fetch('/api/billing/subscription', { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => r.ok ? r.json() : null)
-      .then((d) => { if (d?.planName) setPlanName(d.planName); })
-      .catch(() => {});
-  }, []);
-  return planName;
+interface NavItem {
+  href: string;
+  label: string;
+  icon: string;
+  section: string | null;
+  requiredFeature?: FeatureKey;
+  minPlan?: string;
 }
 
-const navItems = [
+const navItems: NavItem[] = [
   // ── Principal ──
   { href: "/dashboard", label: "Dashboard", icon: "📊", section: "Principal" },
   { href: "/dashboard/analytics", label: "Analytics", icon: "📈", section: null },
 
   // ── Atendimento ──
   { href: "/dashboard/conversations", label: "Conversas", icon: "💬", section: "Atendimento" },
-  { href: "/dashboard/sales", label: "Vendas", icon: "💰", section: null },
-  { href: "/dashboard/appointments", label: "Agenda", icon: "📅", section: null },
-  { href: "/dashboard/orders", label: "Pedidos", icon: "🛍️", section: null },
-  { href: "/dashboard/services", label: "Serviços", icon: "✂️", section: null },
-  { href: "/dashboard/professionals", label: "Profissionais", icon: "👤", section: null },
+  { href: "/dashboard/sales", label: "Vendas", icon: "💰", section: null, requiredFeature: "advancedCRM", minPlan: "pro" },
+  { href: "/dashboard/appointments", label: "Agenda", icon: "📅", section: null, minPlan: "standard" },
+  { href: "/dashboard/orders", label: "Pedidos", icon: "🛍️", section: null, minPlan: "standard" },
+  { href: "/dashboard/services", label: "Serviços", icon: "✂️", section: null, minPlan: "standard" },
+  { href: "/dashboard/professionals", label: "Profissionais", icon: "👤", section: null, minPlan: "standard" },
 
   // ── Canais & IA ──
   { href: "/dashboard/integrations", label: "Canais", icon: "📡", section: "Canais & IA" },
-  { href: "/dashboard/instagram-comments", label: "Comentários Instagram", icon: "💬", section: null },
+  { href: "/dashboard/instagram-comments", label: "Comentários Instagram", icon: "💬", section: null, requiredFeature: "instagramComments", minPlan: "standard" },
   { href: "/dashboard/ai", label: "Configuração de IA", icon: "🤖", section: null },
   { href: "/dashboard/automations", label: "Respostas Rápidas", icon: "⚡", section: null },
-  { href: "/dashboard/templates", label: "Templates WhatsApp", icon: "📋", section: null },
+  { href: "/dashboard/templates", label: "Templates WhatsApp", icon: "📋", section: null, requiredFeature: "whatsapp", minPlan: "standard" },
   { href: "/dashboard/marketplace", label: "Marketplace de Bots", icon: "✨", section: null },
-  { href: "/dashboard/insights", label: "Insights de IA", icon: "🔍", section: null },
+  { href: "/dashboard/insights", label: "Insights de IA", icon: "🔍", section: null, requiredFeature: "aiCopilot", minPlan: "pro" },
 
   // ── Crescimento ──
   { href: "/dashboard/activation", label: "Ativação", icon: "🚀", section: "Crescimento" },
-  { href: "/dashboard/attribution", label: "Atribuição", icon: "🎯", section: null },
+  { href: "/dashboard/attribution", label: "Atribuição", icon: "🎯", section: null, requiredFeature: "advancedAnalytics", minPlan: "pro" },
   { href: "/dashboard/referral", label: "Indicações", icon: "🎁", section: null },
   { href: "/dashboard/go-live", label: "Go-Live", icon: "✅", section: null },
 
   // ── Administração ──
-  { href: "/dashboard/products", label: "Produtos", icon: "📦", section: "Administração" },
-  { href: "/dashboard/agency", label: "Agência", icon: "🏢", section: null },
+  { href: "/dashboard/products", label: "Produtos", icon: "📦", section: "Administração", minPlan: "standard" },
+  { href: "/dashboard/agency", label: "Agência", icon: "🏢", section: null, requiredFeature: "agencyReseller", minPlan: "business" },
   { href: "/dashboard/billing", label: "Assinatura", icon: "💳", section: null },
   { href: "/dashboard/settings", label: "Configurações", icon: "⚙️", section: null },
 ];
@@ -57,7 +56,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const { isSuperAdmin } = useAuth();
-  const planName = usePlanName();
+  const ent = useEntitlements();
 
   useEffect(() => {
     setIsOpen(false);
@@ -102,9 +101,25 @@ export default function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-0.5">
-        {navItems.map((item, i) => {
-          // Agency panel is superadmin-only while the feature is still evolving
-          if (item.href === '/dashboard/agency' && !isSuperAdmin) return null;
+        {navItems.map((item) => {
+          // Determine if this nav item is locked for the current plan
+          let isLocked = false;
+          let lockPlanLabel = '';
+
+          if (!ent.loading) {
+            if (item.requiredFeature) {
+              isLocked = !ent.features[item.requiredFeature];
+            } else if (item.minPlan) {
+              isLocked = !planAtLeast(ent.plan, item.minPlan);
+            }
+            // Agency: also accessible for superadmin
+            if (item.href === '/dashboard/agency' && isSuperAdmin) {
+              isLocked = false;
+            }
+            if (isLocked && item.minPlan) {
+              lockPlanLabel = PLANS[item.minPlan]?.name ?? item.minPlan;
+            }
+          }
 
           const isActive = pathname === item.href;
           return (
@@ -116,20 +131,35 @@ export default function Sidebar() {
                   </p>
                 </div>
               )}
-              <Link
-                href={item.href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
-                  isActive
-                    ? "bg-gradient-to-r from-[#4f46e5]/20 to-[#7c3aed]/10 text-white border border-indigo-500/20 shadow-sm shadow-indigo-500/10"
-                    : "text-gray-400 hover:text-white hover:bg-white/[0.05]"
-                }`}
-              >
-                <span className={`text-base ${isActive ? "scale-110" : ""} transition-transform`}>{item.icon}</span>
-                <span>{item.label}</span>
-                {isActive && (
-                  <div className="ml-auto w-1.5 h-1.5 rounded-full bg-indigo-400 shadow-sm shadow-indigo-400"></div>
-                )}
-              </Link>
+              {isLocked ? (
+                <Link
+                  href="/dashboard/billing"
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 text-gray-600 opacity-50 hover:opacity-70 hover:bg-white/[0.03]"
+                  title={`Disponível a partir do plano ${lockPlanLabel}`}
+                >
+                  <span className="text-base">{item.icon}</span>
+                  <span>{item.label}</span>
+                  <span className="ml-auto flex items-center gap-1.5 text-[10px] text-gray-500">
+                    <span>🔒</span>
+                    {lockPlanLabel && <span className="bg-white/10 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase">{lockPlanLabel}</span>}
+                  </span>
+                </Link>
+              ) : (
+                <Link
+                  href={item.href}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
+                    isActive
+                      ? "bg-gradient-to-r from-[#4f46e5]/20 to-[#7c3aed]/10 text-white border border-indigo-500/20 shadow-sm shadow-indigo-500/10"
+                      : "text-gray-400 hover:text-white hover:bg-white/[0.05]"
+                  }`}
+                >
+                  <span className={`text-base ${isActive ? "scale-110" : ""} transition-transform`}>{item.icon}</span>
+                  <span>{item.label}</span>
+                  {isActive && (
+                    <div className="ml-auto w-1.5 h-1.5 rounded-full bg-indigo-400 shadow-sm shadow-indigo-400"></div>
+                  )}
+                </Link>
+              )}
             </div>
           );
         })}
@@ -160,7 +190,7 @@ export default function Sidebar() {
         ) : (
           <div className="bg-gradient-to-r from-indigo-500/10 to-purple-500/10 rounded-xl p-4 border border-indigo-500/10">
             <p className="text-xs text-indigo-300 font-semibold mb-1">Plano Atual</p>
-            <p className="text-white font-bold text-sm">{planName}</p>
+            <p className="text-white font-bold text-sm">{PLANS[ent.plan ?? 'free']?.name ?? 'Free'}</p>
             <Link href="/dashboard/billing" className="inline-flex items-center gap-1 text-[11px] text-indigo-400 hover:text-indigo-300 font-medium mt-2 transition-colors">
               Fazer upgrade →
             </Link>

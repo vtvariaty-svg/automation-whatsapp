@@ -5,6 +5,9 @@ import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/Ca
 import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/hooks/useAuth";
 import { OrderFormDialog } from "@/components/orders/OrderFormDialog";
+import { useEntitlements } from "@/hooks/useEntitlements";
+import { planAtLeast } from "@/lib/config/plans";
+import UpgradeGate from "@/components/UpgradeGate";
 
 interface Order {
   id: string;
@@ -26,6 +29,7 @@ const statusColors: Record<string, string> = {
 
 export default function OrdersPage() {
   const { user } = useAuth();
+  const ent = useEntitlements();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -54,6 +58,10 @@ export default function OrdersPage() {
   useEffect(() => {
     fetchOrders();
   }, [user?.tenantId]);
+
+  if (!ent.loading && !planAtLeast(ent.plan, 'standard')) {
+    return <UpgradeGate icon="🛍️" title="Gestão de Pedidos" message="Pedidos disponíveis a partir do plano Standard." ctaPlan="Standard" />;
+  }
 
   const updateStatus = async (orderId: string, newStatus: string) => {
     try {

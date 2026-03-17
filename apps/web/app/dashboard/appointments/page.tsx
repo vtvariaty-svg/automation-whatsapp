@@ -5,6 +5,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { AppointmentFormDialog } from "@/components/appointments/AppointmentFormDialog";
 import { RescheduleDialog } from "@/components/appointments/RescheduleDialog";
 import { SchedulingStatsBar } from "@/components/appointments/SchedulingStatsBar";
+import { useEntitlements } from "@/hooks/useEntitlements";
+import { planAtLeast } from "@/lib/config/plans";
+import UpgradeGate from "@/components/UpgradeGate";
 
 interface Appointment {
   id: string;
@@ -35,6 +38,7 @@ const sourceIcons: Record<string, string> = {
 
 export default function AppointmentsPage() {
   const { user } = useAuth();
+  const ent = useEntitlements();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -113,6 +117,10 @@ export default function AppointmentsPage() {
       setCancelLoading(false);
     }
   };
+
+  if (!ent.loading && !planAtLeast(ent.plan, 'standard')) {
+    return <UpgradeGate icon="📅" title="Agenda de Atendimentos" message="Agendamento disponível a partir do plano Standard." ctaPlan="Standard" />;
+  }
 
   const sortedAppointments = [...appointments].sort((a, b) => {
     const timeA = new Date(`${a.date}T${a.time || '00:00'}`).getTime();

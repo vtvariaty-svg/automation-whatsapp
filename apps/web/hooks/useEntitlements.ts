@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import type { PlanEntitlements, FeatureKey, LimitKey } from '@/lib/config/plans';
+import { planAtLeast, getMinPlan, FEATURE_UPGRADE_MESSAGES } from '@/lib/config/plans';
 
 export interface EntitlementsState extends PlanEntitlements {
   loading: boolean;
@@ -25,6 +26,7 @@ const DEFAULT: EntitlementsState = {
     premiumTemplates: false,
     whiteLabel: false,
     agencyReseller: false,
+    advancedAnalytics: false,
   },
   limits: { messages: 0, agents: 1, automations: 5, contacts: 1000, conversations: 200 },
 };
@@ -60,4 +62,28 @@ export function useEntitlements(): EntitlementsState {
 export function useFeature(feature: FeatureKey): boolean {
   const ent = useEntitlements();
   return ent.features[feature] ?? false;
+}
+
+/** Check if tenant's plan is at least the given minimum. Returns true while loading to avoid flash. */
+export function usePlanAtLeast(min: string): boolean {
+  const ent = useEntitlements();
+  if (ent.loading) return true;
+  return planAtLeast(ent.plan, min);
+}
+
+/** Returns upgrade state for a feature: { loading, locked, minPlan, message } */
+export function useUpgradeState(feature: FeatureKey): {
+  loading: boolean;
+  locked: boolean;
+  minPlan: string;
+  message: string;
+} {
+  const ent = useEntitlements();
+  const locked = !ent.loading && !ent.features[feature];
+  return {
+    loading: ent.loading,
+    locked,
+    minPlan: getMinPlan(feature),
+    message: FEATURE_UPGRADE_MESSAGES[feature],
+  };
 }

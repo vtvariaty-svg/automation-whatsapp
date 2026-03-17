@@ -3,6 +3,9 @@
 import { useState, useEffect } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { authApi } from "@/lib/api/client";
+import { useEntitlements } from "@/hooks/useEntitlements";
+import { planAtLeast } from "@/lib/config/plans";
+import UpgradeGate from "@/components/UpgradeGate";
 
 interface Product {
   id: string;
@@ -15,6 +18,7 @@ interface Product {
 }
 
 export default function ProductsPage() {
+  const ent = useEntitlements();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
@@ -37,6 +41,10 @@ export default function ProductsPage() {
   };
 
   useEffect(() => { loadProducts(); }, []);
+
+  if (!ent.loading && !planAtLeast(ent.plan, 'standard')) {
+    return <UpgradeGate icon="📦" title="Catálogo de Produtos" message="Catálogo disponível a partir do plano Standard." ctaPlan="Standard" />;
+  }
 
   const handleOpenModal = (product?: Product) => {
     if (product) {

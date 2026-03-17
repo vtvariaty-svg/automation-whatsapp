@@ -13,27 +13,28 @@ const navItems = [
   // ── Atendimento ──
   { href: "/dashboard/conversations", label: "Conversas", icon: "💬", section: "Atendimento" },
   { href: "/dashboard/appointments", label: "Agenda", icon: "📅", section: null },
-  { href: "/dashboard/services", label: "Serviços", icon: "✂️", section: null },
   { href: "/dashboard/orders", label: "Pedidos", icon: "🛍️", section: null },
+  { href: "/dashboard/services", label: "Serviços", icon: "✂️", section: null },
 
-  // ── Inteligência Artificial ──
-  { href: "/dashboard/ai", label: "Configuração de IA", icon: "🤖", section: "Inteligência Artificial" },
+  // ── Canais & IA ──
+  { href: "/dashboard/integrations", label: "Canais", icon: "📡", section: "Canais & IA" },
+  { href: "/dashboard/ai", label: "Configuração de IA", icon: "🤖", section: null },
   { href: "/dashboard/automations", label: "Respostas Rápidas", icon: "⚡", section: null },
+  { href: "/dashboard/templates", label: "Templates WhatsApp", icon: "📋", section: null },
   { href: "/dashboard/marketplace", label: "Marketplace de Bots", icon: "✨", section: null },
   { href: "/dashboard/insights", label: "Insights de IA", icon: "🔍", section: null },
-  { href: "/dashboard/templates", label: "Templates WhatsApp", icon: "📋", section: null },
-
-  // ── Administração ──
-  { href: "/dashboard/integrations", label: "Integrações", icon: "🔌", section: "Administração" },
-  { href: "/dashboard/products", label: "Produtos", icon: "📦", section: null },
-  { href: "/dashboard/billing", label: "Assinatura", icon: "💳", section: null },
-  { href: "/dashboard/settings", label: "Configurações", icon: "⚙️", section: null },
 
   // ── Crescimento ──
   { href: "/dashboard/activation", label: "Ativação", icon: "🚀", section: "Crescimento" },
-  { href: "/dashboard/go-live", label: "Go-Live", icon: "✅", section: null },
-  { href: "/dashboard/agency", label: "Agência", icon: "🏢", section: null },
+  { href: "/dashboard/attribution", label: "Atribuição", icon: "🎯", section: null },
   { href: "/dashboard/referral", label: "Indicações", icon: "🎁", section: null },
+  { href: "/dashboard/go-live", label: "Go-Live", icon: "✅", section: null },
+
+  // ── Administração ──
+  { href: "/dashboard/products", label: "Produtos", icon: "📦", section: "Administração" },
+  { href: "/dashboard/agency", label: "Agência", icon: "🏢", section: null },
+  { href: "/dashboard/billing", label: "Assinatura", icon: "💳", section: null },
+  { href: "/dashboard/settings", label: "Configurações", icon: "⚙️", section: null },
 ];
 
 export default function Sidebar() {
@@ -85,6 +86,9 @@ export default function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-0.5">
         {navItems.map((item, i) => {
+          // Agency panel is superadmin-only while the feature is still evolving
+          if (item.href === '/dashboard/agency' && !isSuperAdmin) return null;
+
           const isActive = pathname === item.href;
           return (
             <div key={item.href}>

@@ -149,7 +149,7 @@ export default function ActivationPage() {
             <button
               key={p}
               onClick={() => setPeriod(p)}
-              className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-colors ${period === p ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}
+              className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-colors ${period === p ? 'bg-indigo-50 text-[#4f46e5] font-semibold' : 'text-gray-500 hover:text-gray-900'}`}
             >
               {p === 'today' ? 'Hoje' : p === '7days' ? '7 dias' : '30 dias'}
             </button>
@@ -188,7 +188,7 @@ export default function ActivationPage() {
 
       {/* ── Section 1: Setup ── */}
       <section>
-        <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Configuração</h2>
+        <h2 className="text-xs font-bold text-gray-500 uppercase tracking-[0.15em] mb-3">Configuração</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {/* Channels */}
           <div className="bg-white border border-gray-100 rounded-xl p-4 col-span-2">
@@ -222,7 +222,7 @@ export default function ActivationPage() {
 
       {/* ── Section 2: Engagement ── */}
       <section>
-        <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Engajamento</h2>
+        <h2 className="text-xs font-bold text-gray-500 uppercase tracking-[0.15em] mb-3">Engajamento</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <MetricCard emoji="💬" label="Novas conversas" value={loading ? '…' : fmt(data?.conversations_new ?? 0)} highlight />
           <MetricCard emoji="📥" label="Msgs recebidas" value={loading ? '…' : fmt(data?.messages_inbound ?? 0)} />
@@ -233,7 +233,7 @@ export default function ActivationPage() {
 
       {/* ── Section 3: Lead Generation ── */}
       <section>
-        <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Geração de Leads</h2>
+        <h2 className="text-xs font-bold text-gray-500 uppercase tracking-[0.15em] mb-3">Geração de Leads</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <MetricCard emoji="🎯" label="Leads gerados" value={loading ? '…' : fmt(data?.leads_generated ?? 0)} sub="sequências iniciadas" highlight />
           <MetricCard emoji="💬" label="DMs por comentário" value={loading ? '…' : fmt(data?.dms_from_comments ?? 0)} sub="Instagram comments" />
@@ -244,7 +244,7 @@ export default function ActivationPage() {
 
       {/* ── Section 4: Revenue Funnel ── */}
       <section>
-        <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Funil de Receita</h2>
+        <h2 className="text-xs font-bold text-gray-500 uppercase tracking-[0.15em] mb-3">Funil de Receita</h2>
         <div className="bg-white border border-gray-100 rounded-2xl p-5 space-y-4">
           {loading ? (
             <div className="space-y-3">
@@ -269,7 +269,7 @@ export default function ActivationPage() {
       {/* ── Section 5: Activation timeline ── */}
       <section>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Últimos 7 dias</h2>
+          <h2 className="text-xs font-bold text-gray-500 uppercase tracking-[0.15em]">Últimos 7 dias</h2>
           <div className="flex items-center gap-3 text-[10px] text-gray-400">
             <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-sm bg-indigo-400" /> Conversas</span>
             <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-sm bg-blue-200" /> Mensagens</span>

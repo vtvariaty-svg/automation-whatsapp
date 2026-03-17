@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useAuth } from '@/hooks/useAuth';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -108,6 +109,7 @@ const DEFAULT_PLAYBOOK_ACTION: Record<string, string> = {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function ChurnPage() {
+  const { isSuperAdmin } = useAuth();
   const [data, setData] = useState<TenantGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [scanLoading, setScanLoading] = useState(false);
@@ -246,6 +248,17 @@ export default function ChurnPage() {
   const highCount = data.filter((g) => maxSeverity(g.signals) === 'high').length;
   const mediumCount = data.filter((g) => maxSeverity(g.signals) === 'medium').length;
   const totalSignals = data.reduce((sum, g) => sum + g.signals.length, 0);
+
+  if (!isSuperAdmin) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <p className="text-lg font-semibold text-gray-700">Acesso restrito</p>
+          <p className="text-sm text-gray-500 mt-1">Esta página é exclusiva para superadmins.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

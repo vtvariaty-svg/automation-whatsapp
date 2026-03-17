@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -166,6 +167,7 @@ function ChannelCard({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function DiagnosticsPage() {
+  const { isSuperAdmin } = useAuth();
   const [tenants, setTenants] = useState<TenantListItem[]>([]);
   const [selectedId, setSelectedId] = useState<string>('');
   const [data, setData] = useState<DiagnosticData | null>(null);
@@ -262,6 +264,17 @@ export default function DiagnosticsPage() {
   const killSwitchSet = new Set(
     (data?.tenant.channelKillSwitch ?? '').split(',').filter(Boolean),
   );
+
+  if (!isSuperAdmin) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <p className="text-lg font-semibold text-gray-700">Acesso restrito</p>
+          <p className="text-sm text-gray-500 mt-1">Esta página é exclusiva para superadmins.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 pb-20">
@@ -412,36 +425,38 @@ export default function DiagnosticsPage() {
             {data.recentErrors.length === 0 ? (
               <p className="px-5 py-6 text-sm text-gray-400 text-center">Nenhum erro recente.</p>
             ) : (
-              <table className="min-w-full divide-y divide-gray-100 text-sm">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Evento</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Erro</th>
-                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase">Tentativas</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Data</th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">Ação</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {data.recentErrors.map((ev) => (
-                    <tr key={ev.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 font-mono text-xs text-gray-700">{ev.event}</td>
-                      <td className="px-4 py-3 text-xs text-red-600 max-w-xs truncate" title={ev.error}>{ev.error}</td>
-                      <td className="px-4 py-3 text-center text-xs text-gray-500">{ev.attempts}</td>
-                      <td className="px-4 py-3 text-xs text-gray-400">{fmtDate(ev.createdAt)}</td>
-                      <td className="px-4 py-3 text-right">
-                        <button
-                          disabled={actionLoading}
-                          onClick={() => callAction('resolve_dead_letter', { deadLetterId: ev.id })}
-                          className="text-xs font-medium text-indigo-600 hover:text-indigo-800 disabled:opacity-50"
-                        >
-                          Resolver
-                        </button>
-                      </td>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-100 text-sm">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Evento</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Erro</th>
+                      <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 uppercase">Tentativas</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Data</th>
+                      <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase">Ação</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {data.recentErrors.map((ev) => (
+                      <tr key={ev.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 font-mono text-xs text-gray-700">{ev.event}</td>
+                        <td className="px-4 py-3 text-xs text-red-600 max-w-xs truncate" title={ev.error}>{ev.error}</td>
+                        <td className="px-4 py-3 text-center text-xs text-gray-500">{ev.attempts}</td>
+                        <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">{fmtDate(ev.createdAt)}</td>
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            disabled={actionLoading}
+                            onClick={() => callAction('resolve_dead_letter', { deadLetterId: ev.id })}
+                            className="text-xs font-medium text-indigo-600 hover:text-indigo-800 disabled:opacity-50"
+                          >
+                            Resolver
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
 

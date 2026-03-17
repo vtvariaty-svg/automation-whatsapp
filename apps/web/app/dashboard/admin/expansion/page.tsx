@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useAuth } from '@/hooks/useAuth';
 
 interface ExpansionEvent {
   id: string;
@@ -54,6 +55,7 @@ const PLAN_COLORS: Record<string, string> = {
 };
 
 export default function ExpansionOpsPage() {
+  const { isSuperAdmin } = useAuth();
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -91,6 +93,17 @@ export default function ExpansionOpsPage() {
       ? ((totalConverted / totalOpportunities) * 100).toFixed(1)
       : '0.0';
   const totalRevenue = opportunities.reduce((sum, o) => sum + o.potentialRevenue, 0);
+
+  if (!isSuperAdmin) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <p className="text-lg font-semibold text-gray-300">Acesso restrito</p>
+          <p className="text-sm text-gray-500 mt-1">Esta página é exclusiva para superadmins.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

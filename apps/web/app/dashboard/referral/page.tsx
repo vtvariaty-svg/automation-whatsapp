@@ -150,7 +150,7 @@ export default function ReferralPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-48">
-        <p className="text-gray-500">Carregando...</p>
+        <div className="w-8 h-8 border-2 border-gray-200 border-t-[#4f46e5] rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -159,8 +159,8 @@ export default function ReferralPage() {
     <div className="space-y-6 max-w-4xl">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-white">Programa de Indicação</h1>
-        <p className="text-gray-400 text-sm mt-1">
+        <h1 className="text-2xl font-bold text-gray-900">Programa de Indicação</h1>
+        <p className="text-sm text-gray-500 mt-1">
           Indique clientes e ganhe recompensas a cada conversão
         </p>
       </div>
@@ -213,7 +213,7 @@ export default function ReferralPage() {
           <button
             onClick={handleCreateCode}
             disabled={creating}
-            className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-all disabled:opacity-50"
+            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] text-white text-sm font-semibold hover:shadow-lg hover:shadow-indigo-200/50 transition-all disabled:opacity-50"
           >
             {creating ? 'Criando...' : 'Criar Link'}
           </button>

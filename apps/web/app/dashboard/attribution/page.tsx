@@ -79,7 +79,11 @@ const MEDIUM_LABELS: Record<string, string> = {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function authHeaders(): Record<string, string> {
-  return { Authorization: `Bearer ${localStorage.getItem('token') ?? ''}` };
+  const token =
+    typeof window !== 'undefined'
+      ? (localStorage.getItem('auth_token') ?? localStorage.getItem('token') ?? '')
+      : '';
+  return { Authorization: `Bearer ${token}` };
 }
 
 function fmtCurrency(value: number): string {
@@ -178,11 +182,14 @@ export default function AttributionPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900">
-            Atribuição & Receita
-          </h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+              Atribuição & Receita
+            </h1>
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-700">Pro+</span>
+          </div>
           <p className="text-sm text-gray-500 mt-1">
-            Rastreie a origem dos seus leads e o impacto em receita.
+            Rastreie a origem dos seus leads e o impacto em receita. Disponível no plano Pro e superiores.
           </p>
         </div>
 

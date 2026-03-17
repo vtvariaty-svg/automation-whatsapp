@@ -28,19 +28,24 @@ export default function OrdersPage() {
   const { user } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const fetchOrders = async () => {
     if (!user?.tenantId) return;
     try {
       setLoading(true);
+      setError(false);
       const res = await fetch(`/api/orders?tenantId=${user.tenantId}`);
       if (res.ok) {
         const data = await res.json();
         setOrders(data);
+      } else {
+        setError(true);
       }
     } catch (err) {
       console.error(err);
+      setError(true);
     } finally {
       setLoading(false);
     }
@@ -101,6 +106,16 @@ export default function OrdersPage() {
                   <td colSpan={5} className="px-6 py-16 text-center">
                     <div className="w-8 h-8 border-2 border-gray-200 border-t-[#4f46e5] rounded-full animate-spin mx-auto mb-3"></div>
                     <p className="text-sm text-gray-400">Carregando pedidos...</p>
+                  </td>
+                </tr>
+              ) : error ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-16 text-center">
+                    <div className="w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-3"><span className="text-2xl">⚠️</span></div>
+                    <p className="text-sm font-medium text-gray-500">Erro ao carregar pedidos</p>
+                    <button onClick={fetchOrders} className="mt-3 px-4 py-2 text-xs font-semibold bg-[#4f46e5] text-white rounded-lg hover:bg-[#4338ca] transition-colors">
+                      Tentar novamente
+                    </button>
                   </td>
                 </tr>
               ) : orders.length === 0 ? (

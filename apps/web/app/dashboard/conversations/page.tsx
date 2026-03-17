@@ -9,6 +9,7 @@ type Conversation = {
   last_message: string;
   status: string;
   timestamp: string;
+  channel?: string;
   assigned_user?: string;
 };
 
@@ -22,6 +23,21 @@ type Message = {
   timestamp: string;
 };
 
+const CHANNELS = [
+  { key: "all", label: "Todos" },
+  { key: "whatsapp", label: "WhatsApp" },
+  { key: "instagram", label: "Instagram" },
+  { key: "facebook", label: "Facebook" },
+];
+
+function authHeaders(): Record<string, string> {
+  const token =
+    typeof window !== "undefined"
+      ? (localStorage.getItem("auth_token") ?? localStorage.getItem("token") ?? "")
+      : "";
+  return { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
+}
+
 export default function InboxPage() {
   const { user } = useAuth();
   const tenantId = user?.tenantId;
@@ -34,6 +50,8 @@ export default function InboxPage() {
   const [loadingChat, setLoadingChat] = useState(false);
   const [sending, setSending] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [channelFilter, setChannelFilter] = useState("all");
+  const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -44,11 +62,18 @@ export default function InboxPage() {
     scrollToBottom();
   }, [messages]);
 
+  const showFeedback = (type: "success" | "error", text: string) => {
+    setFeedback({ type, text });
+    setTimeout(() => setFeedback(null), 3000);
+  };
+
   const loadConversations = async () => {
     if (!tenantId) return;
     setLoadingList(true);
     try {
-      const res = await fetch(`/api/conversations?tenantId=${tenantId}`);
+      const res = await fetch(`/api/conversations?tenantId=${tenantId}`, {
+        headers: authHeaders(),
+      });
       if (res.ok) {
         const data = await res.json();
         setConversations(data);
@@ -73,7 +98,9 @@ export default function InboxPage() {
     setCurrentStatus(status);
     setLoadingChat(true);
     try {
-      const res = await fetch(`/api/conversations/${phone}/messages?tenantId=${tenantId}`);
+      const res = await fetch(`/api/conversations/${phone}/messages?tenantId=${tenantId}`, {
+        headers: authHeaders(),
+      });
       if (res.ok) {
         const data = await res.json();
         setMessages(data);
@@ -97,12 +124,15 @@ export default function InboxPage() {
     try {
       const res = await fetch(`/api/conversations/${selectedPhone}/status`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders(),
         body: JSON.stringify({ tenantId, status: newStatus }),
       });
       if (res.ok) {
         setCurrentStatus(newStatus);
         loadConversations();
+        const label =
+          newStatus === "human" ? "Humano" : newStatus === "open" ? "IA" : "Encerrado";
+        showFeedback("success", `Status alterado para ${label}`);
       }
     } catch (err) {
       console.error(err);
@@ -116,29 +146,47 @@ export default function InboxPage() {
     try {
       const res = await fetch(`/api/conversations/${selectedPhone}/send`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders(),
         body: JSON.stringify({ tenantId, message: replyText }),
       });
       if (res.ok) {
         setReplyText("");
         loadMessages(selectedPhone, currentStatus);
+        showFeedback("success", "Mensagem enviada");
+      } else {
+        showFeedback("error", "Falha ao enviar mensagem");
       }
     } catch (err) {
       console.error(err);
+      showFeedback("error", "Erro ao enviar mensagem");
     } finally {
       setSending(false);
     }
   };
 
-  const filteredConversations = conversations.filter(
-    (c) => c.phone_number.includes(searchTerm) || c.last_message?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredConversations = conversations.filter((c) => {
+    const matchesSearch =
+      c.phone_number.includes(searchTerm) ||
+      c.last_message?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesChannel =
+      channelFilter === "all" ||
+      (c.channel ?? "whatsapp").toLowerCase() === channelFilter;
+    return matchesSearch && matchesChannel;
+  });
 
   const formatPhone = (phone: string) => {
     if (phone.length >= 11) {
       return `(${phone.slice(-11, -9)}) ${phone.slice(-9, -4)}-${phone.slice(-4)}`;
     }
     return phone;
+  };
+
+  const channelIcon = (channel?: string) => {
+    switch ((channel ?? "whatsapp").toLowerCase()) {
+      case "instagram": return "📸";
+      case "facebook": return "📘";
+      default: return "💬";
+    }
   };
 
   return (
@@ -148,9 +196,11 @@ export default function InboxPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Caixa de Entrada</h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            {conversations.length} conversa{conversations.length !== 1 ? "s" : ""} 
-            {conversations.filter(c => c.status === "human").length > 0 && (
-              <span className="text-orange-500 font-medium"> · {conversations.filter(c => c.status === "human").length} em atendimento humano</span>
+            {conversations.length} conversa{conversations.length !== 1 ? "s" : ""}
+            {conversations.filter((c) => c.status === "human").length > 0 && (
+              <span className="text-orange-500 font-medium">
+                {" "}· {conversations.filter((c) => c.status === "human").length} em atendimento humano
+              </span>
             )}
           </p>
         </div>
@@ -163,15 +213,39 @@ export default function InboxPage() {
         </div>
       </div>
 
+      {/* Feedback toast */}
+      {feedback && (
+        <div
+          className={`mb-3 shrink-0 px-4 py-2.5 rounded-xl text-sm font-medium border ${
+            feedback.type === "success"
+              ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+              : "bg-red-50 text-red-700 border-red-100"
+          }`}
+        >
+          {feedback.type === "success" ? "✓ " : "✕ "}
+          {feedback.text}
+        </div>
+      )}
+
       {/* Main container */}
       <div className="flex flex-1 overflow-hidden bg-white rounded-2xl border border-gray-200/60 shadow-sm">
         {/* Conversation list */}
         <div className="w-[340px] bg-gray-50/30 border-r border-gray-100 flex flex-col shrink-0">
-          {/* Search */}
-          <div className="p-4 border-b border-gray-100">
+          {/* Search + channel filter */}
+          <div className="p-4 border-b border-gray-100 space-y-3">
             <div className="relative">
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              <svg
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
               </svg>
               <input
                 type="text"
@@ -180,6 +254,23 @@ export default function InboxPage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20 focus:border-[#4f46e5]/40 transition-all placeholder:text-gray-400"
               />
+            </div>
+
+            {/* Channel filter */}
+            <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
+              {CHANNELS.map((ch) => (
+                <button
+                  key={ch.key}
+                  onClick={() => setChannelFilter(ch.key)}
+                  className={`flex-1 py-1 text-xs font-semibold rounded-lg transition-colors ${
+                    channelFilter === ch.key
+                      ? "bg-white text-gray-900 shadow-sm"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  {ch.label}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -197,7 +288,9 @@ export default function InboxPage() {
                 </div>
                 <p className="text-sm font-medium text-gray-500">Nenhuma conversa</p>
                 <p className="text-xs text-gray-400 mt-1 text-center px-4">
-                  {searchTerm ? "Nenhum resultado para a busca" : "As conversas aparecerão quando clientes enviarem mensagens"}
+                  {searchTerm || channelFilter !== "all"
+                    ? "Nenhum resultado para os filtros"
+                    : "As conversas aparecerão quando clientes enviarem mensagens"}
                 </p>
               </div>
             ) : (
@@ -216,33 +309,49 @@ export default function InboxPage() {
                   >
                     {/* Avatar */}
                     <div className="relative shrink-0">
-                      <div className={`w-11 h-11 rounded-full flex items-center justify-center text-white font-bold text-sm ${
-                        isSelected ? "bg-gradient-to-br from-[#4f46e5] to-[#7c3aed]" : "bg-gray-300"
-                      }`}>
+                      <div
+                        className={`w-11 h-11 rounded-full flex items-center justify-center text-white font-bold text-sm ${
+                          isSelected
+                            ? "bg-gradient-to-br from-[#4f46e5] to-[#7c3aed]"
+                            : "bg-gray-300"
+                        }`}
+                      >
                         {conv.phone_number.slice(-2)}
                       </div>
-                      <span className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white ${
-                        isHuman ? "bg-orange-400" : "bg-green-400"
-                      }`}></span>
+                      <span
+                        className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white ${
+                          isHuman ? "bg-orange-400" : "bg-green-400"
+                        }`}
+                      ></span>
                     </div>
 
                     {/* Content */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2 mb-0.5">
-                        <span className={`font-semibold text-sm truncate ${isSelected ? "text-[#4f46e5]" : "text-gray-900"}`}>
+                        <span
+                          className={`font-semibold text-sm truncate ${
+                            isSelected ? "text-[#4f46e5]" : "text-gray-900"
+                          }`}
+                        >
                           {formatPhone(conv.phone_number)}
                         </span>
-                        <span className="text-[10px] text-gray-400 shrink-0">
-                          {conv.timestamp ? new Date(conv.timestamp).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : ""}
+                        <span className="text-[10px] text-gray-400 shrink-0 flex items-center gap-1">
+                          <span title={conv.channel ?? "whatsapp"}>{channelIcon(conv.channel)}</span>
+                          {conv.timestamp
+                            ? new Date(conv.timestamp).toLocaleTimeString("pt-BR", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })
+                            : ""}
                         </span>
                       </div>
                       <p className="text-xs text-gray-500 truncate">{conv.last_message || "Sem mensagem"}</p>
                       <div className="flex items-center gap-1.5 mt-1.5">
-                        <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                          isHuman
-                            ? "bg-orange-50 text-orange-600"
-                            : "bg-emerald-50 text-emerald-600"
-                        }`}>
+                        <span
+                          className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                            isHuman ? "bg-orange-50 text-orange-600" : "bg-emerald-50 text-emerald-600"
+                          }`}
+                        >
                           {isHuman ? "👤 Humano" : "🤖 IA"}
                         </span>
                       </div>
@@ -268,15 +377,37 @@ export default function InboxPage() {
                     <h3 className="font-bold text-gray-900">{formatPhone(selectedPhone)}</h3>
                     <div className="flex items-center gap-2">
                       <span className="relative flex h-2 w-2">
-                        <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                          currentStatus === "human" ? "bg-orange-400" : currentStatus === "closed" ? "bg-gray-400" : currentStatus === "waiting" ? "bg-yellow-400" : "bg-green-400"
-                        }`}></span>
-                        <span className={`relative inline-flex rounded-full h-2 w-2 ${
-                          currentStatus === "human" ? "bg-orange-500" : currentStatus === "closed" ? "bg-gray-500" : currentStatus === "waiting" ? "bg-yellow-500" : "bg-green-500"
-                        }`}></span>
+                        <span
+                          className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                            currentStatus === "human"
+                              ? "bg-orange-400"
+                              : currentStatus === "closed"
+                              ? "bg-gray-400"
+                              : currentStatus === "waiting"
+                              ? "bg-yellow-400"
+                              : "bg-green-400"
+                          }`}
+                        ></span>
+                        <span
+                          className={`relative inline-flex rounded-full h-2 w-2 ${
+                            currentStatus === "human"
+                              ? "bg-orange-500"
+                              : currentStatus === "closed"
+                              ? "bg-gray-500"
+                              : currentStatus === "waiting"
+                              ? "bg-yellow-500"
+                              : "bg-green-500"
+                          }`}
+                        ></span>
                       </span>
                       <p className="text-xs text-gray-500 font-medium">
-                        {currentStatus === "human" ? "Atendimento Humano" : currentStatus === "closed" ? "Encerrado" : currentStatus === "waiting" ? "Aguardando" : "Atendimento IA"}
+                        {currentStatus === "human"
+                          ? "Atendimento Humano"
+                          : currentStatus === "closed"
+                          ? "Encerrado"
+                          : currentStatus === "waiting"
+                          ? "Aguardando"
+                          : "Atendimento IA"}
                       </p>
                     </div>
                   </div>
@@ -287,7 +418,7 @@ export default function InboxPage() {
                       onClick={() => handleStatusChange("human")}
                       className="inline-flex items-center gap-2 px-4 py-2 bg-orange-50 text-orange-600 rounded-xl text-sm font-semibold hover:bg-orange-100 transition-all border border-orange-100"
                     >
-                      <span>👤</span> Assumir
+                      <span>👤</span> Assumir conversa
                     </button>
                   ) : null}
                   {currentStatus === "human" && (
@@ -343,19 +474,30 @@ export default function InboxPage() {
                           }`}
                         >
                           <div className="flex items-center gap-2 mb-1">
-                            <span className={`text-[10px] font-bold tracking-wider uppercase ${
-                              isInbound ? "text-gray-400" : isAI ? "text-indigo-200" : "text-gray-400"
-                            }`}>
+                            <span
+                              className={`text-[10px] font-bold tracking-wider uppercase ${
+                                isInbound ? "text-gray-400" : isAI ? "text-indigo-200" : "text-gray-400"
+                              }`}
+                            >
                               {isInbound ? "Cliente" : isAI ? "🤖 IA" : "👤 Você"}
                             </span>
                           </div>
-                          <p className={`text-[14px] leading-relaxed ${isInbound ? "text-gray-800" : "text-white"}`}>
+                          <p
+                            className={`text-[14px] leading-relaxed ${
+                              isInbound ? "text-gray-800" : "text-white"
+                            }`}
+                          >
                             {text}
                           </p>
-                          <span className={`text-[10px] block mt-1.5 text-right ${
-                            isInbound ? "text-gray-300" : "text-white/50"
-                          }`}>
-                            {new Date(msg.timestamp).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                          <span
+                            className={`text-[10px] block mt-1.5 text-right ${
+                              isInbound ? "text-gray-300" : "text-white/50"
+                            }`}
+                          >
+                            {new Date(msg.timestamp).toLocaleTimeString("pt-BR", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
                           </span>
                         </div>
                       </div>
@@ -367,7 +509,10 @@ export default function InboxPage() {
 
               {/* Input area */}
               {currentStatus !== "closed" ? (
-                <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-100 bg-white flex items-center gap-3 shrink-0">
+                <form
+                  onSubmit={handleSendMessage}
+                  className="p-4 border-t border-gray-100 bg-white flex items-center gap-3 shrink-0"
+                >
                   <div className="flex-1 relative">
                     <input
                       value={replyText}
@@ -385,7 +530,12 @@ export default function InboxPage() {
                       <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                     ) : (
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                        />
                       </svg>
                     )}
                     Enviar
@@ -408,7 +558,8 @@ export default function InboxPage() {
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-2">Caixa de Entrada</h3>
               <p className="text-sm text-gray-500 max-w-sm leading-relaxed">
-                Selecione uma conversa ao lado para visualizar o histórico de mensagens ou iniciar o atendimento manual.
+                Selecione uma conversa ao lado para visualizar o histórico de mensagens ou iniciar
+                o atendimento manual.
               </p>
               <div className="mt-6 gap-4 flex-wrap flex items-center justify-center text-xs text-gray-400">
                 <div className="flex items-center gap-1.5">

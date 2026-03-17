@@ -28,19 +28,24 @@ export default function AppointmentsPage() {
   const { user } = useAuth();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const fetchAppointments = async () => {
     if (!user?.tenantId) return;
     try {
       setLoading(true);
+      setError(false);
       const res = await fetch(`/api/appointments?tenantId=${user.tenantId}`);
       if (res.ok) {
         const data = await res.json();
         setAppointments(data);
+      } else {
+        setError(true);
       }
     } catch (err) {
       console.error(err);
+      setError(true);
     } finally {
       setLoading(false);
     }
@@ -108,6 +113,16 @@ export default function AppointmentsPage() {
                   <td colSpan={4} className="px-6 py-16 text-center">
                     <div className="w-8 h-8 border-2 border-gray-200 border-t-[#4f46e5] rounded-full animate-spin mx-auto mb-3"></div>
                     <p className="text-sm text-gray-400">Carregando agenda...</p>
+                  </td>
+                </tr>
+              ) : error ? (
+                <tr>
+                  <td colSpan={4} className="px-6 py-16 text-center">
+                    <div className="w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-3"><span className="text-2xl">⚠️</span></div>
+                    <p className="text-sm font-medium text-gray-500">Erro ao carregar agendamentos</p>
+                    <button onClick={fetchAppointments} className="mt-3 px-4 py-2 text-xs font-semibold bg-[#4f46e5] text-white rounded-lg hover:bg-[#4338ca] transition-colors">
+                      Tentar novamente
+                    </button>
                   </td>
                 </tr>
               ) : sortedAppointments.length === 0 ? (

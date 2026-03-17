@@ -104,12 +104,38 @@ export default function BillingPage() {
     );
   }
 
+  const trialDaysLeft = getTrialDaysLeft();
+  const isTrialExpired = subscription?.status === 'trialing' && trialDaysLeft <= 0;
+  const isCanceled = subscription?.status === 'canceled';
+  const showUrgentUpgrade = isTrialExpired || isCanceled;
+
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Assinatura</h1>
         <p className="text-sm text-gray-500 mt-1">Gerencie seu plano e acompanhe seu uso.</p>
       </div>
+
+      {/* Hard block banner when trial expired or canceled */}
+      {showUrgentUpgrade && (
+        <div className="bg-gradient-to-r from-rose-600 to-red-500 rounded-2xl p-6 text-white">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-lg font-bold">
+                {isTrialExpired ? '⛔ Trial expirado' : '⛔ Assinatura cancelada'}
+              </h3>
+              <p className="text-rose-100 text-sm mt-1">
+                {isTrialExpired
+                  ? 'Seu período de teste terminou. Assine um plano para continuar recebendo e respondendo mensagens.'
+                  : 'Sua assinatura foi cancelada. Reative para retomar o atendimento automático.'}
+              </p>
+            </div>
+            <a href="#plans" className="shrink-0 inline-flex items-center justify-center px-6 py-3 bg-white text-rose-600 rounded-xl font-bold text-sm hover:bg-rose-50 transition-colors">
+              Assinar agora →
+            </a>
+          </div>
+        </div>
+      )}
 
       {/* Current plan overview */}
       {subscription?.hasSubscription && (
@@ -168,7 +194,7 @@ export default function BillingPage() {
       )}
 
       {/* Plans grid */}
-      <div>
+      <div id="plans">
         <h3 className="text-lg font-semibold text-gray-800 mb-4">
           {subscription?.hasSubscription ? 'Alterar plano' : 'Escolha seu plano'}
         </h3>
@@ -182,7 +208,7 @@ export default function BillingPage() {
                   plan.popular
                     ? 'border-[#4f46e5] shadow-md'
                     : isCurrent
-                    ? 'border-green-400'
+                    ? 'border-[#4f46e5]'
                     : 'border-gray-200'
                 }`}
               >
@@ -195,7 +221,7 @@ export default function BillingPage() {
                 )}
                 {isCurrent && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <span className="bg-green-500 text-white text-xs font-bold px-4 py-1 rounded-full shadow">
+                    <span className="bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] text-white text-xs font-bold px-4 py-1 rounded-full shadow">
                       PLANO ATUAL
                     </span>
                   </div>

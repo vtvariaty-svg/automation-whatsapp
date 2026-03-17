@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import Script from "next/script";
 
 export const dynamic = "force-dynamic";
@@ -56,7 +57,7 @@ function IntegrationsContent() {
   const appId = process.env.NEXT_PUBLIC_FB_APP_ID;
 
   const authHeaders = (): Record<string, string> => {
-    const token = localStorage.getItem("token") ?? "";
+    const token = localStorage.getItem("auth_token") ?? localStorage.getItem("token") ?? "";
     return { Authorization: `Bearer ${token}` };
   };
 
@@ -264,14 +265,17 @@ function IntegrationsContent() {
                         </div>
                       </div>
                       <div className="flex gap-3">
-                        <button onClick={handleManualSave} disabled={savingManual} className="px-5 py-2 bg-indigo-600 text-white rounded-lg font-semibold text-sm disabled:opacity-50">
+                        <button onClick={handleManualSave} disabled={savingManual} className="px-5 py-2 bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] text-white rounded-xl font-semibold text-sm disabled:opacity-50">
                           {savingManual ? "Salvando..." : "Salvar IDs"}
                         </button>
-                        <button onClick={() => setShowManualForm(false)} className="px-4 py-2 text-sm text-gray-600 bg-white border border-gray-200 rounded-lg">Cancelar</button>
+                        <button onClick={() => setShowManualForm(false)} className="px-4 py-2 text-sm text-gray-600 bg-white border border-gray-200 rounded-xl">Cancelar</button>
                       </div>
                     </div>
                   )}
-                  <div className="flex justify-end pt-2">
+                  <div className="flex items-center justify-between pt-2">
+                    <Link href="/dashboard/conversations" className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-emerald-700 bg-emerald-50 rounded-xl hover:bg-emerald-100 border border-emerald-100 transition-colors">
+                      💬 Ver Conversas →
+                    </Link>
                     <button onClick={() => handleDisconnect("whatsapp")} disabled={disconnecting === "whatsapp"} className="px-5 py-2.5 text-sm font-medium text-red-600 bg-red-50 rounded-xl hover:bg-red-100 border border-red-100 disabled:opacity-50">
                       {disconnecting === "whatsapp" ? "Desconectando..." : "Desconectar"}
                     </button>
@@ -320,7 +324,7 @@ function IntegrationsContent() {
                         </div>
                       </div>
                       <div className="flex gap-3">
-                        <button onClick={handleManualSave} disabled={savingManual} className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl font-semibold text-sm disabled:opacity-50">
+                        <button onClick={handleManualSave} disabled={savingManual} className="px-6 py-2.5 bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] text-white rounded-xl font-semibold text-sm disabled:opacity-50">
                           {savingManual ? "Salvando..." : "Salvar"}
                         </button>
                         <button onClick={() => setShowManualForm(false)} className="px-5 py-2.5 text-sm text-gray-700 bg-gray-100 rounded-xl">Cancelar</button>
@@ -370,7 +374,10 @@ function IntegrationsContent() {
                   <div className="p-4 bg-pink-50 rounded-xl border border-pink-100 text-sm text-pink-700">
                     DMs e comentários do Instagram estão sendo processados automaticamente.
                   </div>
-                  <div className="flex justify-end">
+                  <div className="flex items-center justify-between">
+                    <Link href="/dashboard/conversations" className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-pink-700 bg-pink-50 rounded-xl hover:bg-pink-100 border border-pink-100 transition-colors">
+                      💬 Ver Conversas →
+                    </Link>
                     <button onClick={() => handleDisconnect("instagram")} disabled={disconnecting === "instagram"} className="px-5 py-2.5 text-sm font-medium text-red-600 bg-red-50 rounded-xl hover:bg-red-100 border border-red-100 disabled:opacity-50">
                       {disconnecting === "instagram" ? "Desconectando..." : "Desconectar"}
                     </button>
@@ -428,7 +435,10 @@ function IntegrationsContent() {
                   <div className="p-4 bg-blue-50 rounded-xl border border-blue-100 text-sm text-blue-700">
                     Mensagens do Facebook Messenger estão sendo processadas automaticamente.
                   </div>
-                  <div className="flex justify-end">
+                  <div className="flex items-center justify-between">
+                    <Link href="/dashboard/conversations" className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-blue-700 bg-blue-50 rounded-xl hover:bg-blue-100 border border-blue-100 transition-colors">
+                      💬 Ver Conversas →
+                    </Link>
                     <button onClick={() => handleDisconnect("facebook")} disabled={disconnecting === "facebook"} className="px-5 py-2.5 text-sm font-medium text-red-600 bg-red-50 rounded-xl hover:bg-red-100 border border-red-100 disabled:opacity-50">
                       {disconnecting === "facebook" ? "Desconectando..." : "Desconectar"}
                     </button>

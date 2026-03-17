@@ -16,7 +16,9 @@ export default function ServicesPage() {
     const tenantId = user?.tenantId;
     const [services, setServices] = useState<Service[]>([]);
     const [loading, setLoading] = useState(false);
-    
+    const [error, setError] = useState(false);
+    const [saving, setSaving] = useState(false);
+
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingService, setEditingService] = useState<Service | null>(null);
     const [formData, setFormData] = useState({
@@ -27,14 +29,18 @@ export default function ServicesPage() {
     const loadServices = async () => {
         if (!tenantId) return;
         setLoading(true);
+        setError(false);
         try {
             const res = await fetch(`/api/services?tenantId=${tenantId}`);
             if (res.ok) {
                 const data = await res.json();
                 setServices(data);
+            } else {
+                setError(true);
             }
         } catch (e) {
             console.error(e);
+            setError(true);
         } finally {
             setLoading(false);
         }
@@ -47,10 +53,11 @@ export default function ServicesPage() {
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!tenantId) return;
+        setSaving(true);
 
         try {
-            const url = editingService 
-                ? `/api/services/${editingService.id}` 
+            const url = editingService
+                ? `/api/services/${editingService.id}`
                 : `/api/services`;
             const method = editingService ? "PATCH" : "POST";
 
@@ -77,6 +84,9 @@ export default function ServicesPage() {
             }
         } catch (e) {
             console.error(e);
+            alert("Erro ao salvar serviço.");
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -117,7 +127,7 @@ export default function ServicesPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-gray-900">Serviços</h1>
+                    <h1 className="text-2xl font-bold text-gray-900">Serviços</h1>
                     <p className="text-sm text-gray-500 mt-1">
                         Gerencie os tipos de serviços e sua duração média para o agendamento da IA.
                     </p>
@@ -128,7 +138,7 @@ export default function ServicesPage() {
                         setFormData({ name: "", durationMinutes: 30 });
                         setIsModalOpen(true);
                     }}
-                    className="inline-flex items-center gap-2 bg-[#4f46e5] text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-[#4338ca] hover:shadow-lg hover:shadow-[#4f46e5]/20 transition-all focus:ring-2 focus:ring-[#4f46e5] focus:ring-offset-2"
+                    className="inline-flex items-center gap-2 bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:shadow-lg hover:shadow-indigo-200/50 transition-all focus:ring-2 focus:ring-[#4f46e5] focus:ring-offset-2"
                 >
                     <PlusIcon className="w-5 h-5" />
                     Novo Serviço
@@ -136,20 +146,36 @@ export default function ServicesPage() {
             </div>
 
             {/* List */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200/60 overflow-hidden">
                 <div className="min-w-full divide-y divide-gray-200">
                     <div className="bg-gray-50 px-6 py-4">
-                        <div className="grid grid-cols-12 gap-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                        <div className="grid grid-cols-12 gap-4 text-xs font-bold text-gray-500 uppercase tracking-[0.15em]">
                             <div className="col-span-5">Nome do Serviço</div>
                             <div className="col-span-3">Duração (min)</div>
                             <div className="col-span-2 text-center">Status</div>
                             <div className="col-span-2 text-right">Ações</div>
                         </div>
                     </div>
-                    
+
                     <div className="divide-y divide-gray-100 bg-white">
                         {loading ? (
-                            <div className="px-6 py-12 text-center text-gray-500 text-sm">Carregando...</div>
+                            <div className="px-6 py-12 text-center">
+                                <div className="w-8 h-8 border-2 border-gray-200 border-t-[#4f46e5] rounded-full animate-spin mx-auto mb-2"></div>
+                                <p className="text-sm text-gray-400">Carregando...</p>
+                            </div>
+                        ) : error ? (
+                            <div className="px-6 py-16 text-center flex flex-col items-center">
+                                <div className="w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center mb-3">
+                                    <span className="text-2xl">⚠️</span>
+                                </div>
+                                <p className="text-sm font-medium text-gray-500">Erro ao carregar serviços</p>
+                                <button
+                                    onClick={loadServices}
+                                    className="mt-3 px-4 py-2 text-xs font-semibold bg-[#4f46e5] text-white rounded-lg hover:bg-[#4338ca] transition-colors"
+                                >
+                                    Tentar novamente
+                                </button>
+                            </div>
                         ) : services.length === 0 ? (
                             <div className="px-6 py-16 text-center flex flex-col items-center">
                                 <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center mb-4">
@@ -206,7 +232,7 @@ export default function ServicesPage() {
                                 <PlusIcon className="w-6 h-6 rotate-45" />
                             </button>
                         </div>
-                        
+
                         <form onSubmit={handleSave} className="p-6 space-y-5">
                             <div>
                                 <label className="block text-sm font-semibold text-gray-900 mb-1.5">Nome do Serviço</label>
@@ -244,9 +270,17 @@ export default function ServicesPage() {
                                 </button>
                                 <button
                                     type="submit"
-                                    className="px-5 py-2.5 text-sm font-semibold text-white bg-[#4f46e5] rounded-xl hover:bg-[#4338ca] shadow-sm hover:shadow-md transition-all"
+                                    disabled={saving}
+                                    className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] rounded-xl hover:shadow-lg hover:shadow-indigo-200/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    {editingService ? 'Salvar Alterações' : 'Criar Serviço'}
+                                    {saving ? (
+                                        <>
+                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                            Salvando...
+                                        </>
+                                    ) : (
+                                        editingService ? 'Salvar Alterações' : 'Criar Serviço'
+                                    )}
                                 </button>
                             </div>
                         </form>

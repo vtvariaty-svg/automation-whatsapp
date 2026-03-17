@@ -4,6 +4,7 @@ import DemoBanner from "@/components/DemoBanner";
 import TrialBanner from "@/components/TrialBanner";
 import ChurnNudge from "@/components/ChurnNudge";
 import ExpansionBanner from "@/components/ExpansionBanner";
+import FeedbackWidget from "@/components/FeedbackWidget";
 
 export default function DashboardLayout({
   children,
@@ -25,6 +26,7 @@ export default function DashboardLayout({
           </div>
         </main>
       </div>
+      <FeedbackWidget />
     </div>
   );
 }

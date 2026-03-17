@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 import { PlusIcon, TrashIcon, PencilIcon, CheckCircleIcon, XCircleIcon } from "@heroicons/react/24/outline";
 
@@ -20,29 +21,41 @@ export default function AutomationsPage() {
     const tenantId = user?.tenantId;
     const [rules, setRules] = useState<AutomationRule[]>([]);
     const [loading, setLoading] = useState(false);
-    
+    const [error, setError] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [toastMessage, setToastMessage] = useState("");
+
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingRule, setEditingRule] = useState<AutomationRule | null>(null);
     const [formData, setFormData] = useState({
         name: "",
-        triggerType: "keyword", // or "contains" (not highly used on frontend as matchType does the real job, but requested by user)
+        triggerType: "keyword",
         triggerValue: "",
-        matchType: "exact", // exact, contains
-        responseType: "text", // text, template
+        matchType: "exact",
+        responseType: "text",
         responseText: "",
     });
+
+    const showToast = (msg: string) => {
+        setToastMessage(msg);
+        setTimeout(() => setToastMessage(""), 3000);
+    };
 
     const loadRules = async () => {
         if (!tenantId) return;
         setLoading(true);
+        setError(false);
         try {
             const res = await fetch(`/api/automations?tenantId=${tenantId}`);
             if (res.ok) {
                 const data = await res.json();
                 setRules(data);
+            } else {
+                setError(true);
             }
         } catch (e) {
             console.error(e);
+            setError(true);
         } finally {
             setLoading(false);
         }
@@ -55,10 +68,11 @@ export default function AutomationsPage() {
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!tenantId) return;
+        setSaving(true);
 
         try {
-            const url = editingRule 
-                ? `/api/automations/${editingRule.id}` 
+            const url = editingRule
+                ? `/api/automations/${editingRule.id}`
                 : `/api/automations`;
             const method = editingRule ? "PATCH" : "POST";
 
@@ -78,6 +92,9 @@ export default function AutomationsPage() {
             }
         } catch (e) {
             console.error(e);
+            alert("Erro ao salvar automação.");
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -98,7 +115,10 @@ export default function AutomationsPage() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ tenantId, active: !rule.active })
             });
-            if (res.ok) loadRules();
+            if (res.ok) {
+                showToast(rule.active ? "Automação desativada" : "Automação ativada");
+                loadRules();
+            }
         } catch (e) {
             console.error(e);
         }
@@ -127,17 +147,25 @@ export default function AutomationsPage() {
                         Crie respostas automáticas por palavras-chave antes da IA ser acionada.
                     </p>
                 </div>
-                <button
-                    onClick={() => {
-                        setEditingRule(null);
-                        setFormData({ name: "", triggerType: "keyword", triggerValue: "", matchType: "exact", responseType: "text", responseText: "" });
-                        setIsModalOpen(true);
-                    }}
-                    className="inline-flex items-center gap-2 bg-[#4f46e5] text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-[#4338ca] hover:shadow-lg hover:shadow-[#4f46e5]/20 transition-all focus:ring-2 focus:ring-[#4f46e5] focus:ring-offset-2"
-                >
-                    <PlusIcon className="w-5 h-5" />
-                    Nova Automação
-                </button>
+                <div className="flex items-center gap-3">
+                    <Link
+                        href="/dashboard/conversations"
+                        className="inline-flex items-center gap-2 border border-gray-200 text-gray-600 px-4 py-2.5 rounded-xl font-semibold text-sm hover:bg-gray-50 transition-all"
+                    >
+                        💬 Ir para Inbox →
+                    </Link>
+                    <button
+                        onClick={() => {
+                            setEditingRule(null);
+                            setFormData({ name: "", triggerType: "keyword", triggerValue: "", matchType: "exact", responseType: "text", responseText: "" });
+                            setIsModalOpen(true);
+                        }}
+                        className="inline-flex items-center gap-2 bg-[#4f46e5] text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-[#4338ca] hover:shadow-lg hover:shadow-[#4f46e5]/20 transition-all focus:ring-2 focus:ring-[#4f46e5] focus:ring-offset-2"
+                    >
+                        <PlusIcon className="w-5 h-5" />
+                        Nova Automação
+                    </button>
+                </div>
             </div>
 
             {/* List */}
@@ -153,10 +181,26 @@ export default function AutomationsPage() {
                             <div className="col-span-1 text-right">Ações</div>
                         </div>
                     </div>
-                    
+
                     <div className="divide-y divide-gray-100 bg-white">
                         {loading ? (
-                            <div className="px-6 py-12 text-center text-gray-500 text-sm">Carregando automações...</div>
+                            <div className="px-6 py-12 text-center">
+                                <div className="w-8 h-8 border-2 border-gray-200 border-t-[#4f46e5] rounded-full animate-spin mx-auto mb-2"></div>
+                                <p className="text-sm text-gray-400">Carregando automações...</p>
+                            </div>
+                        ) : error ? (
+                            <div className="px-6 py-16 text-center flex flex-col items-center">
+                                <div className="w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center mb-3">
+                                    <span className="text-2xl">⚠️</span>
+                                </div>
+                                <p className="text-sm font-medium text-gray-500">Erro ao carregar automações</p>
+                                <button
+                                    onClick={loadRules}
+                                    className="mt-3 px-4 py-2 text-xs font-semibold bg-[#4f46e5] text-white rounded-lg hover:bg-[#4338ca] transition-colors"
+                                >
+                                    Tentar novamente
+                                </button>
+                            </div>
                         ) : rules.length === 0 ? (
                             <div className="px-6 py-16 text-center flex flex-col items-center">
                                 <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center mb-4">
@@ -213,6 +257,13 @@ export default function AutomationsPage() {
                 </div>
             </div>
 
+            {/* Toast */}
+            {toastMessage && (
+                <div className="fixed bottom-6 right-6 z-50 bg-gray-900 text-white text-sm font-medium px-5 py-3 rounded-xl shadow-lg">
+                    {toastMessage}
+                </div>
+            )}
+
             {/* Modal de Criação / Edição */}
             {isModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
@@ -225,7 +276,7 @@ export default function AutomationsPage() {
                                 <PlusIcon className="w-6 h-6 rotate-45" />
                             </button>
                         </div>
-                        
+
                         <form onSubmit={handleSave} className="p-6 space-y-5">
                             <div>
                                 <label className="block text-sm font-semibold text-gray-900 mb-1.5">Nome da Regra</label>
@@ -286,9 +337,17 @@ export default function AutomationsPage() {
                                 </button>
                                 <button
                                     type="submit"
-                                    className="px-5 py-2.5 text-sm font-semibold text-white bg-[#4f46e5] rounded-xl hover:bg-[#4338ca] shadow-sm hover:shadow-md transition-all"
+                                    disabled={saving}
+                                    className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-[#4f46e5] rounded-xl hover:bg-[#4338ca] shadow-sm hover:shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    {editingRule ? 'Salvar Alterações' : 'Criar Automação'}
+                                    {saving ? (
+                                        <>
+                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                            Salvando...
+                                        </>
+                                    ) : (
+                                        editingRule ? 'Salvar Alterações' : 'Criar Automação'
+                                    )}
                                 </button>
                             </div>
                         </form>

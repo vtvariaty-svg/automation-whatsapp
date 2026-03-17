@@ -102,6 +102,7 @@ export default function MarketplacePage() {
           <h1 className="text-3xl font-bold tracking-tight text-gray-900 flex items-center gap-2">
             <SparklesIcon className="w-8 h-8 text-indigo-500" />
             Marketplace de Automações
+            <span className="ml-1 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-700">Pro</span>
           </h1>
           <p className="text-sm text-gray-500 mt-1">
             Bots prontos para o seu segmento. Ative em um clique e personalize depois.

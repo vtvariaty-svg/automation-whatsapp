@@ -1,6 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useEntitlements } from '@/hooks/useEntitlements';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -428,6 +430,7 @@ function RuleModal({ editingRule, onClose, onSaved, showToast }: ModalProps) {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function InstagramCommentsPage() {
+  const ent = useEntitlements();
   const [activeTab, setActiveTab] = useState<Tab>('rules');
 
   // Rules state
@@ -560,6 +563,25 @@ export default function InstagramCommentsPage() {
     { value: 'hidden', label: 'Oculto' },
     { value: 'dismissed', label: 'Ignorado' },
   ];
+
+  // Standard+ gate
+  if (!ent.loading && !ent.features.instagramComments) {
+    return (
+      <div className="max-w-2xl mx-auto mt-20 text-center space-y-5">
+        <div className="w-16 h-16 rounded-2xl bg-pink-50 flex items-center justify-center text-3xl mx-auto">💬</div>
+        <h2 className="text-2xl font-bold text-gray-900">Comentários Instagram</h2>
+        <p className="text-gray-500">
+          Crie regras automáticas para responder comentários e enviar DMs. Disponível a partir do plano <strong>Standard</strong>.
+        </p>
+        <Link
+          href="/dashboard/billing#plans"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] text-white rounded-xl font-bold text-sm hover:shadow-lg hover:shadow-indigo-500/30 transition-all"
+        >
+          Fazer upgrade para Standard →
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">

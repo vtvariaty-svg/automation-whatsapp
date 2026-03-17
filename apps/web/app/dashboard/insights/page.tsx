@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useEntitlements } from "@/hooks/useEntitlements";
+import Link from "next/link";
 import {
   QuestionMarkCircleIcon,
   ExclamationTriangleIcon,
@@ -24,6 +26,7 @@ type InsightReport = {
 
 export default function InsightsPage() {
   const { user } = useAuth();
+  const ent = useEntitlements();
   const [period, setPeriod] = useState("7days");
   const [report, setReport] = useState<InsightReport | null>(null);
   const [loading, setLoading] = useState(false);
@@ -62,6 +65,25 @@ export default function InsightsPage() {
   const maxQ = Math.max(...(report?.commonQuestions.map((q) => q.count) ?? [1]), 1);
   const maxO = Math.max(...(report?.commonObjections.map((o) => o.count) ?? [1]), 1);
   const maxI = Math.max(...(report?.productInterests.map((i) => i.mentions) ?? [1]), 1);
+
+  // Pro+ gate — show after entitlements loaded
+  if (!ent.loading && !ent.features.aiCopilot) {
+    return (
+      <div className="max-w-2xl mx-auto mt-20 text-center space-y-5">
+        <div className="w-16 h-16 rounded-2xl bg-violet-50 flex items-center justify-center text-3xl mx-auto">🔍</div>
+        <h2 className="text-2xl font-bold text-gray-900">Insights de IA</h2>
+        <p className="text-gray-500">
+          Análise inteligente de perguntas, objeções e interesses dos seus clientes. Disponível nos planos <strong>Pro</strong> e <strong>Business</strong>.
+        </p>
+        <Link
+          href="/dashboard/billing#plans"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] text-white rounded-xl font-bold text-sm hover:shadow-lg hover:shadow-indigo-500/30 transition-all"
+        >
+          Fazer upgrade para Pro →
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-20">

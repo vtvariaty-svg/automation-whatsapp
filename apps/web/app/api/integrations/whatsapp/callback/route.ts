@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthTenant } from '@/lib/getAuthTenant';
 import { encrypt } from '@/lib/utils/crypto';
+import { checkFeature } from '@/lib/services/entitlementsService';
 
 export async function POST(request: Request) {
   try {
@@ -10,13 +11,23 @@ export async function POST(request: Request) {
 
     // Get tenantId from request body OR from auth
     let tenantId = body.tenantId;
+    let role: string | undefined;
     if (!tenantId) {
       const auth = await getAuthTenant(request);
-      if (auth) tenantId = auth.tenantId;
+      if (auth) { tenantId = auth.tenantId; role = auth.role; }
     }
 
     if (!tenantId || (!accessToken && !wabaId && !phoneNumberId)) {
       return NextResponse.json({ error: 'Missing tenantId or data' }, { status: 400 });
+    }
+
+    // Plan enforcement: WhatsApp is only available on Standard, Pro, and Business plans
+    const whatsappCheck = await checkFeature(tenantId, 'whatsapp', role);
+    if (!whatsappCheck.allowed) {
+      return NextResponse.json(
+        { error: whatsappCheck.upgradeMessage || 'WhatsApp not available on your current plan.' },
+        { status: 403 }
+      );
     }
 
     // If token is __KEEP_EXISTING__, skip token-related logic and just update IDs

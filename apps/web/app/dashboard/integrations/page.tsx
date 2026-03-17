@@ -4,6 +4,8 @@ import { useState, useEffect, Suspense, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Script from "next/script";
+import PlanGate from "@/components/PlanGate";
+import { useEntitlements } from "@/hooks/useEntitlements";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +42,7 @@ function StatusBadge({ connected }: { connected: boolean }) {
 }
 
 function IntegrationsContent() {
+  const ent = useEntitlements();
   const [waStatus, setWaStatus] = useState<WhatsAppStatus | null>(null);
   const [igStatus, setIgStatus] = useState<InstagramStatus | null>(null);
   const [fbStatus, setFbStatus] = useState<FacebookStatus | null>(null);
@@ -95,6 +98,7 @@ function IntegrationsContent() {
         no_instagram_account: "Nenhuma conta Instagram Business encontrada. Certifique-se de que sua página do Facebook está vinculada a uma conta Instagram Business.",
         no_facebook_page: "Nenhuma página do Facebook encontrada.",
         token_exchange: "Erro ao trocar o token. Tente novamente.",
+        plan_required: searchParams.get("message") || "Recurso não disponível no seu plano atual.",
       };
       setMessage("❌ " + (msgs[error] || `Erro: ${error}`));
       window.history.replaceState({}, "", "/dashboard/integrations");
@@ -203,7 +207,8 @@ function IntegrationsContent() {
         </div>
       ) : (
         <>
-          {/* ── WhatsApp Card ─────────────────────────────── */}
+          {/* ── WhatsApp Card — Standard+ ─────────────────── */}
+          <PlanGate feature="whatsapp" allowed={ent.features.whatsapp} loading={ent.loading} name="WhatsApp Business" icon="💬" minPlan="standard">
           <div className={`bg-white rounded-2xl border shadow-sm overflow-hidden ${waStatus?.connected ? "border-emerald-200" : "border-gray-200/60"}`}>
             <div className={`px-6 py-5 border-b flex items-center justify-between ${waStatus?.connected ? "bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-100" : "bg-gray-50/50 border-gray-100"}`}>
               <div className="flex items-center gap-4">
@@ -336,7 +341,9 @@ function IntegrationsContent() {
             </div>
           </div>
 
-          {/* ── Instagram Card ────────────────────────────── */}
+          </PlanGate>
+
+          {/* ── Instagram Card — all plans ────────────────── */}
           <div className={`bg-white rounded-2xl border shadow-sm overflow-hidden ${igStatus?.connected ? "border-pink-200" : "border-gray-200/60"}`}>
             <div className={`px-6 py-5 border-b flex items-center justify-between ${igStatus?.connected ? "bg-gradient-to-r from-pink-50 to-purple-50 border-pink-100" : "bg-gray-50/50 border-gray-100"}`}>
               <div className="flex items-center gap-4">
@@ -405,7 +412,8 @@ function IntegrationsContent() {
             </div>
           </div>
 
-          {/* ── Facebook Messenger Card ───────────────────── */}
+          {/* ── Facebook Messenger Card — Pro+ ────────────── */}
+          <PlanGate feature="facebook" allowed={ent.features.facebook} loading={ent.loading} name="Facebook Messenger" icon="💬" minPlan="pro">
           <div className={`bg-white rounded-2xl border shadow-sm overflow-hidden ${fbStatus?.connected ? "border-blue-200" : "border-gray-200/60"}`}>
             <div className={`px-6 py-5 border-b flex items-center justify-between ${fbStatus?.connected ? "bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-100" : "bg-gray-50/50 border-gray-100"}`}>
               <div className="flex items-center gap-4">
@@ -463,6 +471,7 @@ function IntegrationsContent() {
               )}
             </div>
           </div>
+          </PlanGate>
         </>
       )}
     </div>

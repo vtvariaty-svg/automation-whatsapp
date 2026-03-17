@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
+import { checkFeature } from '@/lib/services/entitlementsService';
 
 if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET environment variable is required');
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -13,11 +14,21 @@ export async function GET() {
     if (!authToken) return NextResponse.redirect(`${base}/login`);
 
     let tenantId: string;
+    let role: string = 'user';
     try {
-      const decoded = jwt.verify(authToken, JWT_SECRET) as { tenantId: string };
+      const decoded = jwt.verify(authToken, JWT_SECRET) as { tenantId: string; role?: string };
       tenantId = decoded.tenantId;
+      role = decoded.role || 'user';
     } catch {
       return NextResponse.redirect(`${base}/login`);
+    }
+
+    // Plan enforcement: Facebook Messenger is only available on Pro and Business plans
+    const facebookCheck = await checkFeature(tenantId, 'facebook', role);
+    if (!facebookCheck.allowed) {
+      return NextResponse.redirect(
+        `${base}/dashboard/integrations?error=plan_required&message=${encodeURIComponent(facebookCheck.upgradeMessage || 'Facebook not available on your current plan.')}`
+      );
     }
 
     const fbAppId = process.env.NEXT_PUBLIC_FB_APP_ID;

@@ -91,6 +91,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     try {
       const response = await authApi.register(data);
+      if (response.requiresVerification) {
+        setLoading(false);
+        router.push('/verify-email-pending');
+        return;
+      }
       setToken(response.token);
       setUser(response.user);
       authStorage.saveToken(response.token);

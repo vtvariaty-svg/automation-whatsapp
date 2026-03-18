@@ -208,16 +208,30 @@ model Product {
 }
 
 model User {
-  id           String   @id @default(uuid())
+  id           String    @id @default(uuid())
   tenantId     String
   name         String?
-  email        String   @unique
+  email        String    @unique
+  emailVerifiedAt DateTime?
   passwordHash String?
-  facebookId   String?  @unique
-  instagramId  String?  @unique
-  role         String   @default("user")
-  createdAt    DateTime @default(now())
-  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  facebookId   String?   @unique
+  instagramId  String?   @unique
+  role         String    @default("user")
+  createdAt    DateTime  @default(now())
+  tenant       Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  id         String    @id @default(uuid())
+  identifier String    // Email do usuário
+  tokenHash  String    @unique // Hash do token para não expor url gerada no banco
+  type       String    // "EMAIL_VERIFICATION" | "PASSWORD_RESET"
+  expiresAt  DateTime
+  createdAt  DateTime  @default(now())
+  usedAt     DateTime? // Null significa que não foi usado ainda
+
+  @@index([identifier, type])
+  @@map("verification_tokens")
 }
 
 model Conversation {

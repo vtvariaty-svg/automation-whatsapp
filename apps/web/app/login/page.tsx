@@ -68,9 +68,9 @@ export default function LoginPage() {
                 <label className="block text-sm font-medium text-gray-700" htmlFor="password">
                   Senha
                 </label>
-                <a href="#" className="text-sm font-medium text-[#4f46e5] hover:text-[#4338ca]">
+                <Link href="/forgot-password" className="text-sm font-medium text-[#4f46e5] hover:text-[#4338ca]">
                   Esqueceu a senha?
-                </a>
+                </Link>
               </div>
               <Input
                 type="password"

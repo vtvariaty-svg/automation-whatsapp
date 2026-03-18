@@ -164,7 +164,7 @@ export async function POST(req: Request) {
             if (history.length === 0 && tenant.welcomeMessage) {
               const sendPhoneId = tenant.whatsappPhoneNumberId || tenant.whatsappPhoneId;
               await sendWhatsAppMessage(from, tenant.welcomeMessage, sendPhoneId, tenant.whatsappToken);
-              await saveAIMessage(from, tenant.welcomeMessage, tenant.id, 'ai', true, 'whatsapp');
+              await saveAIMessage(from, tenant.welcomeMessage, tenant.id, 'ai', true, 'whatsapp', resolvedIdentityContext);
               console.log(`[Webhook] Boas-vindas enviadas para ${maskPhone(from)}`);
             }
           } catch (e) {

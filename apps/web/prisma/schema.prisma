@@ -90,6 +90,10 @@ model Tenant {
   fiscalEmissionRecords     FiscalEmissionRecord[]
   // V2 Identity Support
   contactIdentifiers        ContactIdentifier[]
+  migrationAudits           MigrationAudit[]
+  // Shadow Read Config
+  shadowReadEnabled         Boolean                   @default(false)
+  shadowReadSampleRate      Int                       @default(5) // 0-100
 }
 
 // ─── Contacts Module (Phase 1) ────────────────────────────────────────────────
@@ -1202,4 +1206,43 @@ model FiscalEmissionRecord {
   @@index([tenantId, createdAt])
   @@index([tenantId, externalReferenceId])
   @@map("fiscal_emission_records")
+}
+
+// ─── Migration & Audit (Wave 2) ────────────────────────────────────────────────
+
+model MigrationAudit {
+  id             String               @id @default(cuid())
+  tenantId       String
+  mode           String // dry-run | apply
+  status         String // running | completed | failed | rolled_back
+  startedAt      DateTime             @default(now())
+  finishedAt     DateTime?
+  batchCount     Int                  @default(0)
+  linkedCount    Int                  @default(0)
+  ambiguousCount Int                  @default(0)
+  orphanCount    Int                  @default(0)
+  errorCount     Int                  @default(0)
+  items          MigrationAuditItem[]
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("migration_audits")
+}
+
+model MigrationAuditItem {
+  id            String   @id @default(cuid())
+  auditId       String
+  recordId      String // e.g. conversationId
+  recordType    String   @default("conversation")
+  previousValue String?
+  newValue      String?
+  action        String // linked | skipped_ambiguous | skipped_orphan
+  createdAt     DateTime @default(now())
+
+  audit MigrationAudit @relation(fields: [auditId], references: [id], onDelete: Cascade)
+
+  @@index([auditId])
+  @@index([recordId])
+  @@map("migration_audit_items")
 }

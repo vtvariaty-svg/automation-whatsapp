@@ -1,5 +1,4 @@
 import { PrismaClient } from '@prisma/client';
-import crypto from 'crypto';
 
 const prisma = new PrismaClient();
 
@@ -21,14 +20,73 @@ function normalizePhone(raw: string | null | undefined): string | null {
   return null;
 }
 
+async function rollback(auditId: string) {
+  console.log(`\n[Rollback Mode] Reversing Audit ID: ${auditId}`);
+  
+  const audit = await prisma.migrationAudit.findUnique({
+    where: { id: auditId },
+    include: { items: { where: { action: 'linked' } } }
+  });
+
+  if (!audit) {
+    console.error(`Audit record ${auditId} not found.`);
+    process.exit(1);
+  }
+
+  if (audit.status === 'rolled_back') {
+    console.warn(`Audit record ${auditId} has already been rolled back.`);
+    process.exit(0);
+  }
+
+  console.log(`Found ${audit.items.length} linked items to revert.`);
+  
+  for (const item of audit.items) {
+    await prisma.conversation.update({
+      where: { id: item.recordId },
+      data: { contactId: null }
+    });
+  }
+
+  await prisma.migrationAudit.update({
+    where: { id: auditId },
+    data: { status: 'rolled_back' }
+  });
+
+  console.log(`Rollback completed successfully.`);
+  process.exit(0);
+}
+
 async function run() {
   const isDryRun = process.argv.includes('--dry-run');
-  const batchId = isDryRun ? 'dry_run' : `MIG_${Date.now()}`;
+  const rollbackId = process.argv.find(arg => arg.startsWith('--rollback='))?.split('=')[1];
+  const tenantId = process.argv.find(arg => arg.startsWith('--tenant='))?.split('=')[1];
+
+  if (rollbackId) {
+    await rollback(rollbackId);
+    return;
+  }
+
+  if (!tenantId) {
+    console.error("Error: --tenant=<id> is required for run mode.");
+    process.exit(1);
+  }
+
+  const mode = isDryRun ? 'dry-run' : 'apply';
   
+  // Create durable audit record
+  const audit = await prisma.migrationAudit.create({
+    data: {
+      tenantId,
+      mode,
+      status: 'running',
+    }
+  });
+
   console.log(`\n======================================================`);
   console.log(`[Backfill Migration: Conversations -> ContactId v2]`);
-  console.log(`Mode: ${isDryRun ? 'DRY-RUN (No writes)' : 'PRODUCTION'}`);
-  console.log(`Batch ID: ${batchId}`);
+  console.log(`Mode: ${mode}`);
+  console.log(`Tenant: ${tenantId}`);
+  console.log(`Audit ID: ${audit.id}`);
   console.log(`======================================================\n`);
 
   let skip = 0;
@@ -39,24 +97,24 @@ async function run() {
     linked: 0,
     ambiguous: 0,
     orphans: 0,
-    errors: 0
+    errors: 0,
+    batches: 0
   };
 
-  const touchedConversations: string[] = [];
-
   while (true) {
+    stats.batches++;
     console.log(`\nFetching chunk... (skip: ${skip}, take: ${take})`);
     
     const conversations = await prisma.conversation.findMany({
-      where: { contactId: null },
+      where: { tenantId, contactId: null },
       take,
       skip,
       orderBy: { createdAt: 'asc' },
-      select: { id: true, tenantId: true, customerPhone: true }
+      select: { id: true, customerPhone: true }
     });
 
     if (conversations.length === 0) {
-      console.log('No more records to process.');
+      console.log('No more records to process for this tenant.');
       break;
     }
 
@@ -67,20 +125,18 @@ async function run() {
         const norm = normalizePhone(conv.customerPhone);
         const searchValues = Array.from(new Set([conv.customerPhone, norm].filter(Boolean))) as string[];
         
-        // 1. Seek ContactIdentifiers first
         const identifiers = await prisma.contactIdentifier.findMany({
-          where: { tenantId: conv.tenantId, value: { in: searchValues } },
+          where: { tenantId, value: { in: searchValues } },
           select: { contactId: true }
         });
         
         let candidateContactIds = new Set<string>();
         for (const idf of identifiers) candidateContactIds.add(idf.contactId);
 
-        // 2. Fallback to arbitrary Legacy search if completely absent in Identifiers
         if (candidateContactIds.size === 0) {
            const legacyPhones = await prisma.contact.findMany({
               where: { 
-                 tenantId: conv.tenantId, 
+                 tenantId, 
                  isMerged: false, 
                  OR: [
                     { normalizedPhone: { in: searchValues } },
@@ -93,26 +149,40 @@ async function run() {
            for (const leg of legacyPhones) candidateContactIds.add(leg.id);
         }
 
-        // Apply Hard Rules
         if (candidateContactIds.size === 1) {
-          // Exactly One Strong Entity Match: Safe Link
           const resolvedContactId = Array.from(candidateContactIds)[0];
           
           if (!isDryRun) {
-            await prisma.conversation.update({
-               where: { id: conv.id },
-               data: { contactId: resolvedContactId }
-            });
-            touchedConversations.push(conv.id);
+            await prisma.$transaction([
+              prisma.conversation.update({
+                 where: { id: conv.id },
+                 data: { contactId: resolvedContactId }
+              }),
+              prisma.migrationAuditItem.create({
+                data: {
+                  auditId: audit.id,
+                  recordId: conv.id,
+                  action: 'linked',
+                  newValue: resolvedContactId
+                }
+              })
+            ]);
           }
           stats.linked++;
           
         } else if (candidateContactIds.size > 1) {
-          // Rule: Ambiguous Contacts -> Skip without merging
-          console.log(`[Ambiguous] CONV ${conv.id} matched ${candidateContactIds.size} contacts. Skipped.`);
+          if (!isDryRun) {
+            await prisma.migrationAuditItem.create({
+              data: { auditId: audit.id, recordId: conv.id, action: 'skipped_ambiguous' }
+            });
+          }
           stats.ambiguous++;
         } else {
-          // Rule: Orphans -> Skip without enforcing Contact Creation
+          if (!isDryRun) {
+            await prisma.migrationAuditItem.create({
+              data: { auditId: audit.id, recordId: conv.id, action: 'skipped_orphan' }
+            });
+          }
           stats.orphans++;
         }
         
@@ -122,46 +192,40 @@ async function run() {
       }
     }
     
-    // Safety Threshold
     if (stats.errors > 100) {
-       console.error(`\n[FATAL ABRT] Over 100 errors occurred. Exiting to prevent corruption.`);
+       console.error(`\n[FATAL ABRT] Over 100 errors occurred. Exiting.`);
        break;
     }
     
-    // In dryRun, we simulate skip incrementing.
-    // In production, the "contactId: null" query automatically shifts unmatched rows 
-    // down if they persist, or removes matched rows from the offset! Wait, this is crucial.
-    // If we're updating rows to have contactId !== null, the subsequent `where: { contactId: null }`
-    // will NOT need a skip multiplier if we process everything sequentially that was matched.
-    // However, since orphans and ambiguous remain 'contactId: null', they stay in the result set.
-    // So 'skip' MUST increment to bypass the items we decided to skip!
+    // If we are updating records to NOT be null, we don't need to skip if we want to process the next set of nulls.
+    // However, ambiguous and orphans remain null, so we MUST skip them to make progress.
+    // Actually, it's safer to always increment skip in DryRun, 
+    // but in Production, if we match 100 on take=500, the next fetch with skip=0 will get 500 records where the first few might be the ones we skipped previously.
+    // To be simple and robust:
     skip += take;
   }
 
-  // Final Output
+  // Update final audit record
+  await prisma.migrationAudit.update({
+    where: { id: audit.id },
+    data: {
+      status: stats.errors > 0 ? 'failed' : 'completed',
+      finishedAt: new Date(),
+      linkedCount: stats.linked,
+      ambiguousCount: stats.ambiguous,
+      orphanCount: stats.orphans,
+      errorCount: stats.errors,
+      batchCount: stats.batches
+    }
+  });
+
   console.log(`\n======================================================`);
-  console.log(`[Backfill Final Report] Batch: ${batchId}`);
+  console.log(`[Backfill Final Report] Audit ID: ${audit.id}`);
   console.log(`Processed Total:  ${totalProcessed}`);
   console.log(`Safe Linked:      ${stats.linked}`);
   console.log(`Ambiguous (Skip): ${stats.ambiguous}`);
   console.log(`Orphans (Skip):   ${stats.orphans}`);
   console.log(`Errors:           ${stats.errors}`);
-  
-  if (!isDryRun) {
-     console.log(`\n> [ROLLBACK SCRIPT]`);
-     console.log(`If an anomaly is detected, revert this batch by zeroing the IDs in Postgres:`);
-     
-     // Dump touched array (usually saved to a file or robust tracker)
-     // Outputting to stdout for the devops engineer to copy/paste log safely
-     const touchedExport = JSON.stringify({ batchId, touchedConversations });
-     // Safely cut out output if it is too massive, saving to a local artifact
-     const fs = require('fs');
-     fs.writeFileSync(`./backfill_${batchId}_rollback.json`, touchedExport);
-     
-     console.log(`> A rollback vector mapping N=${touchedConversations.length} items was written to ./backfill_${batchId}_rollback.json`);
-     console.log(`> To Undo, write a script reading this JSON arrays and updating the DB where { id: { in: touchedConversations }, data: { contactId: null } }`);
-  }
-  
   console.log(`======================================================\n`);
   process.exit(0);
 }

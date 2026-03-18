@@ -1,13 +1,22 @@
 // SERVER-SIDE ONLY — never import this in client components or pages.
-// Calls NFE_WEB external certificate endpoints with M2M API key.
+// Calls NFE_WEB external certificate endpoints with internal shared secret.
 
 import { mapNfeError } from './errorHandler';
 
 function getConfig() {
   return {
-    url: process.env.NFE_EXTERNAL_API_URL,
-    key: process.env.NFE_EXTERNAL_API_KEY,
+    url:       process.env.NFE_EXTERNAL_API_URL,
+    secret:    process.env.NFE_INTERNAL_SECRET,
     companyId: process.env.NFE_EXTERNAL_COMPANY_ID_DEFAULT,
+  };
+}
+
+function internalHeaders(tenantId: string): Record<string, string> {
+  const { secret } = getConfig();
+  return {
+    'Content-Type':      'application/json',
+    'X-Internal-Secret': secret ?? '',
+    'X-Tenant-Id':       tenantId,
   };
 }
 
@@ -43,12 +52,13 @@ function makeError(statusCode: number, message: string) {
 export async function uploadCertificate(
   pfxBase64: string,
   password: string,
+  tenantId: string,
   companyId?: string,
   label?: string
 ): Promise<CertUploadResult> {
   const cfg = getConfig();
-  if (!cfg.url || !cfg.key) {
-    throw makeError(503, 'Configuração do serviço fiscal ausente (NFE_EXTERNAL_API_URL / NFE_EXTERNAL_API_KEY).');
+  if (!cfg.url || !cfg.secret) {
+    throw makeError(503, 'Configuração do serviço fiscal ausente (NFE_EXTERNAL_API_URL / NFE_INTERNAL_SECRET).');
   }
 
   const targetCompanyId = companyId ?? cfg.companyId;
@@ -60,10 +70,7 @@ export async function uploadCertificate(
     `${cfg.url}/v1/external/certificates/${encodeURIComponent(targetCompanyId)}/upload`,
     {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${cfg.key}`,
-      },
+      headers: internalHeaders(tenantId),
       body: JSON.stringify({ pfxBase64, password, label }),
     }
   );
@@ -81,9 +88,12 @@ export async function uploadCertificate(
 /**
  * Returns the active certificate status for the configured company in NFE_WEB.
  */
-export async function getCertificateStatus(companyId?: string): Promise<CertStatusResult> {
+export async function getCertificateStatus(
+  tenantId: string,
+  companyId?: string
+): Promise<CertStatusResult> {
   const cfg = getConfig();
-  if (!cfg.url || !cfg.key) {
+  if (!cfg.url || !cfg.secret) {
     throw makeError(503, 'Configuração do serviço fiscal ausente.');
   }
 
@@ -94,7 +104,7 @@ export async function getCertificateStatus(companyId?: string): Promise<CertStat
 
   const response = await fetch(
     `${cfg.url}/v1/external/certificates/${encodeURIComponent(targetCompanyId)}/status`,
-    { headers: { Authorization: `Bearer ${cfg.key}` } }
+    { headers: internalHeaders(tenantId) }
   );
 
   const body = await response.json().catch(() => ({}));

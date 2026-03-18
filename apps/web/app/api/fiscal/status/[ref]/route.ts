@@ -26,7 +26,7 @@ export async function GET(
 
   try {
     const { ref } = await params;
-    const status = await getExternalNfeStatusByReference(ref);
+    const status = await getExternalNfeStatusByReference(ref, auth.tenantId);
     return NextResponse.json(status);
   } catch (err: any) {
     return NextResponse.json(

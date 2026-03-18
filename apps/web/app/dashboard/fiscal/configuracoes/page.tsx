@@ -5,6 +5,89 @@ import { getFiscalSettings, saveFiscalSettings } from '@/lib/fiscal/service';
 import type { FiscalCompanyConfig } from '@/lib/fiscal/types';
 import FiscalIntegrationPanel from '@/components/fiscal/FiscalIntegrationPanel';
 
+interface NfeCompany { id: string; name: string; document: string; }
+
+function EmpresaEmissoraSection() {
+  const [companies, setCompanies] = useState<NfeCompany[]>([]);
+  const [selected, setSelected] = useState<string>('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    Promise.all([
+      fetch('/api/fiscal/companies').then(r => r.json()),
+      fetch('/api/fiscal/settings').then(r => r.json()),
+    ]).then(([companiesRes, settingsRes]) => {
+      setCompanies(companiesRes.data ?? []);
+      setSelected(settingsRes.nfeCompanyId ?? '');
+    }).catch(() => setError('Erro ao carregar empresas. Verifique a integração fiscal.')).finally(() => setLoading(false));
+  }, []);
+
+  async function handleSave() {
+    if (!selected) return;
+    setSaving(true);
+    setSaved(false);
+    setError(null);
+    try {
+      const res = await fetch('/api/fiscal/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nfeCompanyId: selected }),
+      });
+      if (!res.ok) throw new Error();
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch {
+      setError('Erro ao salvar. Tente novamente.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (loading) return <div className="h-10 w-full bg-gray-100 animate-pulse rounded-xl" />;
+
+  return (
+    <div className="space-y-3">
+      {error && (
+        <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700">
+          <span>⚠️</span><span>{error}</span>
+        </div>
+      )}
+      {companies.length === 0 ? (
+        <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700">
+          <span>⚠️</span>
+          <span>Nenhuma empresa cadastrada no módulo fiscal. <a href="/dashboard/companies" className="underline">Cadastre uma empresa</a> antes de configurar.</span>
+        </div>
+      ) : (
+        <>
+          <select
+            value={selected}
+            onChange={e => setSelected(e.target.value)}
+            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20 focus:border-[#4f46e5]"
+          >
+            <option value="">Selecione a empresa emissora...</option>
+            {companies.map(c => (
+              <option key={c.id} value={c.id}>{c.name} — {c.document}</option>
+            ))}
+          </select>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleSave}
+              disabled={saving || !selected}
+              className="inline-flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] text-white rounded-xl font-semibold text-sm hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {saving ? 'Salvando...' : 'Salvar empresa'}
+            </button>
+            {saved && <span className="text-sm text-emerald-600 font-medium">✅ Salvo</span>}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 interface CertStatus {
   hasCertificate: boolean;
   disabled?: boolean;
@@ -360,6 +443,19 @@ export default function ConfiguracoesFiscalPage() {
           <span className="text-sm font-medium text-gray-700">Envio automático após emissão</span>
         </button>
         {f('Canal WhatsApp para emissão (opcional)', 'canalWhatsapp', 'tel')}
+      </section>
+
+      {/* Section: Empresa Emissora */}
+      <section className="bg-white border border-gray-200/60 rounded-2xl p-6 space-y-4">
+        <div>
+          <h2 className="font-semibold text-gray-900 flex items-center gap-2">
+            <span className="text-base">🏢</span> Empresa emissora padrão
+          </h2>
+          <p className="text-xs text-gray-400 mt-1">
+            Empresa cadastrada no módulo fiscal que será usada ao emitir NF-e por este tenant.
+          </p>
+        </div>
+        <EmpresaEmissoraSection />
       </section>
 
       {/* Section: Certificate */}

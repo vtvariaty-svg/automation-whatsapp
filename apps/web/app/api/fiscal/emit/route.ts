@@ -5,6 +5,7 @@ import { getSubscription } from '@/lib/services/subscriptionService';
 import { planAtLeast } from '@/lib/config/plans';
 import { issueExternalNfe } from '@/lib/integrations/fiscal/nfeClient';
 import { prisma } from '@/lib/prisma';
+import { getNfeCompanyId } from '@/lib/fiscal/nfeSettings';
 import type { NfeIssuePayload } from '@/lib/integrations/fiscal/types';
 
 const NFE_STATUS_MAP: Record<string, string> = {
@@ -111,16 +112,14 @@ export async function POST(request: Request) {
 
   // ── Real mode ──────────────────────────────────────────────────────────────
 
-  // Resolve company_id: body > env fallback > error
-  const companyId = body.company_id ?? process.env.NFE_EXTERNAL_COMPANY_ID_DEFAULT;
+  // Resolve company_id: body > BusinessConfig.nfeCompanyId (per-tenant, from DB)
+  let companyId = body.company_id;
   if (!companyId) {
-    return NextResponse.json(
-      {
-        error:
-          'company_id não configurado. Defina NFE_EXTERNAL_COMPANY_ID_DEFAULT nas variáveis de ambiente.',
-      },
-      { status: 422 }
-    );
+    try {
+      companyId = await getNfeCompanyId(auth.tenantId);
+    } catch (err: any) {
+      return NextResponse.json({ error: err.message, code: err.code }, { status: err.statusCode ?? 422 });
+    }
   }
 
   // external_reference_id is stable per business transaction.
@@ -142,7 +141,7 @@ export async function POST(request: Request) {
   };
 
   try {
-    const result = await issueExternalNfe(payload, idempotencyKey);
+    const result = await issueExternalNfe(payload, idempotencyKey, auth.tenantId);
 
     const localStatus = mapNfeStatusToLocal(result.status, {
       tenantId: auth.tenantId,

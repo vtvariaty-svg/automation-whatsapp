@@ -187,6 +187,8 @@ model BusinessConfig {
   templateBookingConfirmed String?
   templateReminder24h      String?
   templateReminder2h       String?
+  // Fiscal — UUID da empresa emissora padrão no NFE_WEB (por tenant)
+  nfeCompanyId         String?
   tenant               Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 

@@ -1,4 +1,4 @@
-// SERVER-SIDE ONLY — reads NFE_EXTERNAL_API_URL and NFE_EXTERNAL_API_KEY from env.
+// SERVER-SIDE ONLY — reads NFE_EXTERNAL_API_URL and NFE_INTERNAL_SECRET from env.
 // Never import this file in client components or pages.
 // All secrets stay on the server boundary.
 
@@ -10,8 +10,17 @@ const RETRY_DELAY_MS = 1000;
 
 function getConfig() {
   return {
-    url: process.env.NFE_EXTERNAL_API_URL,
-    key: process.env.NFE_EXTERNAL_API_KEY,
+    url:    process.env.NFE_EXTERNAL_API_URL,
+    secret: process.env.NFE_INTERNAL_SECRET,
+  };
+}
+
+function internalHeaders(tenantId: string): Record<string, string> {
+  const { secret } = getConfig();
+  return {
+    'Content-Type':      'application/json',
+    'X-Internal-Secret': secret ?? '',
+    'X-Tenant-Id':       tenantId,
   };
 }
 
@@ -29,7 +38,7 @@ function makeError(
 }
 
 /**
- * Issues an NF-e via NFE_WEB external API.
+ * Issues an NF-e via NFE_WEB internal API.
  *
  * Retries automatically on transient errors (408 / 429 / 5xx) using the SAME
  * idempotencyKey — this is correct and safe per the NFE_WEB idempotency contract.
@@ -37,15 +46,16 @@ function makeError(
  */
 export async function issueExternalNfe(
   payload: NfeIssuePayload,
-  idempotencyKey: string
+  idempotencyKey: string,
+  tenantId: string
 ): Promise<NfeIssueResponse> {
-  const { url, key } = getConfig();
+  const { url, secret } = getConfig();
 
-  if (!url || !key) {
+  if (!url || !secret) {
     throw makeError(
       503,
       'NFE_CONFIG_MISSING',
-      'Configuração do serviço fiscal ausente. Verifique NFE_EXTERNAL_API_URL e NFE_EXTERNAL_API_KEY.',
+      'Configuração do serviço fiscal ausente. Verifique NFE_EXTERNAL_API_URL e NFE_INTERNAL_SECRET.',
       false
     );
   }
@@ -61,8 +71,7 @@ export async function issueExternalNfe(
       const response = await fetch(`${url}/api/v1/external/nfe/issue`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${key}`,
+          ...internalHeaders(tenantId),
           'Idempotency-Key': idempotencyKey,
         },
         body: JSON.stringify(payload),
@@ -90,16 +99,19 @@ export async function issueExternalNfe(
 /**
  * Queries NF-e status by internal invoice ID from NFE_WEB.
  */
-export async function getExternalNfeStatusById(invoiceId: string): Promise<NfeStatusResponse> {
-  const { url, key } = getConfig();
+export async function getExternalNfeStatusById(
+  invoiceId: string,
+  tenantId: string
+): Promise<NfeStatusResponse> {
+  const { url, secret } = getConfig();
 
-  if (!url || !key) {
+  if (!url || !secret) {
     throw makeError(503, 'NFE_CONFIG_MISSING', 'Configuração do serviço fiscal ausente.', false);
   }
 
   const response = await fetch(
     `${url}/api/v1/external/nfe/id/${encodeURIComponent(invoiceId)}/status`,
-    { headers: { Authorization: `Bearer ${key}` } }
+    { headers: internalHeaders(tenantId) }
   );
 
   const body = await response.json().catch(() => ({}));
@@ -113,17 +125,18 @@ export async function getExternalNfeStatusById(invoiceId: string): Promise<NfeSt
  * Queries NF-e status by external_reference_id from NFE_WEB.
  */
 export async function getExternalNfeStatusByReference(
-  externalReferenceId: string
+  externalReferenceId: string,
+  tenantId: string
 ): Promise<NfeStatusResponse> {
-  const { url, key } = getConfig();
+  const { url, secret } = getConfig();
 
-  if (!url || !key) {
+  if (!url || !secret) {
     throw makeError(503, 'NFE_CONFIG_MISSING', 'Configuração do serviço fiscal ausente.', false);
   }
 
   const response = await fetch(
     `${url}/api/v1/external/nfe/ref/${encodeURIComponent(externalReferenceId)}/status`,
-    { headers: { Authorization: `Bearer ${key}` } }
+    { headers: internalHeaders(tenantId) }
   );
 
   const body = await response.json().catch(() => ({}));

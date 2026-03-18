@@ -3,6 +3,7 @@ import { getAuthTenant } from '@/lib/getAuthTenant';
 import { getSubscription } from '@/lib/services/subscriptionService';
 import { planAtLeast } from '@/lib/config/plans';
 import { uploadCertificate, getCertificateStatus } from '@/lib/integrations/fiscal/certificateClient';
+import { getNfeCompanyId } from '@/lib/fiscal/nfeSettings';
 
 // ── GET /api/fiscal/certificate — status do certificado ativo ────────────────
 export async function GET(request: Request) {
@@ -19,7 +20,8 @@ export async function GET(request: Request) {
   }
 
   try {
-    const status = await getCertificateStatus();
+    const companyId = await getNfeCompanyId(auth.tenantId).catch(() => undefined);
+    const status = await getCertificateStatus(auth.tenantId, companyId);
     return NextResponse.json(status);
   } catch (err: any) {
     return NextResponse.json(
@@ -61,10 +63,12 @@ export async function POST(request: Request) {
   }
 
   try {
+    const companyId = body.company_id ?? await getNfeCompanyId(auth.tenantId).catch(() => undefined);
     const result = await uploadCertificate(
       body.pfxBase64,
       body.password,
-      body.company_id,
+      auth.tenantId,
+      companyId,
       body.label
     );
 

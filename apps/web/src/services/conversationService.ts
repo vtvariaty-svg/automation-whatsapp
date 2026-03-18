@@ -1,10 +1,67 @@
 import { prisma } from '@/lib/prisma';
 import { upsertContactByPhone, addContactEvent } from '@/lib/services/contactService';
+import { channelLog } from '@/lib/channels/logger';
+
+export type IdentityContext = {
+  contactId: string;
+  confidence: 'high' | 'ambiguous';
+};
 
 /**
- * Salva a mensagem enviada pelo usuário.
+ * Função utilitária para hashing determinístico simples (DJB2) modificado
+ * usado para Samplificar as requisições baseadas no ID da conversa.
  */
-export async function saveUserMessage(phoneNumber: string, messageText: string, tenantId: string, status = 'ai', channel = 'whatsapp') {
+function deterministicSample(stringKey: string, percentage: number): boolean {
+  let hash = 5381;
+  for (let i = 0; i < stringKey.length; i++) {
+    hash = (hash * 33) ^ stringKey.charCodeAt(i);
+  }
+  const absoluteHash = Math.abs(hash);
+  return (absoluteHash % 100) < percentage;
+}
+
+/**
+ * Executa o Shadow Validation Paralelo e gera logs estruturados mascarados
+ */
+async function performShadowValidation({
+  tenantId, legacyPhone, legacyConversationId, resolvedContactId, operation, direction
+}: {
+  tenantId: string, legacyPhone: string, legacyConversationId: string, resolvedContactId: string, operation: string, direction: string
+}) {
+  try {
+    const shadowConv = await prisma.conversation.findFirst({
+      where: { contactId: resolvedContactId, tenantId, channel: 'whatsapp' }
+    });
+    
+    // Mask phoneNumber -> ***-9999
+    const maskedPhone = legacyPhone.length >= 4 ? `***-${legacyPhone.slice(-4)}` : '****';
+    
+    const shadowId = shadowConv?.id ?? 'null';
+    if (shadowId !== legacyConversationId) {
+      channelLog.info({
+        channel: 'whatsapp',
+        event: 'shadow_validation_mismatch',
+        tenantId,
+        customerPhone: maskedPhone,
+        resolvedContactId,
+        legacyConversationId,
+        shadowConversationId: shadowId,
+        operation,
+        direction,
+        timestamp: Date.now()
+      }, '[ShadowValidation] Dual-Read mismatch report');
+    }
+  } catch(e) { /* Silencia falhas do Shadow Read */ }
+}
+
+export async function saveUserMessage(
+  phoneNumber: string, 
+  messageText: string, 
+  tenantId: string, 
+  status = 'ai', 
+  channel = 'whatsapp',
+  identity?: IdentityContext
+) {
   try {
     let conversation = await prisma.conversation.findFirst({
       where: { customerPhone: phoneNumber, tenantId, channel }
@@ -12,7 +69,32 @@ export async function saveUserMessage(phoneNumber: string, messageText: string, 
 
     if (!conversation) {
       conversation = await prisma.conversation.create({
-        data: { customerPhone: phoneNumber, tenantId, status, channel }
+        data: { 
+          customerPhone: phoneNumber, 
+          tenantId, 
+          status, 
+          channel,
+          contactId: (identity?.confidence === 'high') ? identity.contactId : undefined
+        }
+      });
+    } else if (!conversation.contactId && identity?.confidence === 'high') {
+      // Dual-Write (Passive)
+      await prisma.conversation.update({
+        where: { id: conversation.id },
+        data: { contactId: identity.contactId }
+      });
+      conversation.contactId = identity.contactId;
+    }
+
+    // Shadow Validation (Amostragem de 5%)
+    if (identity?.confidence === 'high' && deterministicSample(`${tenantId}_${conversation.id}`, 5)) {
+      await performShadowValidation({
+        tenantId,
+        legacyPhone: phoneNumber,
+        legacyConversationId: conversation.id,
+        resolvedContactId: identity.contactId,
+        operation: 'saveUserMessage',
+        direction: 'inbound',
       });
     }
 
@@ -78,10 +160,14 @@ export async function saveUserMessage(phoneNumber: string, messageText: string, 
   }
 }
 
-/**
- * Salva a resposta gerada pela IA.
- */
-export async function saveAIMessage(phoneNumber: string, aiResponse: string, tenantId: string, status = 'ai', aiGenerated = true, channel = 'whatsapp') {
+export async function saveAIMessage(
+  phoneNumber: string, 
+  aiResponse: string, 
+  tenantId: string, 
+  status = 'ai', 
+  aiGenerated = true, 
+  channel = 'whatsapp'
+) {
   try {
     let conversation = await prisma.conversation.findFirst({
       where: { customerPhone: phoneNumber, tenantId, channel }
@@ -90,6 +176,19 @@ export async function saveAIMessage(phoneNumber: string, aiResponse: string, ten
     if (!conversation) {
       conversation = await prisma.conversation.create({
         data: { customerPhone: phoneNumber, tenantId, status, channel }
+      });
+    }
+
+    // Outbound symetry: The anchor identity is inherently the DB state of the conversation
+    // So the Dual-Read Validation acts passively here only utilizing the established contactId
+    if (conversation.contactId && deterministicSample(`${tenantId}_${conversation.id}`, 5)) {
+      await performShadowValidation({
+        tenantId,
+        legacyPhone: phoneNumber,
+        legacyConversationId: conversation.id,
+        resolvedContactId: conversation.contactId,
+        operation: 'saveAIMessage',
+        direction: 'outbound',
       });
     }
 
@@ -123,10 +222,12 @@ export async function saveAIMessage(phoneNumber: string, aiResponse: string, ten
   }
 }
 
-/**
- * Retorna o histórico de conversas de um número específico.
- */
-export async function getConversationHistory(phoneNumber: string, tenantId: string, channel = 'whatsapp') {
+export async function getConversationHistory(
+  phoneNumber: string, 
+  tenantId: string, 
+  channel = 'whatsapp',
+  identity?: IdentityContext
+) {
   try {
     const conversation = await prisma.conversation.findFirst({
       where: { customerPhone: phoneNumber, tenantId, channel },
@@ -136,6 +237,15 @@ export async function getConversationHistory(phoneNumber: string, tenantId: stri
         }
       }
     });
+
+    if (conversation && identity?.confidence === 'high' && deterministicSample(`${tenantId}_${conversation.id}`, 5)) {
+      await performShadowValidation({
+         tenantId, legacyPhone: phoneNumber,
+         legacyConversationId: conversation.id,
+         resolvedContactId: identity.contactId,
+         operation: 'getHistory', direction: 'inbound'
+      });
+    }
     
     if (!conversation) return [];
 

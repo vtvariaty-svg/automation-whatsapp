@@ -14,7 +14,7 @@ import { generateAIResponse } from "@/src/services/aiService";
 // @ts-ignore - Importing from JS file
 import { sendWhatsAppMessage } from "@/src/services/whatsappService";
 // @ts-ignore - Importing from JS file
-import { saveUserMessage, saveAIMessage, getConversationHistory, getConversationStatus } from "@/src/services/conversationService";
+import { saveUserMessage, saveAIMessage, getConversationHistory, getConversationStatus, IdentityContext } from "@/src/services/conversationService";
 import { getTenantByPhoneId } from "@/src/services/tenantService";
 import { buildCustomerContext, upsertCustomerMemory, extractNameFromText } from "@/src/services/customerMemoryService";
 import { checkAutomationMatch } from "@/src/services/automationService";
@@ -121,8 +121,12 @@ export async function POST(req: Request) {
       if (tenant.whatsappToken) tenant.whatsappToken = decrypt(tenant.whatsappToken);
 
       // Identity Resolver (Dual-Write Passivo Onda 1)
+      let resolvedIdentityContext: IdentityContext | undefined = undefined;
       try {
-         await resolveWhatsAppIdentity(tenant.id, event);
+         const resolvedContact = await resolveWhatsAppIdentity(tenant.id, event);
+         if (resolvedContact) {
+           resolvedIdentityContext = { contactId: resolvedContact.id, confidence: 'high' };
+         }
       } catch (err) {
          channelLog.error({ channel: 'whatsapp', tenantId: tenant.id, error: err }, '[Webhook] Falha silenciosa no IdentityResolver Engine');
       }
@@ -156,11 +160,11 @@ export async function POST(req: Request) {
 
           // Verificar mensagem de boas-vindas
           try {
-            const history = await getConversationHistory(from, tenant.id);
+            const history = await getConversationHistory(from, tenant.id, 'whatsapp', resolvedIdentityContext);
             if (history.length === 0 && tenant.welcomeMessage) {
               const sendPhoneId = tenant.whatsappPhoneNumberId || tenant.whatsappPhoneId;
               await sendWhatsAppMessage(from, tenant.welcomeMessage, sendPhoneId, tenant.whatsappToken);
-              await saveAIMessage(from, tenant.welcomeMessage, tenant.id);
+              await saveAIMessage(from, tenant.welcomeMessage, tenant.id, 'ai', true, 'whatsapp');
               console.log(`[Webhook] Boas-vindas enviadas para ${maskPhone(from)}`);
             }
           } catch (e) {
@@ -171,7 +175,7 @@ export async function POST(req: Request) {
           let status = await getConversationStatus(from, tenant.id);
           if (status === 'closed') status = 'open';
 
-          await saveUserMessage(from, textBody, tenant.id, status);
+          await saveUserMessage(from, textBody, tenant.id, status, 'whatsapp', resolvedIdentityContext);
 
           if (status !== 'open' && status !== 'ai') {
             console.log(`[Webhook] Conversa ${maskPhone(from)} em status "${status}" — IA ignorada`);

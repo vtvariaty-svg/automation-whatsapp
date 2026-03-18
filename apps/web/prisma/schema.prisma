@@ -86,6 +86,8 @@ model Tenant {
   professionals       Professional[]
   // TD1 Template Delivery
   templateBroadcasts  TemplateBroadcast[]
+  // Fiscal Integration
+  fiscalEmissionRecords FiscalEmissionRecord[]
 }
 
 // ─── Contacts Module (Phase 1) ────────────────────────────────────────────────
@@ -1126,4 +1128,31 @@ model TemplateBroadcastRecipient {
   @@unique([broadcastId, phone])
   @@index([broadcastId, status])
   @@map("template_broadcast_recipients")
+}
+
+// ─── Fiscal Integration Records ───────────────────────────────────────────────
+
+model FiscalEmissionRecord {
+  id                  String   @id @default(cuid())
+  tenantId            String
+  externalReferenceId String
+  invoiceId           String?
+  requestId           String?
+  protocol            String?
+  status              String   // local FiscalDocumentStatus value (e.g. autorizado, emitido_mock)
+  rawStatus           String?  // original status string returned by NFE_WEB (e.g. AUTHORIZED) — preserved for traceability
+  mode                String   @default("real") // "real" | "mock"
+  tipo                String   @default("nfe")
+  customerNome        String
+  customerDocumento   String
+  total               Float    @default(0)
+  itensJson           String?  @db.Text
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  tenant              Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, externalReferenceId])
+  @@map("fiscal_emission_records")
 }

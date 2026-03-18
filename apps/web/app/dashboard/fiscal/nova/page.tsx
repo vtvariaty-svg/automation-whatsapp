@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { getFiscalCustomers, getFiscalCatalog, simulateFiscalEmission } from '@/lib/fiscal/service';
+import { getFiscalCustomers, getFiscalCatalog } from '@/lib/fiscal/service';
 import type { FiscalCustomer, FiscalCatalogItem, FiscalDocumentItem } from '@/lib/fiscal/types';
 
 type Step = 1 | 2 | 3;
@@ -18,6 +18,16 @@ function currency(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
+interface EmissionResult {
+  mode: 'mock' | 'real';
+  request_id: string;
+  invoice_id: string;
+  external_reference_id: string;
+  status: string;
+  local_status?: string;
+  protocol?: string | null;
+}
+
 export default function NovaEmissaoPage() {
   const router = useRouter();
   const [step, setStep] = useState<Step>(1);
@@ -31,6 +41,13 @@ export default function NovaEmissaoPage() {
   const [observacoes, setObservacoes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
+  const [emissionResult, setEmissionResult] = useState<EmissionResult | null>(null);
+  const [emissionError, setEmissionError] = useState<string | null>(null);
+  // Stable per business transaction — generated once on mount, reused on retry.
+  // A fresh ID is only generated when the user starts a NEW emission (resetForm).
+  const [externalRefId, setExternalRefId] = useState<string>(
+    () => `${crypto.randomUUID().slice(0, 8)}-nfe-${Date.now()}`
+  );
 
   useEffect(() => {
     Promise.all([getFiscalCustomers(), getFiscalCatalog()]).then(([c, cat]) => {
@@ -87,22 +104,75 @@ export default function NovaEmissaoPage() {
   async function handleSubmit() {
     if (!selectedCustomer) return;
     setSubmitting(true);
+    setEmissionError(null);
+
     try {
-      await simulateFiscalEmission({
-        tipo: docType,
-        customerId: selectedCustomer.id,
-        customerNome: selectedCustomer.nome,
-        customerDocumento: selectedCustomer.documento,
-        itens: items,
-        subtotal,
-        desconto,
-        total,
-        observacoes: observacoes || undefined,
+      // Build catalog map for sku/ncm lookup
+      const catalogMap = new Map(catalog.map((c) => [c.id, c]));
+
+      const nfeItems = items.map((item) => {
+        const cat = item.catalogItemId ? catalogMap.get(item.catalogItemId) : undefined;
+        return {
+          codigo_produto: cat?.sku ?? item.catalogItemId ?? item.id,
+          descricao: item.nome,
+          quantidade: item.quantidade,
+          valor_unitario: item.precoUnitario,
+          ncm: cat?.ncm,
+          unidade: cat?.unidade ?? 'UN',
+        };
       });
-      router.push('/dashboard/fiscal/historico');
+
+      const nfeAddress = {
+        street: selectedCustomer.endereco?.logradouro ?? '',
+        number: selectedCustomer.endereco?.numero ?? '',
+        district: selectedCustomer.endereco?.bairro ?? '',
+        city: selectedCustomer.endereco?.cidade ?? '',
+        state: selectedCustomer.endereco?.uf ?? '',
+        zipCode: (selectedCustomer.endereco?.cep ?? '').replace(/\D/g, ''),
+      };
+
+      const response = await fetch('/api/fiscal/emit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tipo: docType,
+          external_reference_id: externalRefId, // stable across retries for this business transaction
+          natureza_operacao: 'Venda de Mercadoria',
+          customer: {
+            document: selectedCustomer.documento,
+            name: selectedCustomer.nome,
+            email: selectedCustomer.email,
+            address: nfeAddress,
+          },
+          items: nfeItems,
+          total,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setEmissionError(result.error ?? 'Erro na emissão fiscal.');
+      } else {
+        setEmissionResult(result as EmissionResult);
+      }
     } finally {
       setSubmitting(false);
     }
+  }
+
+  function resetForm() {
+    setStep(1);
+    setDocType('nfse');
+    setSelectedCustomer(null);
+    setCustomerSearch('');
+    setItems([]);
+    setDesconto(0);
+    setObservacoes('');
+    setEmissionResult(null);
+    setEmissionError(null);
+    // New business transaction — generate fresh stable reference ID
+    setExternalRefId(`${crypto.randomUUID().slice(0, 8)}-nfe-${Date.now()}`);
   }
 
   if (loadingData) {
@@ -113,12 +183,84 @@ export default function NovaEmissaoPage() {
     );
   }
 
+  // ── Result screen ──────────────────────────────────────────────────────────
+  if (emissionResult) {
+    const isReal = emissionResult.mode === 'real';
+    return (
+      <div className="max-w-xl mx-auto py-10">
+        <div className={`rounded-2xl border p-8 text-center space-y-5 ${isReal ? 'border-emerald-200 bg-emerald-50/30' : 'border-gray-200 bg-gray-50/30'}`}>
+          <div className={`w-14 h-14 rounded-full flex items-center justify-center text-2xl mx-auto ${isReal ? 'bg-emerald-100' : 'bg-gray-100'}`}>
+            {isReal ? '✅' : '🧾'}
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">
+              {isReal ? 'Documento emitido!' : 'Emissão simulada concluída'}
+            </h2>
+            <p className="text-sm text-gray-500 mt-1">
+              {isReal
+                ? 'O documento foi enviado ao serviço fiscal com sucesso.'
+                : 'O módulo está em modo simulação (NFE_EXTERNAL_ENABLED=false).'}
+            </p>
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-200 p-4 text-left space-y-2.5 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-500">Status</span>
+              <span className={`font-semibold ${isReal ? 'text-emerald-700' : 'text-gray-600'}`}>
+                {emissionResult.local_status ?? emissionResult.status}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500">Invoice ID</span>
+              <span className="font-mono text-xs text-gray-700 break-all text-right max-w-[60%]">
+                {emissionResult.invoice_id}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500">Request ID</span>
+              <span className="font-mono text-xs text-gray-700 break-all text-right max-w-[60%]">
+                {emissionResult.request_id}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500">Referência</span>
+              <span className="font-mono text-xs text-gray-700 break-all text-right max-w-[60%]">
+                {emissionResult.external_reference_id}
+              </span>
+            </div>
+            {emissionResult.protocol && (
+              <div className="flex justify-between">
+                <span className="text-gray-500">Protocolo</span>
+                <span className="font-mono text-xs text-gray-700">{emissionResult.protocol}</span>
+              </div>
+            )}
+          </div>
+
+          <div className="flex gap-3 justify-center pt-2">
+            <button
+              onClick={resetForm}
+              className="px-5 py-2.5 border border-gray-200 text-gray-600 rounded-xl font-semibold text-sm hover:bg-gray-50 transition-all"
+            >
+              + Nova emissão
+            </button>
+            <button
+              onClick={() => router.push('/dashboard/fiscal/historico')}
+              className="px-5 py-2.5 bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] text-white rounded-xl font-semibold text-sm hover:shadow-lg transition-all"
+            >
+              Ver histórico
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Nova emissão</h1>
-        <p className="text-sm text-gray-500 mt-1">Simulação visual — pronto para conexão com backend fiscal</p>
+        <p className="text-sm text-gray-500 mt-1">Emissão de documento fiscal via painel</p>
       </div>
 
       {/* Steps indicator */}
@@ -221,7 +363,6 @@ export default function NovaEmissaoPage() {
             <div className="bg-white border border-gray-200/60 rounded-2xl p-6 space-y-5">
               <h2 className="font-semibold text-gray-900">Itens</h2>
 
-              {/* Catalog */}
               <div>
                 <p className="text-xs font-semibold text-gray-500 mb-2">Adicionar do catálogo</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -242,7 +383,6 @@ export default function NovaEmissaoPage() {
                 </div>
               </div>
 
-              {/* Selected items */}
               {items.length > 0 && (
                 <div>
                   <p className="text-xs font-semibold text-gray-500 mb-2">Itens selecionados</p>
@@ -262,7 +402,6 @@ export default function NovaEmissaoPage() {
                 </div>
               )}
 
-              {/* Discount + observations */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 mb-1.5">Desconto (R$)</label>
@@ -317,6 +456,11 @@ export default function NovaEmissaoPage() {
                   <span className="text-gray-500">Documento</span>
                   <span className="text-gray-700">{selectedCustomer?.documento}</span>
                 </div>
+                {!selectedCustomer?.endereco && (
+                  <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
+                    Endereço não cadastrado. Para emissão real, o endereço completo é obrigatório.
+                  </div>
+                )}
               </div>
 
               <div>
@@ -346,12 +490,16 @@ export default function NovaEmissaoPage() {
                 </div>
               )}
 
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2">
-                <span className="text-amber-500 mt-0.5">ℹ️</span>
-                <p className="text-xs text-amber-700 leading-relaxed">
-                  Esta emissão será <strong>simulada</strong>. Nenhum documento fiscal real será gerado. O módulo está pronto para conexão com backend fiscal externo.
-                </p>
-              </div>
+              {/* Inline error message */}
+              {emissionError && (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-start gap-2">
+                  <span className="text-red-500 mt-0.5 flex-shrink-0">⚠️</span>
+                  <div>
+                    <p className="text-xs font-semibold text-red-700 mb-0.5">Erro na emissão</p>
+                    <p className="text-xs text-red-600 leading-relaxed">{emissionError}</p>
+                  </div>
+                </div>
+              )}
 
               <div className="flex justify-between pt-2">
                 <button onClick={() => setStep(2)} className="px-5 py-2.5 border border-gray-200 text-gray-600 rounded-xl font-semibold text-sm hover:bg-gray-50 transition-all">← Voltar</button>
@@ -363,10 +511,10 @@ export default function NovaEmissaoPage() {
                   {submitting ? (
                     <>
                       <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      Simulando...
+                      Emitindo...
                     </>
                   ) : (
-                    <>🧾 Simular emissão</>
+                    <>🧾 Emitir documento</>
                   )}
                 </button>
               </div>

@@ -84,11 +84,15 @@ export default function FiscalHistoryTable({ documents }: FiscalHistoryTableProp
           className="px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20 text-gray-700"
         >
           <option value={ALL}>Todos os status</option>
+          <option value="autorizado">Autorizado</option>
+          <option value="processando">Processando</option>
+          <option value="emitido_mock">Emitido (simulado)</option>
           <option value="draft">Rascunho</option>
           <option value="pendente_validacao">Pendente</option>
           <option value="pronto_para_emitir">Pronto p/ Emitir</option>
-          <option value="emitido_mock">Emitido</option>
+          <option value="erro_sefaz">Erro SEFAZ</option>
           <option value="erro_mock">Erro</option>
+          <option value="cancelado_sefaz">Cancelado SEFAZ</option>
           <option value="cancelado">Cancelado</option>
         </select>
         <select

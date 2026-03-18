@@ -13,7 +13,12 @@ export type FiscalDocumentStatus =
   | 'pronto_para_emitir'
   | 'emitido_mock'
   | 'erro_mock'
-  | 'cancelado';
+  | 'cancelado'
+  // Real integration statuses (from NFE_WEB via /api/fiscal/emit)
+  | 'processando'
+  | 'autorizado'
+  | 'erro_sefaz'
+  | 'cancelado_sefaz';
 
 export type FiscalRequestOrigin = 'painel' | 'whatsapp';
 
@@ -106,6 +111,12 @@ export interface FiscalDocument {
   timeline: FiscalTimelineEvent[];
   createdAt: string;
   updatedAt: string;
+  // Real integration fields (populated when mode === 'real')
+  mode?: 'mock' | 'real';
+  externalReferenceId?: string;
+  invoiceId?: string;
+  protocol?: string;
+  requestId?: string;
 }
 
 export interface FiscalRequest {
@@ -151,6 +162,10 @@ export const FISCAL_STATUS_LABELS: Record<FiscalDocumentStatus, string> = {
   emitido_mock: 'Emitido (simulado)',
   erro_mock: 'Erro',
   cancelado: 'Cancelado',
+  processando: 'Processando',
+  autorizado: 'Autorizado',
+  erro_sefaz: 'Erro SEFAZ',
+  cancelado_sefaz: 'Cancelado SEFAZ',
 };
 
 export const FISCAL_ORIGIN_LABELS: Record<FiscalRequestOrigin, string> = {

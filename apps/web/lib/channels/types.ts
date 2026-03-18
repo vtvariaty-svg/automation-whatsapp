@@ -7,7 +7,21 @@ export interface NormalizedInboundEvent {
   messageId: string;
   text: string | null;
   timestamp: number;
-  raw: unknown;
+  raw: any;
+  
+  // Messages Identity Fields
+  waId?: string | null;
+  userId?: string | null;
+  parentUserId?: string | null;
+  username?: string | null;
+  profileName?: string | null;
+
+  // Statuses Identity Fields
+  isStatus?: boolean;
+  statusType?: string | null; // sent | delivered | read | failed
+  recipientId?: string | null;
+  recipientUserId?: string | null;
+  parentRecipientUserId?: string | null;
 }
 
 export interface ChannelSendConfig {

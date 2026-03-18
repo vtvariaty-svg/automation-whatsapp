@@ -11,8 +11,32 @@ export function normalizeWhatsAppInbound(body: any): NormalizedInboundEvent | nu
   try {
     const value = body.entry?.[0]?.changes?.[0]?.value;
     if (!value?.metadata) return null;
+    
+    // Status (read receipts, delivered) tem prioridade de roteamento no receipt
+    const status = value.statuses?.[0];
+    if (status) {
+      return {
+        channel: 'whatsapp',
+        accountId: value.metadata.phone_number_id,
+        from: status.recipient_id || '', // legacy fallback
+        messageId: status.id,
+        text: null,
+        timestamp: status.timestamp ? Number(status.timestamp) * 1000 : Date.now(),
+        raw: body,
+        
+        isStatus: true,
+        statusType: status.status,
+        recipientId: status.recipient_id ?? null,
+        recipientUserId: status.recipient_user_id ?? null,
+        parentRecipientUserId: status.parent_recipient_user_id ?? null,
+      };
+    }
+    
+    // Fallback: Message Inbound
     const message = value.messages?.[0];
     if (!message) return null;
+    const contact = value.contacts?.[0];
+
     return {
       channel: 'whatsapp',
       accountId: value.metadata.phone_number_id,
@@ -21,6 +45,12 @@ export function normalizeWhatsAppInbound(body: any): NormalizedInboundEvent | nu
       text: message.text?.body ?? null,
       timestamp: message.timestamp ? Number(message.timestamp) * 1000 : Date.now(),
       raw: body,
+      
+      waId: contact?.wa_id ?? null,
+      userId: contact?.user_id ?? null,
+      parentUserId: contact?.parent_user_id ?? null,
+      username: contact?.profile?.username ?? null,
+      profileName: contact?.profile?.name ?? null,
     };
   } catch {
     return null;

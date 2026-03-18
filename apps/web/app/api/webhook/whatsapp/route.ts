@@ -21,6 +21,7 @@ import { checkAutomationMatch } from "@/src/services/automationService";
 import { sendTemplateMessage } from "@/src/services/automationService";
 import { verifyAiLimits } from "@/src/services/billingService";
 import { handleAppointmentMessage } from "@/src/services/appointmentBookingService";
+import { resolveWhatsAppIdentity } from "@/lib/services/identityResolver";
 
 // Mascara todos os dígitos exceto os últimos 4 para logs seguros
 function maskPhone(phone: string): string {
@@ -116,8 +117,15 @@ export async function POST(req: Request) {
         return new Response('OK', { status: 200 });
       }
 
-      // Decrypt token once — supports both encrypted (new) and plaintext (legacy) values
+      // Guarda legacy auth
       if (tenant.whatsappToken) tenant.whatsappToken = decrypt(tenant.whatsappToken);
+
+      // Identity Resolver (Dual-Write Passivo Onda 1)
+      try {
+         await resolveWhatsAppIdentity(tenant.id, event);
+      } catch (err) {
+         channelLog.error({ channel: 'whatsapp', tenantId: tenant.id, error: err }, '[Webhook] Falha silenciosa no IdentityResolver Engine');
+      }
 
       // Guard: ignore messages sent by the bot itself to prevent automation loops.
       // Meta may deliver echo-like events where `from` equals the tenant's own phone number.

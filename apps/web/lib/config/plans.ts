@@ -262,6 +262,7 @@ export const canUpgrade = (currentPlan: string, targetPlan: string): boolean => 
 
 /** Check if a plan is at least a given minimum level. */
 export function planAtLeast(current: string | null, min: string): boolean {
+  if (current === 'superadmin') return true;
   const ci = PLAN_ORDER.indexOf(current ?? 'free');
   const mi = PLAN_ORDER.indexOf(min);
   return ci >= mi;

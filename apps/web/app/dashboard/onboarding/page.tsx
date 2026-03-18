@@ -51,7 +51,7 @@ const STEPS = [
 
 function authHeaders(): Record<string, string> {
   const token = typeof window !== 'undefined'
-    ? (localStorage.getItem('auth_token') ?? localStorage.getItem('token') ?? '')
+    ? (localStorage.getItem('auth_token') ?? (localStorage.getItem('auth_token') ?? localStorage.getItem('token')) ?? '')
     : '';
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
 }

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 
 function authHeaders(): Record<string, string> {
-  return { Authorization: `Bearer ${localStorage.getItem('token') ?? ''}` };
+  return { Authorization: `Bearer ${(localStorage.getItem('auth_token') ?? localStorage.getItem('token')) ?? ''}` };
 }
 
 interface Subscription {

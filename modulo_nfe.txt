@@ -1,0 +1,329 @@
+Você atuará como arquiteto e implementador front-end sênior dentro do projeto existente Automation-WhatsApp.
+
+OBJETIVO
+Implementar um novo módulo front-end chamado “Fiscal” / “Módulo Fiscal” no sistema existente, SEM integrar backend real neste momento. Toda a lógica deve funcionar com mocks locais e contratos prontos para futura integração com outro sistema fiscal externo.
+
+CONTEXTO DO PRODUTO
+- Este módulo fiscal será apenas a camada de front-end/orquestração dentro do Automation-WhatsApp.
+- A emissão fiscal real NÃO será feita neste sistema neste momento.
+- O backend fiscal real já existe em outro sistema separado e será integrado futuramente.
+- Nesta fase, o objetivo é construir o módulo visual completo, profissional e coerente com o restante do SaaS, pronto para futura conexão.
+- O módulo deve contemplar tanto emissão manual pelo painel quanto o conceito de “Emissão por WhatsApp”, mas tudo ainda em modo visual/mockado.
+
+REGRAS CRÍTICAS
+- NÃO reestruture o projeto.
+- NÃO quebre rotas, layouts, autenticação, tenancy, billing, onboarding ou módulos existentes.
+- RESPEITE o padrão visual, componentes, convenções, pastas, naming e arquitetura já utilizados no projeto.
+- NÃO criar backend novo para emissão fiscal.
+- NÃO conectar APIs reais.
+- Toda persistência nesta fase pode ser mockada localmente no front, usando arquivos mock/service adapters compatíveis com futura substituição por API real.
+- Criar código limpo, componentizado, responsivo e pronto para produção visual.
+- O resultado deve parecer um módulo SaaS premium e consistente com o restante do produto.
+- O módulo deve deixar claro que está pronto para futura integração, mas ainda em modo visual/simulado.
+- NÃO remover funcionalidades atuais.
+- NÃO alterar backend existente.
+- NÃO inventar fluxo fiscal incompatível com o objetivo do módulo.
+- NÃO quebrar tenancy.
+
+REGRAS DE ACESSO POR PLANO (OBRIGATÓRIO)
+- O módulo “Fiscal” deve ficar disponível APENAS para usuários/tenants dos planos PRO e BUSINESS.
+- Usuários de planos inferiores NÃO devem ver o item “Fiscal” no menu lateral.
+- Usuários de planos inferiores NÃO devem acessar as rotas do módulo fiscal manualmente por URL; nesse caso, exibir tela/estado de acesso restrito ou redirecionar de forma consistente com o padrão já existente no sistema.
+- A funcionalidade “Emissão por WhatsApp” também deve ficar restrita APENAS aos planos PRO e BUSINESS.
+- Caso o projeto já possua sistema de feature flags, billing gates, guards, entitlement checks ou permissionamento por plano, reutilizar exatamente o padrão existente.
+- NÃO inventar um novo sistema de permissões se o projeto já tiver um.
+- Se não existir implementação completa de guards por plano, preparar a estrutura visual e condicional no front sem quebrar a arquitetura atual.
+- Em planos abaixo de PRO, o módulo deve permanecer oculto no menu principal.
+- Onde fizer sentido comercialmente, pode existir apenas um banner/CTA de upgrade em telas relacionadas, mas SEM liberar acesso funcional ao módulo.
+- O objetivo é deixar claro que “Fiscal” e “Emissão por WhatsApp” são recursos premium exclusivos dos planos PRO e BUSINESS.
+
+CRITÉRIO DE ACEITE SOBRE PLANOS
+- Em conta FREE / STARTER / BASIC / equivalente: não mostrar menu Fiscal.
+- Em conta PRO: mostrar módulo Fiscal completo.
+- Em conta BUSINESS: mostrar módulo Fiscal completo.
+- Em qualquer plano abaixo de PRO: bloquear rotas do módulo fiscal.
+- “Emissão por WhatsApp” deve seguir a mesma regra de acesso do módulo Fiscal.
+
+ESCOPO DO MÓDULO
+Criar um módulo “Fiscal” com as seguintes telas/áreas:
+
+1) Dashboard do módulo fiscal
+Rota sugerida: /dashboard/fiscal
+
+Conteúdo:
+- cards de resumo:
+  - solicitações do dia
+  - documentos simulados emitidos
+  - pendentes de validação
+  - erro/atenção
+- atalhos:
+  - Nova emissão
+  - Histórico
+  - Clientes
+  - Produtos/Serviços
+  - Configurações
+  - Emissão por WhatsApp
+- painel de status da integração:
+  - Não conectado
+  - Em validação
+  - Ativo
+- bloco explicativo do fluxo:
+  - Painel → validação → emissão → envio ao cliente
+  - WhatsApp → captura → validação → emissão → envio ao cliente
+
+Objetivo:
+- a tela inicial do módulo deve transmitir claramente valor operacional e visão de produto premium
+- não parecer apenas um formulário fiscal solto
+
+2) Nova emissão
+Rota sugerida: /dashboard/fiscal/nova
+
+Criar fluxo visual completo com:
+- seletor de tipo de documento
+- formulário de cliente
+- formulário de itens/produto/serviço
+- valores, desconto, observações
+- resumo lateral
+- botão “Simular emissão”
+
+Comportamento:
+- ao clicar em “Simular emissão”, gerar registro mock com status inicial
+- NÃO chamar API real
+- manter estrutura compatível com futura conexão com backend fiscal externo
+
+3) Histórico
+Rota sugerida: /dashboard/fiscal/historico
+
+Criar tabela/lista com:
+- número interno
+- cliente
+- tipo
+- origem (painel / WhatsApp)
+- valor
+- data
+- status
+- ações
+
+Adicionar:
+- busca
+- filtros por status, tipo e origem
+- ordenação
+- detalhe em drawer ou modal
+
+No detalhe, exibir:
+- timeline do documento
+- resumo do cliente
+- resumo dos itens
+- origem da solicitação
+- status atual
+- ações mockadas:
+  - visualizar
+  - duplicar
+  - baixar DANFE mock
+  - baixar XML mock
+  - reenviar ao cliente
+
+4) Clientes
+Rota sugerida: /dashboard/fiscal/clientes
+
+Tela profissional para:
+- listar clientes mock
+- criar/editar cliente mock
+- CPF/CNPJ
+- nome/razão social
+- contato
+- endereço
+- histórico básico vinculado
+
+5) Produtos/Serviços
+Rota sugerida: /dashboard/fiscal/catalogo
+
+Criar catálogo mockado com:
+- nome
+- tipo (produto/serviço)
+- SKU/código interno
+- preço
+- unidade
+- status
+
+Permitir:
+- criar
+- editar
+- selecionar no fluxo de emissão
+
+6) Configurações fiscais
+Rota sugerida: /dashboard/fiscal/configuracoes
+
+Criar seções:
+- Dados da empresa
+- Preferências fiscais
+- Série/numeração visual
+- Natureza da operação
+- Observações padrão
+- Envio automático ao cliente
+- Canal WhatsApp para emissão
+- Status da integração
+
+Importante:
+- deixar claro que a integração real será conectada depois
+- exibir badges e estados coerentes
+- manter linguagem de produto, não linguagem excessivamente técnica para o usuário final
+
+7) Emissão por WhatsApp
+Rota sugerida: /dashboard/fiscal/whatsapp
+
+Essa tela é estratégica e deve ser bem construída.
+
+Criar UI com:
+- número dedicado de emissão (mock)
+- explicação do fluxo operacional
+- cards de mensagens-modelo que o usuário enviaria
+- lista de campos esperados na solicitação
+- timeline visual:
+  mensagem recebida → extração → validação → confirmação → emissão → envio ao cliente
+- tabela/lista de solicitações WhatsApp mockadas
+- status de cada solicitação
+- detalhe da solicitação com conversa simulada e resposta do sistema
+
+NÃO integrar com WhatsApp real.
+
+8) Detalhe da solicitação
+Rota sugerida: /dashboard/fiscal/solicitacoes/[id]
+
+Exibir:
+- origem
+- empresa
+- cliente
+- dados extraídos
+- inconsistências
+- status
+- resumo do documento
+- timeline de processamento
+- anexos mockados
+- botões de ação visual:
+  - aprovar
+  - rejeitar
+  - simular emissão
+  - reenviar comprovante
+
+ESTADOS PADRÃO
+Padronizar badges/estados:
+- draft
+- pendente_validacao
+- aguardando_confirmacao
+- pronto_para_emitir
+- emitido_mock
+- erro_mock
+- cancelado
+
+MODELOS E TIPOS
+Criar types/interfaces/modelos reutilizáveis para:
+- FiscalCompanyConfig
+- FiscalCustomer
+- FiscalCatalogItem
+- FiscalDocument
+- FiscalDocumentItem
+- FiscalRequest
+- FiscalTimelineEvent
+- FiscalIntegrationStatus
+
+MOCKS E ADAPTERS
+Criar camada organizada de mocks para futura substituição por API:
+- mock fiscal dashboard stats
+- mock customers
+- mock catalog
+- mock documents
+- mock whatsapp requests
+- mock integration status
+
+Preferir um service/adapters layer para manter a futura integração simples.
+O código deve ser preparado para, no futuro, trocar mocks por chamadas reais sem reescrever as telas.
+
+UX/UI
+- manter estética SaaS profissional
+- layout limpo e premium
+- estados vazios bem feitos
+- skeleton/loading visual mesmo com mocks
+- empty states orientando o usuário
+- badges de status bem claros
+- drawers/modals consistentes com o sistema atual
+- responsividade para desktop e tablet
+- não exagerar em campos visuais; manter alta legibilidade
+- os textos devem transmitir confiança operacional
+- evitar passar sensação de “módulo inacabado”
+
+NOMENCLATURA
+No menu e telas, usar:
+- “Fiscal” ou “Módulo Fiscal”
+- “Emissão por WhatsApp”
+- “Histórico”
+- “Configurações”
+
+Evitar dar a entender que o backend já está concluído.
+Onde necessário, usar textos como:
+- “Integração em validação”
+- “Simulação visual”
+- “Pronto para conexão com backend fiscal”
+
+MENU, NAVEGAÇÃO E GUARDS
+- adicionar item “Fiscal” no menu lateral apenas para PRO e BUSINESS
+- adicionar rotas do módulo sem quebrar a estrutura existente
+- aplicar guard/entitlement check conforme padrão já existente no sistema
+- se houver página padrão de acesso negado/upgrade, reutilizar
+- se não houver, criar solução mínima consistente com o padrão atual do projeto
+
+BILLING / ENTITLEMENTS
+- tratar “Fiscal” como recurso premium exclusivo dos planos PRO e BUSINESS
+- tratar “Emissão por WhatsApp” também como recurso premium exclusivo dos planos PRO e BUSINESS
+- reutilizar exatamente a lógica atual de plano/assinatura/feature gating, se existir
+- não criar uma arquitetura paralela de billing
+- deixar a estrutura preparada para que no futuro o backend possa validar essas permissões também
+
+DETALHE IMPORTANTE DE PRODUTO
+- O módulo fiscal deve ser construído como um produto completo de operação fiscal visual.
+- Nesta fase ele não emite de verdade, mas deve passar a sensação de fluxo pronto para uso e futura conexão.
+- O foco é validar UX, navegação, organização, percepção de valor e posicionamento premium do recurso.
+
+ENTREGA ESPERADA
+Quero que você:
+1. analise a estrutura atual do projeto
+2. identifique onde esse módulo deve entrar sem quebrar nada
+3. implemente todas as telas front-end do módulo
+4. crie os mocks/types/services necessários
+5. atualize menu, navegação e permissões visuais
+6. mantenha tudo compilando sem dependência do backend fiscal
+7. aplique restrição do módulo apenas para PRO e BUSINESS
+8. ao final, me entregue:
+   - lista de arquivos criados
+   - lista de arquivos alterados
+   - resumo do que foi implementado
+   - pontos preparados para integração futura
+   - como ficou a regra de visibilidade por plano
+
+NÃO FAÇA
+- não criar integração real
+- não alterar backend existente
+- não mudar arquitetura global
+- não remover funcionalidades atuais
+- não inventar fluxo fiscal incompatível com o módulo
+- não quebrar tenancy
+- não deixar o módulo visível para planos abaixo de PRO
+- não deixar rotas funcionais do módulo fiscal acessíveis para planos abaixo de PRO
+
+ORDEM DE EXECUÇÃO RECOMENDADA
+1. inspecionar a estrutura atual do projeto
+2. localizar onde entram menu, rotas e guards
+3. criar types, mocks e adapters do módulo fiscal
+4. criar dashboard do módulo
+5. criar tela de nova emissão
+6. criar histórico
+7. criar clientes
+8. criar catálogo de produtos/serviços
+9. criar configurações fiscais
+10. criar emissão por WhatsApp
+11. criar tela de detalhe da solicitação
+12. aplicar gating visual e de rotas para PRO e BUSINESS
+13. revisar consistência visual e responsividade
+14. entregar relatório final dos arquivos criados/alterados
+
+COMECE INSPECIONANDO O PROJETO EXISTENTE E ENTÃO IMPLEMENTE O MÓDULO COMPLETO NO PADRÃO ATUAL.

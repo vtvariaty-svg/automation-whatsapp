@@ -1,0 +1,47 @@
+Ajuste o plano antes de implementar.
+
+Correções obrigatórias:
+
+1. Não usar fire-and-forget com catch silencioso no sync de contato a partir da conversa.
+- manter o fluxo não bloqueante, mas registrar erro estruturado
+- se possível, adicionar retry seguro ou fila leve
+- nunca falhar em silêncio
+
+2. A migração/backfill inicial não pode considerar apenas Conversation.
+Incluir estratégia segura para criar/vincular contatos também a partir de:
+- Order
+- Appointment
+- CustomerMemory
+- demais entidades relevantes que já usam telefone/contactId string
+Se não for possível backfill completo nesta fase, explicitar o que entra agora e o que fica pendente, mas não fingir cobertura total.
+
+3. Validar coerência com os planos atuais.
+Hoje o produto já definiu CRM básico no Free. Se o módulo de Contatos é a base do CRM, revisar se o menu/uso deve ficar disponível no Free ou se a regra comercial será alterada.
+Não implementar gating sem alinhar isso.
+
+4. Fortalecer o modelo Contact desde a fase 1 com identidade mínima correta:
+- normalizedPhone
+- índices por tenant
+- unique seguro por tenant + normalizedPhone quando aplicável
+- índices para waId / instagramScopedId / facebookScopedId quando existirem
+- evitar continuar usando telefone como pseudo contactId central
+
+5. Garantir que Order e Appointment não fiquem apenas “preparados”.
+Sempre que houver contexto suficiente, já vincular contactId de forma funcional nesta fase, não apenas estrutural.
+
+6. No detalhe do contato, incluir visão operacional útil:
+- dados principais
+- canais vinculados
+- últimas conversas
+- últimos pedidos
+- próximos ou últimos agendamentos
+Sem isso, o módulo nasce fraco demais.
+
+7. Entregar claramente:
+- quais entidades terão vínculo real com Contact já na fase 1
+- quais ficam apenas preparadas
+- quais índices/migrations serão criados
+- como será feita a normalização de telefone
+- como será garantido que não haverá mistura entre tenants
+
+Refaça o plano com esses ajustes e só depois implemente.

@@ -15,7 +15,7 @@ export default function TrialBanner() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('auth_token') ?? localStorage.getItem('token') ?? '';
+    const token = localStorage.getItem('auth_token') ?? (localStorage.getItem('auth_token') ?? localStorage.getItem('token')) ?? '';
     fetch('/api/billing/subscription', {
       headers: { Authorization: `Bearer ${token}` },
     })

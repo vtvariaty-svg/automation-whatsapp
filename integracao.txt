@@ -1,0 +1,241 @@
+Você atuará como arquiteto e implementador full-stack sênior no projeto Automation-WhatsApp.
+
+CONTEXTO GERAL
+- Este projeto atual é o Automation-WhatsApp.
+- Existe um backend fiscal externo já preparado para consumo M2M no projeto local:
+  C:\Users\vinic\Documents\NFE_WEB
+- Nesta etapa, NÃO altere o projeto NFE_WEB.
+- Use esse caminho apenas como referência técnica caso precise confirmar contratos já implementados.
+- O Automation-WhatsApp é o sistema consumidor.
+- A integração deve ser feita exclusivamente no projeto atual, consumindo a API externa já existente do NFE_WEB.
+- NÃO reimplemente lógica fiscal no Automation-WhatsApp.
+- O módulo Fiscal já foi criado visualmente no Automation-WhatsApp e agora deve começar a consumir a API externa real.
+
+OBJETIVO
+Integrar o módulo Fiscal do Automation-WhatsApp com a API externa do NFE_WEB, começando pelo fluxo manual do painel.
+Nesta fase:
+- quero emissão manual real pelo painel
+- quero consulta de status real
+- quero histórico refletindo retorno da API externa
+- ainda NÃO quero implementar o fluxo final completo de emissão via conversa WhatsApp
+
+REGRAS CRÍTICAS
+- NÃO quebrar o projeto atual.
+- NÃO reestruturar a arquitetura global.
+- NÃO acoplar fetch diretamente nas páginas/componentes.
+- Criar uma camada/provider/client para integração com o backend fiscal externo.
+- Manter compatibilidade com tenancy, billing, planos e módulo Fiscal já implementado.
+- Reutilizar o módulo Fiscal existente.
+- Preparar a arquitetura para que no futuro o fluxo via WhatsApp também reutilize a mesma camada.
+- Implementar tratamento seguro de erro, status e retry controlado.
+- NÃO alterar o backend NFE_WEB nesta etapa.
+- NÃO vazar API key para o front.
+- Respeitar o padrão real do projeto existente.
+
+CONTRATO EXTERNO DISPONÍVEL NO NFE_WEB
+Base conceitual da API externa já existente:
+- POST /api/v1/external/nfe/issue
+- GET /api/v1/external/nfe/id/:invoiceId/status
+- GET /api/v1/external/nfe/ref/:externalReferenceId/status
+
+Autenticação:
+- Authorization: Bearer <API_KEY_M2M>
+
+Header obrigatório para emissão:
+- Idempotency-Key
+
+Payload de emissão esperado:
+{
+  "external_reference_id": "string-obrigatoria",
+  "company_id": "uuid-da-empresa",
+  "natureza_operacao": "string",
+  "customer": {
+    "document": "string",
+    "name": "string",
+    "email": "string-opcional",
+    "address": {
+      "street": "string",
+      "number": "string",
+      "district": "string",
+      "city": "string",
+      "state": "string",
+      "zipCode": "string"
+    }
+  },
+  "items": [
+    {
+      "codigo_produto": "string",
+      "descricao": "string",
+      "quantidade": 1,
+      "valor_unitario": 100.5
+    }
+  ]
+}
+
+Response típica de sucesso:
+{
+  "request_id": "string",
+  "idempotency_key": "string",
+  "status": "AUTHORIZED",
+  "invoice_id": "string",
+  "external_reference_id": "string",
+  "protocol": "string-opcional"
+}
+
+Comportamentos importantes da API externa:
+- Idempotency-Key igual + mesmo payload => replay seguro/cache
+- Idempotency-Key igual + payload diferente => erro
+- external_reference_id duplicado => conflito de negócio
+- 408/429/5xx devem ser tratados como transitórios
+- request_id deve ser preservado/logado para rastreabilidade
+
+CONFIGURAÇÃO POR AMBIENTE
+Prepare a integração usando variáveis de ambiente no Automation-WhatsApp, sem hardcode:
+- NFE_EXTERNAL_API_URL
+- NFE_EXTERNAL_API_KEY
+- NFE_EXTERNAL_COMPANY_ID_DEFAULT
+- NFE_EXTERNAL_ENABLED=true/false
+
+IMPORTANTE
+- segredo nunca pode ir para o client
+- chamadas externas devem ficar do lado seguro da arquitetura
+- respeitar os server/client boundaries reais do projeto
+- se o projeto já possuir padrão de env/server actions/api routes/lib server, reutilizar exatamente esse padrão
+
+ESCOPO DE IMPLEMENTAÇÃO
+
+1. Criar camada de integração fiscal externa
+Criar uma camada centralizada no padrão do projeto, por exemplo em algo como:
+- lib/integrations/fiscal/
+ou
+- lib/fiscal/api/
+ou equivalente ao padrão já existente
+
+Essa camada deve conter:
+- types/contracts da API externa
+- normalização de request/response
+- client/provider centralizado
+- funções como:
+  - issueExternalNfe()
+  - getExternalNfeStatusById()
+  - getExternalNfeStatusByReference()
+
+IMPORTANTE:
+- não quero chamadas HTTP espalhadas pela UI
+- quero um ponto único de integração
+- essa camada deve ficar pronta para ser reutilizada depois no fluxo via WhatsApp
+
+2. Segurança da arquitetura
+A integração com o backend fiscal externo deve ocorrer do lado seguro da aplicação.
+Você deve descobrir qual é o melhor ponto no projeto atual para isso, sem expor API key:
+- route handlers
+- server actions
+- backend/api interno
+- lib server-side
+- ou padrão equivalente existente
+
+Não invente uma arquitetura paralela se o projeto já tiver um caminho padrão.
+
+3. Emissão manual real pelo módulo Fiscal
+Na tela de nova emissão do módulo Fiscal:
+- substituir a simulação mock por integração real opcional controlada por flag/env
+- manter fallback visual coerente se a integração estiver desabilitada
+- ao emitir, gerar external_reference_id consistente
+- gerar Idempotency-Key único por tentativa
+- enviar para API externa
+- refletir o resultado na UI
+- mostrar status retornado
+- mostrar request_id
+- mostrar invoice_id e protocol quando disponíveis
+
+Se fizer sentido pelo padrão do projeto:
+- persistir localmente o registro da solicitação/status no Automation-WhatsApp
+- ou ao menos refletir corretamente no histórico do módulo
+
+4. Histórico / detalhe / status
+No histórico do módulo Fiscal:
+- refletir status retornado pela API externa
+- permitir consulta por invoice_id ou external_reference_id, conforme o fluxo fizer sentido
+- mostrar request_id, protocol e status quando disponíveis
+- manter estados claros na UI
+- mapear retorno da API externa para os estados visuais do módulo fiscal
+
+5. Mapeamento de erros
+Mapear corretamente e exibir mensagens operacionais claras para:
+- 400 validação
+- 409 duplicidade de negócio
+- 409 conflito de idempotência / request em processamento
+- 408 timeout
+- 429 rate limit
+- 5xx erros transitórios
+- integração desabilitada
+- configuração ausente/inválida
+
+Essas mensagens devem ser compreensíveis para uso operacional, sem expor detalhes sensíveis.
+
+6. Observabilidade e rastreabilidade
+Onde o padrão do projeto permitir:
+- logar request_id
+- logar external_reference_id
+- logar status final
+- facilitar debug
+- nunca expor API key
+- manter rastreabilidade para futura operação via WhatsApp
+
+7. Preparação para futura emissão por WhatsApp
+A mesma camada criada agora deve poder ser reutilizada depois por:
+- emissão via conversa
+- consulta de status
+- envio de comprovante ao cliente
+- confirmação operacional antes da emissão
+
+Não implemente ainda o fluxo completo de conversa, apenas deixe a base correta para isso.
+
+8. Compatibilidade com planos e módulo já existente
+- respeitar as regras do módulo Fiscal já implementadas
+- não quebrar gating por plano
+- não quebrar menu, rotas, dashboard, histórico, configurações e emissão por WhatsApp visual
+- integrar com o que já foi criado, sem refazer tudo
+
+VALIDAÇÕES OBRIGATÓRIAS
+Ao finalizar:
+- verificar build/typecheck/lint conforme a estrutura do projeto
+- corrigir erros encontrados
+- garantir que o módulo fiscal continua funcional
+- garantir que a integração externa não quebrou outras partes
+- validar que segredos ficaram server-side
+
+ENTREGA FINAL
+Ao terminar, me entregue de forma objetiva:
+1. lista de arquivos criados
+2. lista de arquivos alterados
+3. resumo da integração implementada
+4. como ficou a camada de client/provider externo
+5. como os erros foram mapeados
+6. quais variáveis de ambiente preciso configurar
+7. como ficou a emissão manual real
+8. como ficou o histórico/status
+9. o que já ficou pronto para futura emissão por WhatsApp
+10. quaisquer riscos remanescentes
+
+ORDEM DE EXECUÇÃO
+1. inspecionar a estrutura atual do Automation-WhatsApp
+2. localizar o módulo Fiscal implementado
+3. localizar o melhor ponto para inserir o client/provider externo
+4. confirmar o padrão correto de boundaries server/client do projeto
+5. implementar contracts e client/provider
+6. conectar nova emissão manual
+7. conectar histórico/status
+8. validar build/typecheck/lint
+9. entregar relatório final
+
+NÃO FAÇA
+- não integrar direto no componente sem camada intermediária
+- não vazar API key para o front
+- não quebrar o módulo fiscal existente
+- não implementar ainda o fluxo completo via conversa WhatsApp
+- não alterar o backend NFE_WEB nesta etapa
+- não hardcodar URL, company_id ou segredo
+- não inventar estrutura incompatível com o projeto real
+
+COMECE INSPECIONANDO O PROJETO ATUAL E IMPLEMENTE A INTEGRAÇÃO NO PADRÃO JÁ EXISTENTE.

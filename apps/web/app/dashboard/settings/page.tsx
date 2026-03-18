@@ -49,6 +49,8 @@ export default function SettingsPage() {
     phone: "",
     openingHours: "",
     address: "",
+    templateBookingConfirmed: "",
+    templateReminder24h: "",
   });
 
   useEffect(() => {
@@ -61,6 +63,8 @@ export default function SettingsPage() {
           phone: data.phone || "",
           openingHours: data.businessConfig?.openingHours || "",
           address: data.businessConfig?.address || "",
+          templateBookingConfirmed: data.businessConfig?.templateBookingConfirmed || "",
+          templateReminder24h: data.businessConfig?.templateReminder24h || "",
         });
         if (data.businessType) setSelectedNiche(data.businessType);
       } catch {
@@ -226,6 +230,58 @@ export default function SettingsPage() {
                 placeholder="Rua, número, bairro, cidade - UF"
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500/40 transition-all"
               />
+            </div>
+          </div>
+        </div>
+
+        {/* Templates API Oficial */}
+        <div className="bg-white rounded-2xl border border-gray-200/60 shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-blue-50/50 to-indigo-50/50">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center text-white text-lg">
+                💬
+              </div>
+              <div>
+                <h3 className="font-bold text-gray-900">Templates de WhatsApp</h3>
+                <p className="text-xs text-gray-500">Vincule os Message Templates aprovados na Meta API</p>
+              </div>
+            </div>
+          </div>
+          <div className="p-6 space-y-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Confirmação de Agendamento
+                </label>
+                <input
+                  type="text"
+                  value={config.templateBookingConfirmed}
+                  onChange={(e) => setConfig({ ...config, templateBookingConfirmed: e.target.value })}
+                  placeholder="Ex: appointment_confirmation"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/40 transition-all"
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                  Disparado assim que salvo. <br/>Variáveis: <code>{"{{1}}"}</code> Nome, <code>{"{{2}}"}</code> Serviço, <code>{"{{3}}"}</code> Data, <code>{"{{4}}"}</code> Hora.
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Lembrete de Véspera (24h)
+                </label>
+                <input
+                  type="text"
+                  value={config.templateReminder24h}
+                  onChange={(e) => setConfig({ ...config, templateReminder24h: e.target.value })}
+                  placeholder="Ex: appointment_reminder_24h"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/40 transition-all"
+                />
+                <p className="text-xs text-gray-500 mt-2">
+                   Disparado na véspera. <br/>Variáveis: <code>{"{{1}}"}</code> Nome, <code>{"{{2}}"}</code> Serviço, <code>{"{{3}}"}</code> Data, <code>{"{{4}}"}</code> Hora.
+                </p>
+              </div>
+            </div>
+            <div className="bg-blue-50 border border-blue-100 p-3 rounded-lg text-xs text-blue-700">
+              <strong>Atenção:</strong> Se vazios ou se a mensagem falhar, o sistema ainda tentará fazer o envio padrão em formato de texto livre (que só funciona se o cliente tiver engajado nas últimas 24hs).
             </div>
           </div>
         </div>

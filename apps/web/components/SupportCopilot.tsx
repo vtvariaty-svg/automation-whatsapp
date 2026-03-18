@@ -41,7 +41,7 @@ export default function SupportCopilot() {
 
   // Auth check
   useEffect(() => {
-    const token = localStorage.getItem('auth_token') ?? localStorage.getItem('token');
+    const token = localStorage.getItem('auth_token') ?? (localStorage.getItem('auth_token') ?? localStorage.getItem('token'));
     setIsAuthenticated(Boolean(token));
   }, []);
 
@@ -84,7 +84,7 @@ export default function SupportCopilot() {
     setLoading(true);
 
     try {
-      const token = localStorage.getItem('auth_token') ?? localStorage.getItem('token') ?? '';
+      const token = localStorage.getItem('auth_token') ?? (localStorage.getItem('auth_token') ?? localStorage.getItem('token')) ?? '';
       const res = await fetch('/api/support-copilot', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },

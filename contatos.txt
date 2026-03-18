@@ -1,0 +1,136 @@
+Use CONTEXTO_MESTRE + CONTEXTO_STABILIZATION, se já existirem no projeto.
+
+Implemente CONTACTS_MODULE_PHASE_1 = núcleo do módulo de contatos.
+
+Contexto:
+O projeto é um SaaS omnichannel em monólito Next.js com multi-tenant, roles, billing, inbox, IA, automations, follow-up, agenda, pedidos, analytics, canais Meta e outros módulos já existentes. Hoje ainda não existe um módulo de contatos sólido e centralizado.
+
+Objetivo:
+Criar a base do módulo de contatos como fonte única de verdade para leads/clientes, com patch mínimo, sem re-arquitetar o projeto e sem quebrar os módulos atuais.
+
+Regras obrigatórias:
+- NÃO reescrever o sistema do zero.
+- Reaproveitar estruturas já existentes de conversations, customer memory, agenda, pedidos e canais.
+- Preservar multi-tenant, roles, planos e entitlements.
+- Garantir isolamento por tenant.
+- Criar base sólida primeiro, sem tentar resolver tudo nesta fase.
+- Patch mínimo, sem refactor amplo.
+
+Escopo da fase 1:
+
+1. AUDITORIA DO ESTADO ATUAL
+- Auditar onde os dados de clientes/leads já existem hoje:
+  - conversations
+  - customer memory
+  - agenda
+  - pedidos
+  - canais Meta
+- Identificar fragmentação atual dos dados.
+- Propor patch mínimo para centralizar sem quebrar legado.
+
+2. MODELO DE CONTATO
+Criar ou consolidar modelo de contato com campos essenciais, por exemplo:
+- tenantId
+- contactId
+- fullName
+- firstName
+- lastName
+- phone
+- whatsappId/waId quando aplicável
+- instagramScopedId quando aplicável
+- facebookScopedId quando aplicável
+- email quando houver
+- status do contato
+- source/origem do lead
+- notes básicas
+- lastInteractionAt
+- createdAt / updatedAt
+
+Requisitos:
+- compatível com multi-tenant
+- permitir campos ausentes sem quebrar fluxo
+- evitar modelo excessivamente complexo
+- manter possibilidade de extensão futura
+
+3. CAPTURA E SINCRONIZAÇÃO BÁSICA
+- quando uma nova conversa chegar, criar ou atualizar contato correspondente
+- quando houver agendamento, preparar vínculo ao contato
+- quando houver pedido, preparar vínculo ao contato
+- atualizar lastInteractionAt e dados úteis com segurança
+- não sobrescrever informação boa por dados ruins de evento
+
+4. LISTAGEM DE CONTATOS
+Criar interface operacional para contatos.
+
+Requisitos:
+- listagem de contatos
+- busca por nome, telefone e identificadores úteis
+- filtros mínimos por:
+  - origem
+  - canal
+  - status
+  - período de criação/última interação
+- paginação simples
+- estados de loading, erro, vazio e sucesso
+
+5. DETALHE DO CONTATO
+Criar página ou drawer de detalhe do contato.
+
+Requisitos:
+- exibir dados principais do contato
+- exibir canais vinculados
+- exibir origem
+- exibir última interação
+- permitir edição básica segura
+- mostrar links ou seções relacionadas para:
+  - conversas
+  - pedidos, quando já houver vínculo
+  - agendamentos, quando já houver vínculo
+
+6. FRONTEND COERENTE
+Revisar apenas o necessário para deixar o módulo funcional ponta a ponta:
+- menu/entrada do módulo
+- listagem
+- detalhe
+- filtros/busca
+- edição básica
+- links cruzados para conversa/pedido/agenda
+- feedbacks visuais
+- sem redesign amplo
+
+7. ROLES, PLANOS E SEGURANÇA
+Garantir coerência com permissões e planos.
+
+Requisitos:
+- só usuários com permissão adequada podem ver/editar contatos
+- frontend e backend devem respeitar isso
+- revisar acesso por URL/action
+- preservar isolamento entre tenants
+
+8. MIGRAÇÃO E COMPATIBILIDADE
+- criar estratégia segura para dados já existentes
+- evitar quebra de conversations, agenda e orders existentes
+- patch mínimo e compatível com produção
+
+Entregue em formato objetivo:
+1. auditoria curta do estado atual
+2. plano de implementação curto
+3. model/schema criado ou ajustado
+4. services/rotas/telas ajustados
+5. migração/compatibilidade tratada
+6. patch mínimo aplicado
+7. checklist final de aceite
+8. riscos restantes, se houver
+
+Checklist mínimo de aceite:
+- existe módulo de contatos acessível no sistema
+- existe model/schema de contato por tenant
+- novas conversas criam/atualizam contato
+- listagem de contatos funciona
+- detalhe do contato funciona
+- busca e filtros básicos existem
+- contato já se conecta com conversas
+- há base preparada para pedidos e agendamentos
+- roles e tenant continuam corretos
+- frontend e backend ficam coerentes
+- sem quebrar o projeto atual

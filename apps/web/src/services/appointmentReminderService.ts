@@ -17,6 +17,40 @@ import { decrypt } from '@/lib/utils/crypto';
 // @ts-ignore
 import { sendWhatsAppMessage } from './whatsappService';
 
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
+async function sendTemplateHelper(
+  phone: string,
+  templateName: string,
+  variables: Record<string, string>,
+  wa: TenantWhatsApp
+): Promise<boolean> {
+  try {
+    const res = await fetch(`${APP_URL}/api/whatsapp/templates/send`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        to: phone,
+        templateName,
+        language: "pt_BR",
+        variables,
+        tenantPhoneId: wa.phoneId,
+        tenantToken: wa.token
+      }),
+    });
+    
+    if (!res.ok) {
+      const err = await res.json();
+      console.error(`[Template Delivery] Erro da API interna:`, err);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error(`[Template Delivery] Exceção:`, err);
+    return false;
+  }
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type NotificationType = 'booking_confirmed' | 'reminder_24h' | 'reminder_2h' | 'noshow_followup';
@@ -95,7 +129,12 @@ export async function sendBookingConfirmation(tenantId: string, appointmentId: s
     where: { id: appointmentId },
     include: {
       tenant: {
-        select: { whatsappPhoneNumberId: true, whatsappPhoneId: true, whatsappToken: true },
+        select: { 
+          whatsappPhoneNumberId: true, 
+          whatsappPhoneId: true, 
+          whatsappToken: true,
+          businessConfig: { select: { templateBookingConfirmed: true } }
+        },
       },
     },
   });
@@ -110,6 +149,24 @@ export async function sendBookingConfirmation(tenantId: string, appointmentId: s
   const dayLabel = appt.date
     ? format(new Date(`${appt.date}T12:00:00`), "EEEE',' dd 'de' MMMM", { locale: ptBR })
     : 'a confirmar';
+
+  const templateName = appt.tenant?.businessConfig?.templateBookingConfirmed;
+
+  if (templateName) {
+    const variables: Record<string, string> = {
+      // Mapeamento dinâmico comum para templates
+      "1": appt.customerName || "Cliente",
+      "2": serviceName,
+      "3": dayLabel,
+      "4": timeStr
+    };
+    const ok = await sendTemplateHelper(appt.customerPhone, templateName, variables, wa);
+    if (ok) {
+      await logNotification(appointmentId, tenantId, 'booking_confirmed', 'sent', 'whatsapp_template');
+      return;
+    }
+    // Se falhar o template por algum motivo ou erro da Meta, faz fallback pro texto normal
+  }
 
   const message = [
     `✅ *Agendamento confirmado${nameGreet}!*`,
@@ -137,7 +194,12 @@ export async function processReminders24h(): Promise<{ sent: number; errors: num
     },
     include: {
       tenant: {
-        select: { whatsappPhoneNumberId: true, whatsappPhoneId: true, whatsappToken: true },
+        select: { 
+          whatsappPhoneNumberId: true, 
+          whatsappPhoneId: true, 
+          whatsappToken: true,
+          businessConfig: { select: { templateReminder24h: true } }
+        },
       },
     },
   });
@@ -160,20 +222,38 @@ export async function processReminders24h(): Promise<{ sent: number; errors: num
       ? `Presença já confirmada ✅`
       : `Responda *SIM* para confirmar sua presença.`;
 
-    const message = [
-      `🔔 *Lembrete de agendamento*`,
-      ``,
-      `Olá${nameGreet}! Você tem um agendamento *amanhã*:`,
-      ``,
-      `📋 *Serviço:* ${serviceName}`,
-      `📅 *Data:* ${dayLabel}`,
-      `🕐 *Horário:* ${timeStr}`,
-      ``,
-      confirmLine,
-      `Caso precise cancelar ou reagendar, é só nos avisar aqui! 😊`,
-    ].join('\n');
+    const templateName = appt.tenant?.businessConfig?.templateReminder24h;
+    let ok = false;
+    
+    if (templateName) {
+      const variables: Record<string, string> = {
+        "1": appt.customerName || "Cliente",
+        "2": serviceName,
+        "3": dayLabel,
+        "4": timeStr
+      };
+      ok = await sendTemplateHelper(appt.customerPhone, templateName, variables, wa);
+      if (ok) {
+        await logNotification(appt.id, appt.tenantId, 'reminder_24h', 'sent', 'whatsapp_template');
+      }
+    }
 
-    const ok = await trySendWhatsApp(appt.customerPhone, message, wa, appt.id, appt.tenantId, 'reminder_24h');
+    if (!ok) {
+      const message = [
+        `🔔 *Lembrete de agendamento*`,
+        ``,
+        `Olá${nameGreet}! Você tem um agendamento *amanhã*:`,
+        ``,
+        `📋 *Serviço:* ${serviceName}`,
+        `📅 *Data:* ${dayLabel}`,
+        `🕐 *Horário:* ${timeStr}`,
+        ``,
+        confirmLine,
+        `Caso precise cancelar ou reagendar, é só nos avisar aqui! 😊`,
+      ].join('\n');
+
+      ok = await trySendWhatsApp(appt.customerPhone, message, wa, appt.id, appt.tenantId, 'reminder_24h');
+    }
     if (ok) {
       await prisma.appointment.update({
         where: { id: appt.id },
@@ -206,7 +286,12 @@ export async function processReminders2h(): Promise<{ sent: number; errors: numb
     },
     include: {
       tenant: {
-        select: { whatsappPhoneNumberId: true, whatsappPhoneId: true, whatsappToken: true },
+        select: { 
+          whatsappPhoneNumberId: true, 
+          whatsappPhoneId: true, 
+          whatsappToken: true,
+          businessConfig: { select: { templateReminder2h: true } }
+        },
       },
     },
   });
@@ -237,18 +322,37 @@ export async function processReminders2h(): Promise<{ sent: number; errors: numb
       ? `Presença confirmada ✅`
       : `Responda *SIM* para confirmar sua presença.`;
 
-    const message = [
-      `⏰ *Lembrete: seu horário é em breve!*`,
-      ``,
-      `Olá${nameGreet}! Passando para lembrar que seu agendamento é *hoje às ${appt.time}h*:`,
-      ``,
-      `📋 *Serviço:* ${serviceName}`,
-      ``,
-      confirmLine,
-      `Até logo! 😊`,
-    ].join('\n');
+    const templateName = appt.tenant?.businessConfig?.templateReminder2h;
+    let ok = false;
+    
+    if (templateName) {
+      const dayLabel = format(new Date(`${appt.date}T12:00:00`), "EEEE',' dd 'de' MMMM", { locale: ptBR });
+      const variables: Record<string, string> = {
+        "1": appt.customerName || "Cliente",
+        "2": serviceName,
+        "3": dayLabel,
+        "4": `${appt.time}h`
+      };
+      ok = await sendTemplateHelper(appt.customerPhone, templateName, variables, wa);
+      if (ok) {
+        await logNotification(appt.id, appt.tenantId, 'reminder_2h', 'sent', 'whatsapp_template');
+      }
+    }
 
-    const ok = await trySendWhatsApp(appt.customerPhone, message, wa, appt.id, appt.tenantId, 'reminder_2h');
+    if (!ok) {
+      const message = [
+        `⏰ *Lembrete: seu horário é em breve!*`,
+        ``,
+        `Olá${nameGreet}! Passando para lembrar que seu agendamento é *hoje às ${appt.time}h*:`,
+        ``,
+        `📋 *Serviço:* ${serviceName}`,
+        ``,
+        confirmLine,
+        `Até logo! 😊`,
+      ].join('\n');
+
+      ok = await trySendWhatsApp(appt.customerPhone, message, wa, appt.id, appt.tenantId, 'reminder_2h');
+    }
     if (ok) sent++;
     else errors++;
   }

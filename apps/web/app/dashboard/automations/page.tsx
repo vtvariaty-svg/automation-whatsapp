@@ -196,7 +196,8 @@ export default function AutomationsPage() {
 
             {/* List */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="min-w-full divide-y divide-gray-200">
+                <div className="overflow-x-auto">
+                    <div className="min-w-[800px] divide-y divide-gray-200">
                     <div className="bg-gray-50 px-6 py-4">
                         <div className="grid grid-cols-12 gap-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                             <div className="col-span-3">Nome da Regra</div>
@@ -287,6 +288,7 @@ export default function AutomationsPage() {
                         )}
                     </div>
                 </div>
+                </div>
             </div>
 
             {/* Toast */}
@@ -353,7 +355,7 @@ export default function AutomationsPage() {
                                     </p>
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-semibold text-gray-900 mb-1.5">Gatilho (Mensagem)</label>
                                         <input

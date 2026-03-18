@@ -39,7 +39,7 @@ const SOURCE_BADGE_COLORS: Record<string, string> = {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function authHeaders(): Record<string, string> {
-  return { Authorization: `Bearer ${localStorage.getItem('token') ?? ''}` };
+  return { Authorization: `Bearer ${(localStorage.getItem('auth_token') ?? localStorage.getItem('token')) ?? ''}` };
 }
 
 function fmtCurrency(value: number): string {

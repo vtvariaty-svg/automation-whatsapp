@@ -84,7 +84,7 @@ const MEDIUM_LABELS: Record<string, string> = {
 function authHeaders(): Record<string, string> {
   const token =
     typeof window !== 'undefined'
-      ? (localStorage.getItem('auth_token') ?? localStorage.getItem('token') ?? '')
+      ? (localStorage.getItem('auth_token') ?? (localStorage.getItem('auth_token') ?? localStorage.getItem('token')) ?? '')
       : '';
   return { Authorization: `Bearer ${token}` };
 }

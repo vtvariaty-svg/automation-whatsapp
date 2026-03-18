@@ -70,7 +70,7 @@ export default function ChurnNudge() {
   const [dismissing, setDismissing] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem('auth_token') ?? localStorage.getItem('token') ?? '';
+    const token = localStorage.getItem('auth_token') ?? (localStorage.getItem('auth_token') ?? localStorage.getItem('token')) ?? '';
     fetch('/api/churn', {
       headers: { Authorization: `Bearer ${token}` },
     })
@@ -110,7 +110,7 @@ export default function ChurnNudge() {
     if (dismissing) return;
     setDismissing(true);
     try {
-      const token = localStorage.getItem('auth_token') ?? localStorage.getItem('token') ?? '';
+      const token = localStorage.getItem('auth_token') ?? (localStorage.getItem('auth_token') ?? localStorage.getItem('token')) ?? '';
       await fetch('/api/churn', {
         method: 'PATCH',
         headers: {

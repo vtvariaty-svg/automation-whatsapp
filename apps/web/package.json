@@ -9,10 +9,10 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@whatsapp-automation/shared": "*",
     "@hello-pangea/dnd": "^18.0.1",
     "@heroicons/react": "^2.2.0",
     "@prisma/client": "6.2.1",
+    "@whatsapp-automation/shared": "*",
     "axios": "^1.7.9",
     "bcryptjs": "^2.4.3",
     "date-fns": "^4.1.0",
@@ -34,6 +34,7 @@
     "postcss": "^8.4.49",
     "prisma": "6.2.1",
     "tailwindcss": "^3.4.15",
+    "ts-node": "^10.9.2",
     "typescript": "^5.6.3"
   }
 }

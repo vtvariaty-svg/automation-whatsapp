@@ -8,7 +8,7 @@ import UpgradeGate from '@/components/UpgradeGate';
 import { useAuth } from '@/hooks/useAuth';
 
 function authHeaders(): Record<string, string> {
-  return { Authorization: `Bearer ${localStorage.getItem('token') ?? ''}` };
+  return { Authorization: `Bearer ${(localStorage.getItem('auth_token') ?? localStorage.getItem('token')) ?? ''}` };
 }
 
 interface Agency {

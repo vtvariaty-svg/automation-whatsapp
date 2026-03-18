@@ -28,14 +28,18 @@ export const updateTenantConfig = async (
     openingHours?: string;
     address?: string;
     faqJson?: string;
+    templateBookingConfirmed?: string;
+    templateReminder24h?: string;
   }
 ) => {
-  const { name, businessDescription, businessType, phone, openingHours, address, faqJson } = data;
+  const { name, businessDescription, businessType, phone, openingHours, address, faqJson, templateBookingConfirmed, templateReminder24h } = data;
 
   const configData = {
     ...(openingHours !== undefined && { openingHours }),
     ...(address !== undefined && { address }),
-    ...(faqJson !== undefined && { faqJson })
+    ...(faqJson !== undefined && { faqJson }),
+    ...(templateBookingConfirmed !== undefined && { templateBookingConfirmed }),
+    ...(templateReminder24h !== undefined && { templateReminder24h })
   };
 
   const tenant = await prisma.tenant.update({

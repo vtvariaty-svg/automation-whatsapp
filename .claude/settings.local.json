@@ -25,7 +25,26 @@
       "Bash(node_modules/.bin/prisma generate:*)",
       "Bash(./node_modules/.bin/prisma generate:*)",
       "Bash(cmd.exe /c \"git push origin main 2>&1\")",
-      "Bash(cmd.exe /c \"git push origin main\")"
+      "Bash(cmd.exe /c \"git push origin main\")",
+      "Bash(./node_modules/.bin/tsc --noEmit)",
+      "Bash(node_modules/.bin/tsc --noEmit)",
+      "Bash(node_modules/.bin/tsc --project apps/web/tsconfig.json --noEmit)",
+      "Bash(node_modules/.bin/next lint:*)",
+      "Bash(/c/Users/vinic/Documents/automation-whatsapp/apps/web/node_modules/.bin/next lint:*)",
+      "Bash(grep -rn ^import /c/Users/vinic/Documents/automation-whatsapp/apps/web/app/dashboard/fiscal --include=*.tsx)",
+      "Bash(grep -rn \"\"\"use client\"\"\" \"/c/Users/vinic/Documents/automation-whatsapp/apps/web/app/dashboard/fiscal\" --include=\"*.tsx\")",
+      "Bash(grep -rn \"\"\"use client\"\"\" \"/c/Users/vinic/Documents/automation-whatsapp/apps/web/components/fiscal\" --include=\"*.tsx\")",
+      "Read(//c/Users/vinic/Documents/NFE_WEB/app/api/v1/external/**)",
+      "Read(//c/Users/vinic/Documents/NFE_WEB/src/**)",
+      "Read(//c/Users/vinic/Documents/NFE_WEB/**)",
+      "Bash(find /c/Users/vinic/Documents/NFE_WEB/apps -type f \\\\\\(-name *.ts -o -name *.tsx -o -name *.prisma \\\\\\))",
+      "Bash(find /c/Users/vinic/Documents/NFE_WEB/apps/api -type f \\\\\\(-name *.migration.* -o -name *.sql \\\\\\))",
+      "WebFetch(domain:dev.nuvemfiscal.com.br)",
+      "WebFetch(domain:nuvemfiscal.com.br)",
+      "WebFetch(domain:api.nuvemfiscal.com.br)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)"
     ]
   }
 }

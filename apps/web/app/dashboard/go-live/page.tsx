@@ -25,7 +25,7 @@ interface GoLiveStatus {
 function authHeaders(): Record<string, string> {
   const token =
     typeof window !== 'undefined'
-      ? (localStorage.getItem('token') ?? '')
+      ? ((localStorage.getItem('auth_token') ?? localStorage.getItem('token')) ?? '')
       : '';
   return { Authorization: `Bearer ${token}` };
 }

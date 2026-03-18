@@ -262,7 +262,7 @@ export default function InboxPage() {
       {/* Main container */}
       <div className="flex flex-1 overflow-hidden bg-white rounded-2xl border border-gray-200/60 shadow-sm">
         {/* Conversation list */}
-        <div className="w-[340px] bg-gray-50/30 border-r border-gray-100 flex flex-col shrink-0">
+        <div className={`w-full md:w-[340px] bg-white md:bg-gray-50/30 border-r border-gray-100 flex-col shrink-0 ${selectedPhone ? "hidden md:flex" : "flex"}`}>
           {/* Search + channel filter */}
           <div className="p-4 border-b border-gray-100 space-y-3">
             <div className="relative">
@@ -411,13 +411,21 @@ export default function InboxPage() {
         </div>
 
         {/* Chat area */}
-        <div className="flex-1 flex flex-col bg-white overflow-hidden">
+        <div className={`flex-1 flex-col bg-white overflow-hidden ${selectedPhone ? "flex" : "hidden md:flex"}`}>
           {selectedPhone ? (
             <>
               {/* Chat header */}
-              <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white">
+              <div className="px-4 md:px-6 py-4 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#4f46e5] to-[#7c3aed] flex items-center justify-center text-white font-bold text-sm">
+                  <button
+                    onClick={() => setSelectedPhone(null)}
+                    className="md:hidden p-2 -ml-2 text-gray-500 hover:bg-gray-100 rounded-xl transition-colors"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#4f46e5] to-[#7c3aed] flex items-center justify-center text-white font-bold text-sm shrink-0">
                     {selectedPhone.slice(-2)}
                   </div>
                   <div>

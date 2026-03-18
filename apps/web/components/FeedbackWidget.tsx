@@ -37,7 +37,7 @@ export default function FeedbackWidget() {
   useEffect(() => {
     // Only render if a token exists in localStorage
     if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('auth_token') ?? localStorage.getItem('token');
+      const token = localStorage.getItem('auth_token') ?? (localStorage.getItem('auth_token') ?? localStorage.getItem('token'));
       setIsAuthenticated(Boolean(token));
     }
   }, []);
@@ -68,7 +68,7 @@ export default function FeedbackWidget() {
 
     setLoading(true);
     try {
-      const token = localStorage.getItem('auth_token') ?? localStorage.getItem('token') ?? '';
+      const token = localStorage.getItem('auth_token') ?? (localStorage.getItem('auth_token') ?? localStorage.getItem('token')) ?? '';
       const res = await fetch('/api/feedback', {
         method: 'POST',
         headers: {

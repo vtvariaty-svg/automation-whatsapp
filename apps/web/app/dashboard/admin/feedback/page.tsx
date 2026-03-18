@@ -27,7 +27,7 @@ type CategoryFilter = 'all' | 'bug' | 'sugestão' | 'onboarding' | 'integração
 function authHeaders(): Record<string, string> {
   return {
     'Content-Type': 'application/json',
-    Authorization: `Bearer ${localStorage.getItem('token') ?? ''}`,
+    Authorization: `Bearer ${(localStorage.getItem('auth_token') ?? localStorage.getItem('token')) ?? ''}`,
   };
 }
 

@@ -31,7 +31,7 @@ interface ReferralData {
 }
 
 function authHeaders(): Record<string, string> {
-  return { Authorization: `Bearer ${localStorage.getItem('token') ?? ''}` };
+  return { Authorization: `Bearer ${(localStorage.getItem('auth_token') ?? localStorage.getItem('token')) ?? ''}` };
 }
 
 const REWARD_TYPE_LABELS: Record<string, string> = {

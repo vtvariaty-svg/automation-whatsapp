@@ -66,7 +66,8 @@ export const registerUser = async (name: string, email: string, passwordPlain: s
 
   return { 
     message: 'Conta criada. Verifique seu email para ativá-la.', 
-    requiresVerification: true 
+    requiresVerification: true,
+    user: { id: user.id, email: user.email, tenantId: user.tenantId, role: user.role }
   };
 };
 

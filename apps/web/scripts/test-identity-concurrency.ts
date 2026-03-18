@@ -38,67 +38,56 @@ async function verifyDbState(tenantId: string, bsuid: string, waId: string) {
 }
 
 async function runTests() {
-  const tenantId = 'TEST_CONCURRENCY_' + Date.now();
+  const tenants = {
+      t1: 'TEST_T1_' + Date.now(),
+      t2: 'TEST_T2_' + Date.now(),
+      t3: 'TEST_T3_' + Date.now(),
+      t4: 'TEST_T4_' + Date.now(),
+  };
+
   const waId = '5511999990000';
   const bsuid = 'BSUID_8888_' + Date.now();
-  const recipientUserId = bsuid;
-
-  // Garantir tenant mockado (se houver foreign keys no database relacionadas)
-  await prisma.tenant.create({
-      data: { id: tenantId, name: 'Tenant de Teste', phone: '123' }
-  });
 
   try {
-      console.log(`\n[Teste 1] Disparando 20 Webhooks simultâneos para Contato Virgem (Inbound Híbrido)...`);
-      
-      const payloadVirgem = {
-          channel: 'whatsapp' as any,
-          accountId: '1234',
-          from: waId,
-          messageId: 'msg_' + Date.now(),
-          text: 'Hello!',
-          timestamp: Date.now(),
-          raw: {},
-          waId: waId,
-          userId: bsuid,
-          username: 'JohnHibrido',
-          profileName: 'John H',
-      };
+      await prisma.tenant.createMany({
+          data: Object.values(tenants).map(id => ({ id, name: 'T', phone: '123' }))
+      });
 
-      const promises = Array(20).fill(0).map(() => resolveWhatsAppIdentity(tenantId, payloadVirgem));
-      
-      const start = Date.now();
-      const results = await Promise.all(promises);
-      const end = Date.now();
-      
-      console.log(`[Latência] 20 requisições simultâneas completadas em ${end - start}ms.`);
-      
-      const successful = results.filter(r => r !== null);
-      console.log(`-> ${successful.length} promessas processaram com sucesso.`);
+      console.log(`\n[Teste 1] waId-only vs waId-only (20 concorrências)...`);
+      const t1Promises = Array(20).fill(0).map((_, i) => resolveWhatsAppIdentity(tenants.t1, {
+          channel: 'whatsapp' as any, accountId: '12', from: waId, messageId: 'm'+i, text: 't', timestamp: Date.now(), raw: {}, waId
+      }));
+      await Promise.all(t1Promises);
+      await verifyDbState(tenants.t1, bsuid, waId);
 
-      await verifyDbState(tenantId, bsuid, waId);
+      console.log(`\n[Teste 2] Híbrido (bsuid+waId) vs waId-only (20 concorrências)...`);
+      const t2Promises = Array(20).fill(0).map((_, i) => resolveWhatsAppIdentity(tenants.t2, {
+          channel: 'whatsapp' as any, accountId: '12', from: waId, messageId: 'm'+i, text: 't', timestamp: Date.now(), raw: {},
+          waId: waId, // Todos tem waId
+          userId: i % 2 === 0 ? bsuid : undefined // Metade Híbrido, Metade waId-only
+      }));
+      await Promise.all(t2Promises);
+      await verifyDbState(tenants.t2, bsuid, waId);
 
+      console.log(`\n[Teste 3] Híbrido (bsuid+waId) vs userId-only (20 concorrências)...`);
+      const t3Promises = Array(20).fill(0).map((_, i) => resolveWhatsAppIdentity(tenants.t3, {
+          channel: 'whatsapp' as any, accountId: '12', from: waId, messageId: 'm'+i, text: 't', timestamp: Date.now(), raw: {},
+          waId: i % 2 === 0 ? waId : undefined, // Metade Híbrido, Metade userId-only
+          userId: bsuid // Todos tem bsuid
+      }));
+      await Promise.all(t3Promises);
+      await verifyDbState(tenants.t3, bsuid, waId);
 
-      console.log(`\n[Teste 2] Disparando Webhook de Statuscego pós-criação (Apenas recipientUserId)...`);
-      const payloadStatus = {
-          channel: 'whatsapp' as any,
-          accountId: '1234',
-          from: '',
-          messageId: 'msg_status_' + Date.now(),
-          text: null,
-          timestamp: Date.now(),
-          raw: {},
-          isStatus: true,
-          statusType: 'delivered',
-          recipientId: bsuid,
-      };
-
-      await resolveWhatsAppIdentity(tenantId, payloadStatus);
-      await verifyDbState(tenantId, bsuid, waId);
+      console.log(`\n[Teste 4] Status-only sem âncora anterior (não deve criar Contato)...`);
+      const statusResult = await resolveWhatsAppIdentity(tenants.t4, {
+          channel: 'whatsapp' as any, accountId: '12', from: '', messageId: 's1', text: null, timestamp: Date.now(), raw: {},
+          isStatus: true, statusType: 'delivered', recipientId: bsuid
+      });
+      console.log(statusResult === null ? "✅ OK - Ignorado perfeitamente." : "❌ FALHA - Fantasma criado.");
 
   } finally {
       // Limpeza
-      await prisma.tenant.delete({ where: { id: tenantId } }).catch(()=>null);
+      await prisma.tenant.deleteMany({ where: { id: { in: Object.values(tenants) } } }).catch(()=>null);
   }
 }
 

@@ -15,19 +15,9 @@ export async function resolveWhatsAppIdentity(tenantId: string, event: Normalize
 
   try {
     return await prisma.$transaction(async (tx) => {
-      // 0. ADVISORY LOCK (Evita Race Condition no Postgres)
-      // Bloqueia paralelismo em nível de banco para o mesmo Tenant + Identificador Primário
-      const lockPivot = event.userId || event.waId || event.from?.replace(/\D/g, '') || event.recipientId;
-      if (lockPivot) {
-         const [lock1, lock2] = generateLockIds(tenantId, lockPivot);
-         // Este lock nativo Postgres garante que duas requests idênticas fiquem enfileiradas.
-         // Ele durará apenas durante esta `$transaction`.
-         await tx.$executeRaw`SELECT pg_advisory_xact_lock(${lock1}::int, ${lock2}::int);`;
-      }
-
       const identifiersToSearch: { kind: string; value: string }[] = [];
 
-      // Extrai possíveis chaves fortes
+      // Extrai chaves fortes disponíveis nativamente no evento
       if (event.userId) identifiersToSearch.push({ kind: 'BSUID', value: event.userId });
       if (event.waId) {
         identifiersToSearch.push({ kind: 'WA_ID', value: event.waId });
@@ -35,7 +25,7 @@ export async function resolveWhatsAppIdentity(tenantId: string, event: Normalize
         if (phoneNorm) identifiersToSearch.push({ kind: 'PHONE_NORMALIZED', value: phoneNorm });
       }
 
-      // Prevenir falhas se não vier nem userId nem waId na Inbound Message (Raro mas acontece em statuses cegos)
+      // Fallbacks em eventos puros
       if (identifiersToSearch.length === 0) {
         if (!event.isStatus && event.from) {
           const phoneNorm = event.from.replace(/\D/g, '');
@@ -49,6 +39,19 @@ export async function resolveWhatsAppIdentity(tenantId: string, event: Normalize
         }
       }
 
+      // 0. ADVISORY LOCK MÚLTIPLO CRÍTICO (Evita Deadlocks e Race Condition Híbrido)
+      // Garantimos um lock cruzado em TODAS as ramificações de chaves fortes providas
+      const uniqueValues = Array.from(new Set(identifiersToSearch.map(i => i.value)));
+      const lockPairs = uniqueValues.map(val => generateLockIds(tenantId, val));
+      
+      // Ordenação determinística OBRIGATÓRIA para evitar deadlocks de transação Postgres
+      lockPairs.sort((a, b) => a[0] !== b[0] ? a[0] - b[0] : a[1] - b[1]);
+
+      for (const [l1, l2] of lockPairs) {
+         await tx.$executeRaw`SELECT pg_advisory_xact_lock(${l1}::int, ${l2}::int);`;
+      }
+
+      // Após o bloqueio nativo assíncrono, iniciamos O RE-READ TRANQUILO.
       const matchedContacts = new Map<string, any>();
 
       // 1. Procurar nas identidades V2
@@ -91,8 +94,15 @@ export async function resolveWhatsAppIdentity(tenantId: string, event: Normalize
 
       let survivorContact = null;
 
-      // 3. Resolução Estratégica
+      // 3. Resolução Estratégica: CREATE, UPDATE OR MERGE
       if (matchedContacts.size === 0) {
+        // Regra Inviolável de Outbound e Webhooks StatusCegos: 
+        // Não criamos Contact fantasma ancorado unicamente no Webhook Delivery Payload
+        if (event.isStatus) {
+           channelLog.warn({ channel: 'whatsapp', tenantId, event }, '[IdentityResolver] status_without_anchor - Recebimento de receipt órfão ignorado.');
+           return null;
+        }
+
         // Criar Novo
         survivorContact = await tx.contact.create({
           data: {

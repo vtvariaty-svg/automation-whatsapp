@@ -13,7 +13,7 @@ interface SuperAdminContext {
  * Extrates standard HTTP request identifiers
  */
 export const getRequestMeta = (req: NextRequest) => {
-  const ip = req.headers.get('x-forwarded-for') || req.ip || 'unknown';
+  const ip = req.headers.get('x-forwarded-for') || (req as any).ip || 'unknown';
   const userAgent = req.headers.get('user-agent') || 'unknown';
   return { ip, userAgent };
 };
@@ -90,7 +90,7 @@ export const auditService = {
     
     await prisma.superAdminLog.create({
       data: {
-        actorUserId: params.actorUserId,
+        adminUserId: params.actorUserId,
         action: params.action,
         targetUserId: params.targetUserId,
         targetTenantId: params.targetTenantId,
@@ -105,3 +105,27 @@ export const auditService = {
     });
   }
 };
+
+/** Lê a role diretamente e verifica se é superadmin (retrocompatibilidade) */
+export function isSuperAdmin(role?: string | null): boolean {
+  return role === 'superadmin';
+}
+
+/** Legacy wrapper para manter compatibilidade com as rotas antigas de billing e agency */
+export async function logSuperAdminAction(
+  actorUserId: string,
+  action: string,
+  targetTenantId?: string,
+  extras?: any
+) {
+  try {
+    await auditService.log({
+      actorUserId,
+      action,
+      targetTenantId,
+      after: extras,
+    });
+  } catch (err) {
+    console.error('[logSuperAdminAction] falha ao registrar auditoria:', err);
+  }
+}

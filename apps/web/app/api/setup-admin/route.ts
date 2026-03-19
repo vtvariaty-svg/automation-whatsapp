@@ -1,21 +1,25 @@
 import { NextResponse } from 'next/server';
-import { registerUser } from '@/lib/services/authService';
+import { prisma } from '@/lib/prisma';
 
 export async function GET() {
   try {
     const adminEmail = 'vtvariaty@gmail.com';
-    const adminPassword = 'admin123';
-    const adminName = 'Admin';
 
-    const result = await registerUser(adminName, adminEmail, adminPassword, 'admin');
+    const user = await prisma.user.update({
+      where: { email: adminEmail },
+      data: {
+        role: 'superadmin',
+        isActive: true
+      }
+    });
     
     return NextResponse.json({ 
-      message: 'Admin user created successfully', 
-      user: result.user 
+      message: 'User promoted to superadmin successfully', 
+      user: { id: user.id, email: user.email, role: user.role } 
     });
   } catch (error: any) {
     return NextResponse.json({ 
-      error: error.message || 'Failed to create admin user' 
+      error: error.message || 'Failed to promote user' 
     }, { status: 400 });
   }
 }

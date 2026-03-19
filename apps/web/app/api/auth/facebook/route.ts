@@ -13,7 +13,7 @@ export async function GET() {
   const fbOAuthUrl = new URL('https://www.facebook.com/v22.0/dialog/oauth');
   fbOAuthUrl.searchParams.set('client_id', fbAppId);
   fbOAuthUrl.searchParams.set('redirect_uri', redirectUri);
-  fbOAuthUrl.searchParams.set('scope', 'public_profile');
+  fbOAuthUrl.searchParams.set('scope', 'public_profile,whatsapp_business_management');
   fbOAuthUrl.searchParams.set('response_type', 'code');
 
   return NextResponse.redirect(fbOAuthUrl.toString());

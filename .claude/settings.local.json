@@ -44,7 +44,8 @@
       "WebFetch(domain:api.nuvemfiscal.com.br)",
       "WebSearch",
       "WebFetch(domain:github.com)",
-      "WebFetch(domain:raw.githubusercontent.com)"
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(grep -r \"NFE_EXTERNAL\\\\|NFE_API\" /c/Users/vinic/Documents/automation-whatsapp/apps/web --include=*.ts --include=*.tsx --include=*.js --include=*.env*)"
     ]
   }
 }

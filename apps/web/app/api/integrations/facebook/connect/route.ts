@@ -7,7 +7,8 @@ if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET environment variable is
 const JWT_SECRET = process.env.JWT_SECRET;
 
 export async function GET() {
-  const base = process.env.NEXT_PUBLIC_BASE_URL || 'https://automation-whatsapp.onrender.com';
+  let base = process.env.NEXT_PUBLIC_BASE_URL || 'https://automation-whatsapp.onrender.com';
+  if (!base.startsWith('http')) base = `https://${base}`;
   try {
     const cookieStore = await cookies();
     const authToken = cookieStore.get('auth_token')?.value;

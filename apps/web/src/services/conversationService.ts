@@ -11,13 +11,18 @@ export type IdentityContext = {
  * Função utilitária para hashing determinístico simples (DJB2) modificado
  * usado para Samplificar as requisições baseadas no ID da conversa.
  */
-function deterministicSample(stringKey: string, percentage: number): boolean {
+function deterministicSample(stringKey: string, percentage: number | null | undefined): boolean {
+  if (percentage === null || percentage === undefined) return false;
+  // Clamp percentage between 0 and 100
+  const rate = Math.max(0, Math.min(100, percentage));
+  if (rate === 0) return false;
+  
   let hash = 5381;
   for (let i = 0; i < stringKey.length; i++) {
     hash = (hash * 33) ^ stringKey.charCodeAt(i);
   }
   const absoluteHash = Math.abs(hash);
-  return (absoluteHash % 100) < percentage;
+  return (absoluteHash % 100) < rate;
 }
 
 /**

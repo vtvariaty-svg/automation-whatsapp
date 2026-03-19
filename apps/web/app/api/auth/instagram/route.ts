@@ -6,7 +6,8 @@ export async function GET() {
     return NextResponse.json({ error: 'FB App ID not configured' }, { status: 500 });
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://automation-whatsapp.onrender.com';
+  let baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://automation-whatsapp.onrender.com';
+  if (!baseUrl.startsWith('http')) baseUrl = `https://${baseUrl}`;
   const redirectUri = `${baseUrl}/api/auth/instagram/callback`;
 
   // Instagram uses Facebook's OAuth with instagram_basic scope

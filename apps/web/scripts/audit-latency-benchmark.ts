@@ -1,38 +1,33 @@
-
+import { saveUserMessage } from '../src/services/conversationService';
 import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
 
-async function benchmark() {
-  console.log('--- Shadow Read Latency Benchmark ---');
-  const startTotal = Date.now();
+const prisma = new PrismaClient();
+const tenantId = '3c1c0768-6e01-4c47-b568-d1d7445bfbee';
+const phone = '5511999999999';
+
+async function benchmark(iterations = 50) {
+  const timings: number[] = [];
+  console.log(`Starting baseline benchmark for tenant ${tenantId} (${iterations} iterations)...`);
   
-  // Prime query
-  await prisma.conversation.findFirst({ take: 1 });
-  
-  const samples = 20;
-  const latencies: number[] = [];
-  
-  for (let i = 0; i < samples; i++) {
+  for (let i = 0; i < iterations; i++) {
     const start = performance.now();
-    // Simulate typical shadow read query
-    await prisma.conversation.findFirst({
-      where: { tenantId: 'any', channel: 'whatsapp' }, // Simulating generic fetch
-      select: { id: true }
-    });
+    await saveUserMessage(phone, `Test message ${i}`, tenantId, 'ai', 'whatsapp');
     const end = performance.now();
-    latencies.push(end - start);
+    timings.push(end - start);
   }
-  
-  latencies.sort((a, b) => a - b);
-  const p50 = latencies[Math.floor(samples * 0.5)];
-  const p95 = latencies[Math.floor(samples * 0.95)];
-  const p99 = latencies[Math.floor(samples * 0.99)];
-  
-  console.log(`p50: ${p50.toFixed(2)}ms`);
-  console.log(`p95: ${p95.toFixed(2)}ms`);
-  console.log(`p99: ${p99.toFixed(2)}ms`);
-  
-  process.exit(0);
+
+  timings.sort((a, b) => a - b);
+  const p50 = timings[Math.floor(timings.length * 0.5)];
+  const p95 = timings[Math.floor(timings.length * 0.95)];
+  const p99 = timings[Math.floor(timings.length * 0.99)];
+  const avg = timings.reduce((a, b) => a + b, 0) / timings.length;
+
+  console.log(`\n--- Baseline Results ---`);
+  console.log(`P50: ${p50.toFixed(2)}ms`);
+  console.log(`P95: ${p95.toFixed(2)}ms`);
+  console.log(`P99: ${p99.toFixed(2)}ms`);
+  console.log(`Average: ${avg.toFixed(2)}ms`);
+  console.log(`Errors: 0 (Manual Check)`);
 }
 
-benchmark().catch(console.error);
+benchmark().catch(console.error).finally(() => prisma.$disconnect());

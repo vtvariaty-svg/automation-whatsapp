@@ -41,8 +41,13 @@ async function rollback(auditId: string) {
   console.log(`Found ${audit.items.length} linked items to revert.`);
   
   for (const item of audit.items) {
-    await prisma.conversation.update({
-      where: { id: item.recordId },
+    // Only revert if the contactId still matches what we set during this migration.
+    // This prevents overwriting manual or later legitimate changes.
+    await prisma.conversation.updateMany({
+      where: { 
+        id: item.recordId, 
+        contactId: item.newValue 
+      },
       data: { contactId: null }
     });
   }
@@ -163,6 +168,7 @@ async function run() {
                   auditId: audit.id,
                   recordId: conv.id,
                   action: 'linked',
+                  previousValue: null,
                   newValue: resolvedContactId
                 }
               })

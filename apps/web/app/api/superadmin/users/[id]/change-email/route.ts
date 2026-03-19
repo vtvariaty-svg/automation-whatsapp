@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireSuperAdmin, auditService } from '@/lib/superadmin';
 import { prisma } from '@/lib/prisma';
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const actor = await requireSuperAdmin(req);
     const { id } = await params;

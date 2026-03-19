@@ -10,7 +10,8 @@ export async function GET(request: Request) {
   const code = url.searchParams.get('code');
   const error = url.searchParams.get('error');
 
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://automation-whatsapp.onrender.com';
+  let baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://automation-whatsapp.onrender.com';
+  if (!baseUrl.startsWith('http')) baseUrl = `https://${baseUrl}`;
 
   if (error || !code) {
     return NextResponse.redirect(`${baseUrl}/login?error=instagram_cancelled`);

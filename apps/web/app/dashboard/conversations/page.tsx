@@ -473,7 +473,7 @@ export default function InboxPage() {
                       onClick={() => handleStatusChange("human")}
                       className="inline-flex items-center gap-2 px-4 py-2 bg-orange-50 text-orange-600 rounded-xl text-sm font-semibold hover:bg-orange-100 transition-all border border-orange-100"
                     >
-                      <span>👤</span> Assumir conversa
+                      <span>👤</span> <span>Assumir conversa</span>
                     </button>
                   ) : null}
                   {currentStatus === "human" && (
@@ -481,7 +481,7 @@ export default function InboxPage() {
                       onClick={() => handleStatusChange("open")}
                       className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 text-[#4f46e5] rounded-xl text-sm font-semibold hover:bg-indigo-100 transition-all border border-indigo-100"
                     >
-                      <span>🤖</span> Voltar para IA
+                      <span>🤖</span> <span>Voltar para IA</span>
                     </button>
                   )}
                   {currentStatus !== "closed" && (
@@ -489,7 +489,7 @@ export default function InboxPage() {
                       onClick={() => handleStatusChange("closed")}
                       className="inline-flex items-center gap-2 px-4 py-2 bg-gray-50 text-gray-600 rounded-xl text-sm font-semibold hover:bg-gray-100 transition-all border border-gray-200"
                     >
-                      <span>✅</span> Encerrar
+                      <span>✅</span> <span>Encerrar</span>
                     </button>
                   )}
                   {canCreateOrder && (
@@ -497,7 +497,7 @@ export default function InboxPage() {
                       onClick={() => setShowOrderDialog(true)}
                       className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-xl text-sm font-semibold hover:bg-emerald-100 transition-all border border-emerald-100"
                     >
-                      <span>🛍️</span> Criar Pedido
+                      <span>🛍️</span> <span>Criar Pedido</span>
                     </button>
                   )}
                 </div>
@@ -612,7 +612,7 @@ export default function InboxPage() {
                     className="px-6 py-3 bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] text-white rounded-xl font-semibold text-sm hover:shadow-lg hover:shadow-indigo-200/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
                     {sending ? (
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                      <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block"></span>
                     ) : (
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path
@@ -623,7 +623,7 @@ export default function InboxPage() {
                         />
                       </svg>
                     )}
-                    Enviar
+                    <span>Enviar</span>
                   </button>
                 </form>
               ) : (

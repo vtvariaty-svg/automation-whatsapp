@@ -250,7 +250,7 @@ export default function TemplatesPage() {
 
             {loadingTemplates ? (
               <div className="flex items-center justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
+                <span className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500 inline-block"></span>
                 <span className="ml-3 text-sm text-gray-400">Carregando templates...</span>
               </div>
             ) : fetchError ? (
@@ -431,11 +431,11 @@ export default function TemplatesPage() {
               >
                 {sendStatus === 'loading' ? (
                   <span className="flex items-center justify-center gap-2">
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                    Enviando...
+                    <span className="animate-spin rounded-full h-5 w-5 border-b-2 border-white inline-block"></span>
+                    <span>Enviando...</span>
                   </span>
                 ) : (
-                  '📨 Enviar Template'
+                  <span>📨 Enviar Template</span>
                 )}
               </button>
 

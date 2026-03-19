@@ -78,7 +78,7 @@ function EmpresaEmissoraSection() {
               disabled={saving || !selected}
               className="inline-flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] text-white rounded-xl font-semibold text-sm hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {saving ? 'Salvando...' : 'Salvar empresa'}
+              {saving ? <span>Salvando...</span> : <span>Salvar empresa</span>}
             </button>
             {saved && <span className="text-sm text-emerald-600 font-medium">✅ Salvo</span>}
           </div>
@@ -486,7 +486,7 @@ export default function ConfiguracoesFiscalPage() {
           disabled={saving}
           className="inline-flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] text-white rounded-xl font-semibold text-sm hover:shadow-lg hover:shadow-indigo-200/50 transition-all disabled:opacity-75"
         >
-          {saving ? 'Salvando...' : 'Salvar configurações'}
+          {saving ? <span>Salvando...</span> : <span>Salvar configurações</span>}
         </button>
         {saved && <span className="text-sm text-emerald-600 font-medium flex items-center gap-1">✅ Salvo</span>}
       </div>

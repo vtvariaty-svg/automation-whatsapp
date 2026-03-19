@@ -122,7 +122,7 @@ export default function ExpansionOpsPage() {
           disabled={loading}
           className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-sm font-medium text-gray-300 hover:text-white transition-all disabled:opacity-50"
         >
-          {loading ? 'Carregando...' : '↻ Atualizar'}
+          {loading ? <span>Carregando...</span> : <span>↻ Atualizar</span>}
         </button>
       </div>
 

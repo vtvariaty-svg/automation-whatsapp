@@ -250,7 +250,7 @@ export default function ProfessionalsPage() {
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 h-10 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50">Cancelar</button>
                 <button type="submit" disabled={saving} className="flex-1 h-10 rounded-lg bg-[#4f46e5] text-white text-sm font-semibold hover:bg-[#4338ca] disabled:opacity-60">
-                  {saving ? 'Salvando...' : 'Salvar'}
+                  {saving ? <span>Salvando...</span> : <span>Salvar</span>}
                 </button>
               </div>
             </form>

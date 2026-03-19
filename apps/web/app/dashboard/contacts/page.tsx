@@ -635,7 +635,7 @@ export default function ContactsPage() {
                         <div className="flex gap-2">
                           <button onClick={saveEdit} disabled={saving}
                             className="flex-1 py-2 bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] text-white rounded-xl text-sm font-semibold disabled:opacity-50">
-                            {saving ? 'Salvando...' : 'Salvar'}
+                            {saving ? <span>Salvando...</span> : <span>Salvar</span>}
                           </button>
                           <button onClick={() => setEditing(false)}
                             className="px-4 py-2 border border-gray-200 text-gray-600 rounded-xl text-sm font-semibold hover:bg-gray-50">

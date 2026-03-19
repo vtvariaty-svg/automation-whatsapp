@@ -215,7 +215,7 @@ export default function ReferralPage() {
             disabled={creating}
             className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] text-white text-sm font-semibold hover:shadow-lg hover:shadow-indigo-200/50 transition-all disabled:opacity-50"
           >
-            {creating ? 'Criando...' : 'Criar Link'}
+            {creating ? <span>Criando...</span> : <span>Criar Link</span>}
           </button>
         </div>
       )}

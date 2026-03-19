@@ -228,7 +228,7 @@ export function OrderFormDialog({
               className="w-full bg-[#4f46e5] hover:bg-[#4338ca] text-white"
               disabled={loading}
             >
-              {loading ? "Salvando..." : "Criar Pedido"}
+              {loading ? <span>Salvando...</span> : <span>Criar Pedido</span>}
             </Button>
           </div>
         </form>

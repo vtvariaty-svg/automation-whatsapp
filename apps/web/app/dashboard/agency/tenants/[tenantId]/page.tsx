@@ -270,7 +270,7 @@ export default function SubTenantDetailPage({
               disabled={saving}
               className="bg-indigo-600 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
             >
-              {saving ? 'Salvando...' : 'Salvar'}
+              {saving ? <span>Salvando...</span> : <span>Salvar</span>}
             </button>
           </div>
         </form>

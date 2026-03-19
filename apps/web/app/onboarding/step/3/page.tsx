@@ -153,7 +153,7 @@ export default function OnboardingStep3() {
                 disabled={saving}
                 className="px-8 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-semibold text-sm hover:shadow-lg hover:shadow-indigo-200/50 transition-all disabled:opacity-50"
               >
-                {saving ? "Salvando..." : "Continuar →"}
+                {saving ? <span>Salvando...</span> : <span>Continuar →</span>}
               </button>
             </div>
           </form>

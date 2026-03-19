@@ -280,7 +280,7 @@ export default function CatalogoFiscalPage() {
           <button onClick={() => setShowModal(false)} className="px-4 py-2 border border-gray-200 text-gray-600 rounded-xl font-semibold text-sm hover:bg-gray-50 transition-all">Cancelar</button>
           <button onClick={handleSave} disabled={!form.nome || !form.preco || saving}
             className="inline-flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] text-white rounded-xl font-semibold text-sm hover:shadow-lg transition-all disabled:opacity-50">
-            {saving ? 'Salvando...' : 'Salvar'}
+            {saving ? <span>Salvando...</span> : <span>Salvar</span>}
           </button>
         </div>
       </Modal>

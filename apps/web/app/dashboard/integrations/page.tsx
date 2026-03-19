@@ -271,7 +271,7 @@ function IntegrationsContent() {
                       </div>
                       <div className="flex gap-3">
                         <button onClick={handleManualSave} disabled={savingManual} className="px-5 py-2 bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] text-white rounded-xl font-semibold text-sm disabled:opacity-50">
-                          {savingManual ? "Salvando..." : "Salvar IDs"}
+                          {savingManual ? <span>Salvando...</span> : <span>Salvar IDs</span>}
                         </button>
                         <button onClick={() => setShowManualForm(false)} className="px-4 py-2 text-sm text-gray-600 bg-white border border-gray-200 rounded-xl">Cancelar</button>
                       </div>
@@ -337,7 +337,7 @@ function IntegrationsContent() {
                       </div>
                       <div className="flex gap-3">
                         <button onClick={handleManualSave} disabled={savingManual} className="px-6 py-2.5 bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] text-white rounded-xl font-semibold text-sm disabled:opacity-50">
-                          {savingManual ? "Salvando..." : "Salvar"}
+                          {savingManual ? <span>Salvando...</span> : <span>Salvar</span>}
                         </button>
                         <button onClick={() => setShowManualForm(false)} className="px-5 py-2.5 text-sm text-gray-700 bg-gray-100 rounded-xl">Cancelar</button>
                       </div>

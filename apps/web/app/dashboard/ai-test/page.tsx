@@ -52,7 +52,7 @@ export default function AITestPage() {
             />
           </div>
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Processando..." : "Enviar Mensagem"}
+            {loading ? <span>Processando...</span> : <span>Enviar Mensagem</span>}
           </Button>
         </form>
       </Card>

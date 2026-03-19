@@ -116,7 +116,7 @@ export default function SandboxPage() {
           disabled={running}
           className="px-5 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium disabled:opacity-50 hover:bg-indigo-700 transition-colors"
         >
-          {running ? 'Executando...' : 'Executar'}
+          {running ? <span>Executando...</span> : <span>Executar</span>}
         </button>
         {runs.length > 0 && (
           <button

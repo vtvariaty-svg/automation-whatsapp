@@ -168,7 +168,7 @@ function CreateAgencyForm({ onCreated }: { onCreated: (agency: Agency) => void }
             disabled={loading}
             className="w-full bg-indigo-600 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
           >
-            {loading ? 'Criando...' : 'Criar Agência'}
+            {loading ? <span>Criando...</span> : <span>Criar Agência</span>}
           </button>
         </form>
       </div>
@@ -267,7 +267,7 @@ function NewSubTenantModal({
               disabled={loading}
               className="flex-1 bg-indigo-600 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
             >
-              {loading ? 'Criando...' : 'Criar'}
+              {loading ? <span>Criando...</span> : <span>Criar</span>}
             </button>
           </div>
         </form>

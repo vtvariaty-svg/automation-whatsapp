@@ -230,7 +230,7 @@ export default function ClientesFiscalPage() {
             disabled={!form.nome || !form.documento || saving}
             className="inline-flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] text-white rounded-xl font-semibold text-sm hover:shadow-lg transition-all disabled:opacity-50"
           >
-            {saving ? 'Salvando...' : 'Salvar'}
+            {saving ? <span>Salvando...</span> : <span>Salvar</span>}
           </button>
         </div>
       </Modal>

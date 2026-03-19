@@ -91,7 +91,7 @@ export function RescheduleDialog({ isOpen, appointment, onClose, onSuccess }: Re
               className="flex-1 h-10 rounded-lg bg-[#4f46e5] text-white text-sm font-semibold hover:bg-[#4338ca] transition-colors disabled:opacity-60"
               disabled={loading}
             >
-              {loading ? "Salvando..." : "Confirmar"}
+              {loading ? <span>Salvando...</span> : <span>Confirmar</span>}
             </button>
           </div>
         </form>

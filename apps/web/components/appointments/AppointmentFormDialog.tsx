@@ -150,7 +150,7 @@ export function AppointmentFormDialog({ isOpen, onClose, onSuccess, tenantId }: 
               className="w-full bg-[#4f46e5] hover:bg-[#4338ca] text-white"
               disabled={loading}
             >
-              {loading ? "Salvando..." : "Criar Agendamento"}
+              {loading ? <span>Salvando...</span> : <span>Criar Agendamento</span>}
             </Button>
           </div>
         </form>

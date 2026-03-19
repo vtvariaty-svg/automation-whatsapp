@@ -282,7 +282,7 @@ function IntegrationsContent() {
                       💬 Ver Conversas →
                     </Link>
                     <button onClick={() => handleDisconnect("whatsapp")} disabled={disconnecting === "whatsapp"} className="px-5 py-2.5 text-sm font-medium text-red-600 bg-red-50 rounded-xl hover:bg-red-100 border border-red-100 disabled:opacity-50">
-                      {disconnecting === "whatsapp" ? "Desconectando..." : "Desconectar"}
+                      {disconnecting === "whatsapp" ? <span>Desconectando...</span> : <span>Desconectar</span>}
                     </button>
                   </div>
                 </div>
@@ -295,23 +295,30 @@ function IntegrationsContent() {
                         <h4 className="font-bold text-gray-900 mb-1">Conexão Automática</h4>
                         <p className="text-sm text-gray-500 mb-4">Conecte com 1 clique via Facebook Embedded Signup.</p>
                         <button onClick={handleEmbeddedSignup} disabled={embeddedLoading || !appId} className="inline-flex items-center gap-2 px-6 py-3 bg-[#25D366] text-white rounded-xl font-semibold text-sm hover:bg-[#1DA851] transition-all disabled:opacity-50">
-                          {embeddedLoading ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>Conectando...</> : "Conectar WhatsApp"}
+                          {embeddedLoading ? (
+                            <span className="flex items-center gap-2">
+                              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block"></span>
+                              <span>Conectando...</span>
+                            </span>
+                          ) : (
+                            <span>Conectar WhatsApp</span>
+                          )}
                         </button>
                         {!appId && <p className="text-xs text-red-500 mt-2">⚠️ NEXT_PUBLIC_FB_APP_ID não configurado.</p>}
                       </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-4"><div className="flex-1 h-px bg-gray-200"></div><span className="text-xs text-gray-400">ou</span><div className="flex-1 h-px bg-gray-200"></div></div>
-                  <button onClick={() => setShowManualForm(!showManualForm)} className="w-full flex items-center justify-between p-4 rounded-xl bg-gray-50 border border-gray-200 hover:bg-gray-100 transition-all">
+                  <div onClick={() => setShowManualForm(!showManualForm)} className="w-full flex items-center justify-between p-4 rounded-xl bg-gray-50 border border-gray-200 hover:bg-gray-100 transition-all cursor-pointer">
                     <div className="flex items-center gap-3">
                       <span>⚙️</span>
                       <div className="text-left">
-                        <p className="font-semibold text-gray-900 text-sm">Configuração Manual</p>
-                        <p className="text-xs text-gray-500">Token + IDs do Developer Console</p>
+                        <span className="block font-semibold text-gray-900 text-sm">Configuração Manual</span>
+                        <span className="block text-xs text-gray-500">Token + IDs do Developer Console</span>
                       </div>
                     </div>
                     <svg className={`w-4 h-4 text-gray-400 transition-transform ${showManualForm ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                  </button>
+                  </div>
                   {showManualForm && (
                     <div className="p-5 bg-gray-50 rounded-xl border border-gray-200 space-y-4">
                       <div>
@@ -386,7 +393,7 @@ function IntegrationsContent() {
                       💬 Ver Conversas →
                     </Link>
                     <button onClick={() => handleDisconnect("instagram")} disabled={disconnecting === "instagram"} className="px-5 py-2.5 text-sm font-medium text-red-600 bg-red-50 rounded-xl hover:bg-red-100 border border-red-100 disabled:opacity-50">
-                      {disconnecting === "instagram" ? "Desconectando..." : "Desconectar"}
+                      {disconnecting === "instagram" ? <span>Desconectando...</span> : <span>Desconectar</span>}
                     </button>
                   </div>
                 </div>
@@ -448,7 +455,7 @@ function IntegrationsContent() {
                       💬 Ver Conversas →
                     </Link>
                     <button onClick={() => handleDisconnect("facebook")} disabled={disconnecting === "facebook"} className="px-5 py-2.5 text-sm font-medium text-red-600 bg-red-50 rounded-xl hover:bg-red-100 border border-red-100 disabled:opacity-50">
-                      {disconnecting === "facebook" ? "Desconectando..." : "Desconectar"}
+                      {disconnecting === "facebook" ? <span>Desconectando...</span> : <span>Desconectar</span>}
                     </button>
                   </div>
                 </div>

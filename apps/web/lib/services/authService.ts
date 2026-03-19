@@ -71,9 +71,12 @@ export const registerUser = async (name: string, email: string, passwordPlain: s
   };
 };
 
-export const loginUser = async (email: string, passwordPlain: string) => {
+export const loginUser = async (email: string, passwordPlain: string, meta?: { ip?: string, userAgent?: string }) => {
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) throw new Error('Invalid credentials');
+
+  // Bloquear conta desativada pelo superadmin
+  if (!user.isActive) throw new Error('Conta desativada. Entre em contato com o suporte.');
 
   // Social login users don't have a password
   if (!user.passwordHash) throw new Error('Use social login for this account');
@@ -86,10 +89,29 @@ export const loginUser = async (email: string, passwordPlain: string) => {
     throw new Error('Email não verificado. Verifique seu email antes de fazer login.');
   }
 
+  // Registrar evento de login e atualizar lastLoginAt
+  await prisma.$transaction([
+    prisma.loginEvent.create({
+      data: {
+        userId: user.id,
+        ipAddress: meta?.ip,
+        userAgent: meta?.userAgent,
+      }
+    }),
+    prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() }
+    })
+  ]);
+
   const token = generateToken(user.id, user.tenantId, user.role);
 
-  return { user: { id: user.id, email: user.email, tenantId: user.tenantId, role: user.role }, token };
+  return {
+    user: { id: user.id, email: user.email, tenantId: user.tenantId, role: user.role, forcePasswordReset: user.forcePasswordReset },
+    token
+  };
 };
+
 
 export const verifyToken = (token: string) => {
   try {

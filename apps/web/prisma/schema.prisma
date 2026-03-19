@@ -245,17 +245,35 @@ model Product {
 }
 
 model User {
-  id              String    @id @default(uuid())
-  tenantId        String
-  name            String?
-  email           String    @unique
-  emailVerifiedAt DateTime?
-  passwordHash    String?
-  facebookId      String?   @unique
-  instagramId     String?   @unique
-  role            String    @default("user")
-  createdAt       DateTime  @default(now())
-  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id                 String       @id @default(uuid())
+  tenantId           String
+  name               String?
+  email              String       @unique
+  emailVerifiedAt    DateTime?
+  passwordHash       String?
+  facebookId         String?      @unique
+  instagramId        String?      @unique
+  role               String       @default("user")
+  isActive           Boolean      @default(true)
+  lastLoginAt        DateTime?
+  forcePasswordReset Boolean      @default(false)
+  createdAt          DateTime     @default(now())
+  tenant             Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  loginEvents        LoginEvent[]
+}
+
+model LoginEvent {
+  id        String   @id @default(uuid())
+  userId    String
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
+  @@map("login_events")
 }
 
 model VerificationToken {
@@ -600,12 +618,21 @@ model ProcessedMessage {
 model SuperAdminLog {
   id             String   @id @default(uuid())
   adminUserId    String
-  action         String // "impersonate", "view_billing", "view_plan_usage"
+  targetUserId   String?
   targetTenantId String?
-  metadata       Json?
+  action         String
+  entityType     String?
+  entityId       String?
+  beforeJson     Json?
+  afterJson      Json?
+  ipAddress      String?
+  userAgent      String?
+  status         String   @default("success") // success, failed
   createdAt      DateTime @default(now())
 
   @@index([adminUserId])
+  @@index([targetUserId])
+  @@index([targetTenantId])
   @@index([createdAt])
   @@map("superadmin_logs")
 }

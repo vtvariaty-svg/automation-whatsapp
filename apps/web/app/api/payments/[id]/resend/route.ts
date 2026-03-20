@@ -6,13 +6,14 @@ import { prisma } from '@/lib/prisma';
 // Does NOT create a new charge; just returns the existing invoiceUrl.
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const auth = await getAuthTenant(request);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+  const { id } = await params;
   const payment = await prisma.payment.findFirst({
-    where: { id: params.id, tenantId: auth.tenantId },
+    where: { id, tenantId: auth.tenantId },
     select: { id: true, status: true, invoiceUrl: true, pixCopiaECola: true },
   });
 

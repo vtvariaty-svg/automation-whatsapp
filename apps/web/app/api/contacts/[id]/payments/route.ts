@@ -5,11 +5,12 @@ import { prisma } from '@/lib/prisma';
 // GET /api/contacts/[id]/payments — payment history for a contact
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const auth = await getAuthTenant(request);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+  const { id } = await params;
   const { searchParams } = new URL(request.url);
   const page  = parseInt(searchParams.get('page')  ?? '1');
   const limit = parseInt(searchParams.get('limit') ?? '20');
@@ -17,12 +18,12 @@ export async function GET(
 
   // Verify contact belongs to this tenant
   const contact = await prisma.contact.findFirst({
-    where: { id: params.id, tenantId: auth.tenantId },
+    where: { id, tenantId: auth.tenantId },
     select: { id: true },
   });
   if (!contact) return NextResponse.json({ error: 'Contact not found' }, { status: 404 });
 
-  const where = { tenantId: auth.tenantId, contactId: params.id };
+  const where = { tenantId: auth.tenantId, contactId: id };
 
   const [payments, total] = await Promise.all([
     prisma.payment.findMany({

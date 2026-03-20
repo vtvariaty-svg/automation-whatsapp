@@ -11,6 +11,7 @@ import {
   registerWebhook,
 } from '@/lib/services/asaasService';
 import { issueExternalNfe } from '@/lib/integrations/fiscal/nfeClient';
+import { upsertContactByPhone } from '@/lib/services/contactService';
 import { randomUUID } from 'crypto';
 
 // ── Valid Payment status transitions ──────────────────────────────────────────
@@ -157,6 +158,59 @@ export async function createPaymentLink(input: CreatePaymentInput) {
   }
   const sourceType = input.orderId ? 'order' : input.appointmentId ? 'appointment' : 'standalone';
 
+  // ── Contact resolution (priority-ordered, explicit, logged) ─────────────────
+  let resolvedContactId: string | null = null;
+
+  if (input.orderId) {
+    // Priority 1 — inherit from Order
+    const order = await prisma.order.findFirst({
+      where: { id: input.orderId, tenantId: input.tenantId },
+      select: { contactId: true },
+    });
+    resolvedContactId = order?.contactId ?? null;
+  } else if (input.appointmentId) {
+    // Priority 2 — inherit from Appointment
+    const appt = await prisma.appointment.findFirst({
+      where: { id: input.appointmentId, tenantId: input.tenantId },
+      select: { contactId: true },
+    });
+    resolvedContactId = appt?.contactId ?? null;
+  }
+
+  if (!resolvedContactId && input.contactId) {
+    // Priority 3 — explicit contactId: validate it belongs to this tenant
+    const contact = await prisma.contact.findFirst({
+      where: { id: input.contactId, tenantId: input.tenantId },
+      select: { id: true },
+    });
+    if (contact) {
+      resolvedContactId = contact.id;
+      if (input.customerData.phone) {
+        // Both contactId and phone provided — contactId wins; log for auditability
+        console.info(
+          `[createPaymentLink] contactId=${input.contactId} and phone=${input.customerData.phone} both provided. contactId takes priority. tenant=${input.tenantId}`
+        );
+      }
+    } else {
+      console.warn(
+        `[createPaymentLink] contactId=${input.contactId} not found for tenant=${input.tenantId} — falling through to phone resolution`
+      );
+    }
+  }
+
+  if (!resolvedContactId && input.customerData.phone) {
+    // Priority 4 — auto-resolve from customerPhone via upsert
+    const contact = await upsertContactByPhone({
+      tenantId: input.tenantId,
+      phone:    input.customerData.phone,
+      name:     input.customerData.name,
+      email:    input.customerData.email,
+      source:   'payment',
+    });
+    resolvedContactId = contact?.id ?? null;
+  }
+  // Priority 5 — proceed without contactId (standalone with no phone, rare)
+
   // 1. Load and validate tenant payment config
   const config = await prisma.tenantPaymentConfig.findUnique({
     where: { tenantId: input.tenantId },
@@ -190,7 +244,7 @@ export async function createPaymentLink(input: CreatePaymentInput) {
       sourceType,
       orderId:            input.orderId ?? null,
       appointmentId:      input.appointmentId ?? null,
-      contactId:          input.contactId ?? null,
+      contactId:          resolvedContactId,
       conversationId:     input.conversationId ?? null,
       provider:           'asaas',
       providerPaymentId:  charge.providerPaymentId,

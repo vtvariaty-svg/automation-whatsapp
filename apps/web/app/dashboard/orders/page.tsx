@@ -441,6 +441,7 @@ export default function OrdersPage() {
                                   customerPhone: order.customerPhone ?? "",
                                   amount: String(order.price ?? 0),
                                 });
+                                if (order.contactId) params.set("contactId", order.contactId);
                                 router.push(`/dashboard/payments?${params}`);
                               }}
                               className="px-2.5 py-1 text-xs font-medium text-indigo-600 border border-indigo-200 hover:bg-indigo-50 rounded-lg transition-all"

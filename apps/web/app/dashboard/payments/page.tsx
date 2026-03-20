@@ -82,9 +82,11 @@ interface NewChargeModalProps {
   prefillCustomerName?: string;
   prefillCustomerPhone?: string;
   prefillAmount?: string;
+  prefillContactId?: string;
+  prefillConversationId?: string;
 }
 
-function NewChargeModal({ token, onClose, onCreated, prefillOrderId, prefillAppointmentId, prefillCustomerName, prefillCustomerPhone, prefillAmount }: NewChargeModalProps) {
+function NewChargeModal({ token, onClose, onCreated, prefillOrderId, prefillAppointmentId, prefillCustomerName, prefillCustomerPhone, prefillAmount, prefillContactId, prefillConversationId }: NewChargeModalProps) {
   const [name, setName] = useState(prefillCustomerName ?? "");
   const [phone, setPhone] = useState(prefillCustomerPhone ?? "");
   const [email, setEmail] = useState("");
@@ -95,6 +97,9 @@ function NewChargeModal({ token, onClose, onCreated, prefillOrderId, prefillAppo
   const [billingType, setBillingType] = useState("UNDEFINED");
   const [orderId, setOrderId] = useState(prefillOrderId ?? "");
   const [appointmentId, setAppointmentId] = useState(prefillAppointmentId ?? "");
+  // contactId and conversationId are immutable once set — not exposed as editable fields
+  const contactId     = prefillContactId      ?? "";
+  const conversationId = prefillConversationId ?? "";
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -119,11 +124,13 @@ function NewChargeModal({ token, onClose, onCreated, prefillOrderId, prefillAppo
         body: JSON.stringify({
           customerData: { name, phone, email: email || undefined, cpfCnpj: cpfCnpj || undefined },
           amount: amountNum,
-          description: description || undefined,
+          description:    description    || undefined,
           dueDate,
           billingType,
-          orderId:       orderId       || undefined,
-          appointmentId: appointmentId || undefined,
+          orderId:        orderId        || undefined,
+          appointmentId:  appointmentId  || undefined,
+          contactId:      contactId      || undefined,
+          conversationId: conversationId || undefined,
         }),
       });
 
@@ -398,12 +405,14 @@ function PaymentsContent() {
   const [dateTo, setDateTo] = useState("");
   const [page, setPage] = useState(1);
 
-  // URL params from orders "Cobrar" button
-  const prefillOrderId       = searchParams.get("orderId")       ?? undefined;
-  const prefillCustomerName  = searchParams.get("customerName")  ?? undefined;
-  const prefillCustomerPhone = searchParams.get("customerPhone") ?? undefined;
-  const prefillAmount        = searchParams.get("amount")        ?? undefined;
-  const autoOpen             = searchParams.get("newCharge") === "1";
+  // URL params from "Cobrar" / "Gerar cobrança" buttons in other modules
+  const prefillOrderId        = searchParams.get("orderId")        ?? undefined;
+  const prefillCustomerName   = searchParams.get("customerName")   ?? undefined;
+  const prefillCustomerPhone  = searchParams.get("customerPhone")  ?? undefined;
+  const prefillAmount         = searchParams.get("amount")         ?? undefined;
+  const prefillContactId      = searchParams.get("contactId")      ?? undefined;
+  const prefillConversationId = searchParams.get("conversationId") ?? undefined;
+  const autoOpen              = searchParams.get("newCharge") === "1";
 
   const [showNewModal, setShowNewModal] = useState(autoOpen);
   const [createdPayment, setCreatedPayment] = useState<
@@ -599,6 +608,8 @@ function PaymentsContent() {
           prefillCustomerName={prefillCustomerName}
           prefillCustomerPhone={prefillCustomerPhone}
           prefillAmount={prefillAmount}
+          prefillContactId={prefillContactId}
+          prefillConversationId={prefillConversationId}
         />
       )}
 

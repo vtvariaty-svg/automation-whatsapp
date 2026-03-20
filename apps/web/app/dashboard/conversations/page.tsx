@@ -8,13 +8,16 @@ import { planAtLeast } from "@/lib/config/plans";
 import { OrderFormDialog } from "@/components/orders/OrderFormDialog";
 
 type Conversation = {
-  id: string;
+  id: string;            // customerPhone (used as key for phone-based sub-routes)
+  convId?: string;       // real conversation UUID — use for conversationId in payments
   phone_number: string;
   last_message: string;
   status: string;
   timestamp: string;
   channel?: string;
   assigned_user?: string;
+  contactId?: string | null;
+  contactName?: string | null;
 };
 
 type LinkedOrder = {
@@ -174,7 +177,7 @@ export default function InboxPage() {
     // Load linked orders and payments for this conversation
     loadLinkedOrders(phone);
     const conv = conversations.find((c) => c.phone_number === phone);
-    if (conv?.id) loadLinkedPayments(conv.id);
+    if (conv?.convId) loadLinkedPayments(conv.convId);
   };
 
   useEffect(() => {
@@ -535,11 +538,10 @@ export default function InboxPage() {
                   )}
                   {canCreatePayment && (() => {
                     const conv = conversations.find((c) => c.phone_number === selectedPhone);
-                    const params = new URLSearchParams({
-                      newCharge: "1",
-                      conversationId: conv?.id ?? "",
-                      customerPhone: selectedPhone ?? "",
-                    });
+                    const params = new URLSearchParams({ newCharge: "1" });
+                    if (conv?.convId)    params.set("conversationId", conv.convId);
+                    if (selectedPhone)   params.set("customerPhone",  selectedPhone);
+                    if (conv?.contactId) params.set("contactId",      conv.contactId);
                     return (
                       <button
                         onClick={() => router.push(`/dashboard/payments?${params}`)}
@@ -763,13 +765,13 @@ export default function InboxPage() {
             if (selectedPhone) loadLinkedOrders(selectedPhone);
           }}
           tenantId={tenantId || ""}
-          contactId={selectedPhone}
+          contactId={conversations.find((c) => c.phone_number === selectedPhone)?.contactId ?? undefined}
           customerPhone={selectedPhone}
           origin={
             conversations.find((c) => c.phone_number === selectedPhone)?.channel ?? "whatsapp"
           }
           conversationId={
-            conversations.find((c) => c.phone_number === selectedPhone)?.id
+            conversations.find((c) => c.phone_number === selectedPhone)?.convId
           }
         />
       )}

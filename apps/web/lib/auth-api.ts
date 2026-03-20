@@ -13,9 +13,20 @@ export interface AuthUser {
 
 export const getAuthUser = async (req: Request): Promise<AuthUser | null> => {
   const authHeader = req.headers.get('authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
+  
+  // Extract token from Authorization header or from auth_token cookie
+  let token: string | null = null;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.split(' ')[1];
+  } else {
+    // Fall back to cookie (used by browser-based navigation)
+    const cookieHeader = req.headers.get('cookie') || '';
+    const cookieMatch = cookieHeader.match(/(?:^|;\s*)auth_token=([^;]+)/);
+    if (cookieMatch) token = decodeURIComponent(cookieMatch[1]);
+  }
 
-  const token = authHeader.split(' ')[1];
+  if (!token) return null;
+
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as AuthUser & { sessionVersion?: number };
     if (await isRevoked(token)) return null;

@@ -9,6 +9,8 @@ export async function POST(req: NextRequest) {
     const result = await loginUser(email, password, { ip, userAgent });
     return NextResponse.json(result);
   } catch (error: any) {
+    console.error('[LOGIN_ERROR]', error.message, error.stack);
     return NextResponse.json({ error: error.message }, { status: 401 });
   }
+
 }

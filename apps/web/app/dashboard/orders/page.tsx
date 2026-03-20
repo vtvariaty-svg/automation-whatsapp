@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useEntitlements } from "@/hooks/useEntitlements";
 import { planAtLeast } from "@/lib/config/plans";
@@ -114,6 +115,7 @@ function formatDate(date: string) {
 export default function OrdersPage() {
   const { user } = useAuth();
   const ent = useEntitlements();
+  const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -428,6 +430,25 @@ export default function OrdersPage() {
                               {action.label}
                             </button>
                           ))}
+                          {/* PAY1 — generate charge for orders in draft or pending_payment */}
+                          {["draft", "pending_payment"].includes(order.status) && (
+                            <button
+                              onClick={() => {
+                                const params = new URLSearchParams({
+                                  newCharge: "1",
+                                  orderId: order.id,
+                                  customerName: order.customerName ?? "",
+                                  customerPhone: order.customerPhone ?? "",
+                                  amount: String(order.price ?? 0),
+                                });
+                                router.push(`/dashboard/payments?${params}`);
+                              }}
+                              className="px-2.5 py-1 text-xs font-medium text-indigo-600 border border-indigo-200 hover:bg-indigo-50 rounded-lg transition-all"
+                              title="Gerar cobrança"
+                            >
+                              💸 Cobrar
+                            </button>
+                          )}
                           {!["cancelled", "refunded", "completed", "failed"].includes(order.status) && (
                             <button
                               onClick={() => setCancelModal(order.id)}

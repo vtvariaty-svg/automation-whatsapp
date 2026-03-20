@@ -30,6 +30,7 @@ const navItems: NavItem[] = [
   { href: "/dashboard/sales", label: "Vendas", icon: "💰", section: null, requiredFeature: "advancedCRM", minPlan: "pro" },
   { href: "/dashboard/appointments", label: "Agenda", icon: "📅", section: null, minPlan: "standard" },
   { href: "/dashboard/orders", label: "Pedidos", icon: "🛍️", section: null, minPlan: "standard" },
+  { href: "/dashboard/payments", label: "Cobranças", icon: "💸", section: null, minPlan: "standard" },
   { href: "/dashboard/services", label: "Serviços", icon: "✂️", section: null, minPlan: "standard" },
   { href: "/dashboard/professionals", label: "Profissionais", icon: "👤", section: null, minPlan: "standard" },
 

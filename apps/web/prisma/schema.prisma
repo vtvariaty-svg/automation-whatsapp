@@ -94,6 +94,9 @@ model Tenant {
   // Shadow Read Config
   shadowReadEnabled         Boolean                   @default(false)
   shadowReadSampleRate      Int                       @default(5) // 0-100
+  // PAY1 — transactional payments
+  paymentConfig             TenantPaymentConfig?
+  payments                  Payment[]
 }
 
 // ─── Contacts Module (Phase 1) ────────────────────────────────────────────────
@@ -236,6 +239,9 @@ model Product {
   price              Float              @default(0.0)
   currency           String             @default("BRL")
   stock              Int?
+  // PAY1 — product type for transactional payments
+  type               String             @default("product") // product | service
+  durationMinutes    Int?               // only for type=service
   createdAt          DateTime           @default(now())
   tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   salesEvents        SalesEvent[]
@@ -394,8 +400,12 @@ model Order {
   completedAt        DateTime?
   cancelledAt        DateTime?
   refundedAt         DateTime?
+  // PAY1 — link to transactional payment (separate from externalPaymentRef/Stripe)
+  paymentId          String?   @unique
   tenant             Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   contact            Contact?             @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  payment            Payment?             @relation("OrderActivePayment", fields: [paymentId], references: [id], onDelete: SetNull)
+  linkedPayments     Payment[]            @relation("PaymentToOrder")
   items              OrderItem[]
   statusHistory      OrderStatusHistory[]
 
@@ -463,9 +473,14 @@ model Appointment {
   professionalName       String? // snapshot at booking time
   // Contacts Module — FK → Contact (nullable, phase 1)
   contactId              String?
+  // PAY1 — payment state (separate from operational status)
+  paymentId              String?   @unique
+  paymentStatus          String?                   // null | payment_pending | payment_confirmed | payment_failed
   tenant                 Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   professional           Professional?             @relation(fields: [professionalId], references: [id], onDelete: SetNull)
   contact                Contact?                  @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  payment                Payment?                  @relation("AppointmentActivePayment", fields: [paymentId], references: [id], onDelete: SetNull)
+  linkedPayments         Payment[]                 @relation("PaymentToAppointment")
   notifications          AppointmentNotification[]
 
   @@index([tenantId, status])
@@ -1273,4 +1288,88 @@ model MigrationAuditItem {
   @@index([auditId])
   @@index([recordId])
   @@map("migration_audit_items")
+}
+
+// ─── PAY1 — Transactional Payments ────────────────────────────────────────────
+
+// Asaas credentials per tenant — never returned to frontend
+model TenantPaymentConfig {
+  id               String   @id @default(uuid())
+  tenantId         String   @unique
+  provider         String   @default("asaas")
+  environment      String   @default("sandbox") // sandbox | production
+  enabled          Boolean  @default(false)
+  apiKey           String   // server-side only — never exposed to frontend
+  webhookAuthToken String   // validated against asaas-access-token header
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("tenant_payment_configs")
+}
+
+// Individual charge (Asaas POST /v3/payments)
+model Payment {
+  id                 String    @id @default(uuid())
+  tenantId           String
+  // Source: either an order or an appointment (both optional for standalone charges)
+  orderId            String?
+  appointmentId      String?
+  provider           String    @default("asaas")
+  providerPaymentId  String?   @unique // Asaas payment ID
+  providerCustomerId String?   // Asaas customer ID — reused on future charges
+  invoiceUrl         String?   // link sent to customer
+  pixCopiaECola      String?   // pix copy-paste code (when billingType=PIX)
+  pixQrCodeBase64    String?   // base64 QR code image (when billingType=PIX)
+  // status: pending | confirmed | failed | refunded | canceled | overdue
+  status             String    @default("pending")
+  amount             Float
+  currency           String    @default("BRL")
+  description        String?
+  customerName       String
+  customerPhone      String
+  customerEmail      String?
+  customerCpfCnpj    String?
+  dueDate            String    // YYYY-MM-DD
+  // billingType: BOLETO | PIX | CREDIT_CARD | UNDEFINED (customer chooses)
+  billingType        String    @default("UNDEFINED")
+  paidAt             DateTime?
+  failedAt           DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  // Payment → Order (find which order this payment is for)
+  order       Order?       @relation("PaymentToOrder", fields: [orderId], references: [id], onDelete: SetNull)
+  // Payment → Appointment (find which appointment this payment is for)
+  appointment Appointment? @relation("PaymentToAppointment", fields: [appointmentId], references: [id], onDelete: SetNull)
+  // Back-relations (Order/Appointment → this Payment, via their paymentId FK)
+  orderRef       Order?       @relation("OrderActivePayment")
+  appointmentRef Appointment? @relation("AppointmentActivePayment")
+  events         PaymentEvent[]
+
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt])
+  @@map("payments")
+}
+
+// Webhook event audit log — providerEventId unique = idempotency gate
+model PaymentEvent {
+  id               String   @id @default(uuid())
+  paymentId        String
+  tenantId         String
+  providerEventId  String   @unique // Asaas event.id — insert failure = duplicate = skip
+  eventType        String   // PAYMENT_RECEIVED | PAYMENT_CONFIRMED | PAYMENT_OVERDUE | PAYMENT_DELETED | PAYMENT_REFUNDED
+  payload          Json     // full raw webhook body
+  // processingStatus: processed | ignored_duplicate | failed
+  processingStatus String   @default("processed")
+  errorMessage     String?
+  processedAt      DateTime @default(now())
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([paymentId])
+  @@index([tenantId, eventType])
+  @@map("payment_events")
 }

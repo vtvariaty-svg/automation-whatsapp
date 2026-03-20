@@ -10,6 +10,7 @@ import {
   createCharge,
   registerWebhook,
 } from '@/lib/services/asaasService';
+import { issueExternalNfe } from '@/lib/integrations/fiscal/nfeClient';
 import { randomUUID } from 'crypto';
 
 // ── Valid Payment status transitions ──────────────────────────────────────────
@@ -132,8 +133,11 @@ function maskSecret(value: string): string {
 
 export interface CreatePaymentInput {
   tenantId: string;
+  // sourceType is derived: 'order' if orderId, 'appointment' if appointmentId, else 'standalone'
   orderId?: string;
   appointmentId?: string;
+  contactId?: string;
+  conversationId?: string;
   customerData: {
     name: string;
     phone: string;
@@ -147,6 +151,12 @@ export interface CreatePaymentInput {
 }
 
 export async function createPaymentLink(input: CreatePaymentInput) {
+  // Validate: orderId and appointmentId are mutually exclusive
+  if (input.orderId && input.appointmentId) {
+    throw new Error('Forneça apenas orderId OU appointmentId, não ambos.');
+  }
+  const sourceType = input.orderId ? 'order' : input.appointmentId ? 'appointment' : 'standalone';
+
   // 1. Load and validate tenant payment config
   const config = await prisma.tenantPaymentConfig.findUnique({
     where: { tenantId: input.tenantId },
@@ -177,8 +187,11 @@ export async function createPaymentLink(input: CreatePaymentInput) {
   const payment = await prisma.payment.create({
     data: {
       tenantId:           input.tenantId,
+      sourceType,
       orderId:            input.orderId ?? null,
       appointmentId:      input.appointmentId ?? null,
+      contactId:          input.contactId ?? null,
+      conversationId:     input.conversationId ?? null,
       provider:           'asaas',
       providerPaymentId:  charge.providerPaymentId,
       providerCustomerId,
@@ -395,6 +408,92 @@ export async function processWebhookEvent(input: WebhookEventInput): Promise<{ s
     console.error('[PaymentWebhook] Propagation error', err);
   }
 
+  // ── Phase 2: ContactEvent — isolated, non-critical ─────────────────────────
+  if (targetStatus === 'confirmed' && payment.contactId) {
+    try {
+      const eventTitle =
+        payment.sourceType === 'order'       ? 'Pagamento de pedido confirmado' :
+        payment.sourceType === 'appointment' ? 'Pagamento de agendamento confirmado' :
+        'Pagamento confirmado';
+      await prisma.contactEvent.create({
+        data: {
+          tenantId:  tenantId,
+          contactId: payment.contactId,
+          type:      'payment_confirmed',
+          title:     eventTitle,
+          metadata:  {
+            paymentId:        payment.id,
+            amount:           payment.amount,
+            billingType:      payment.billingType,
+            providerPaymentId: payment.providerPaymentId,
+          },
+        },
+      });
+    } catch (err: any) {
+      console.error('[PaymentWebhook] ContactEvent creation failed (non-fatal):', err.message);
+    }
+  }
+
+  // ── Phase 3: Fiscal bridge — isolated, 8s timeout, order only ─────────────
+  if (targetStatus === 'confirmed' && payment.sourceType === 'order' && payment.customerCpfCnpj) {
+    try {
+      // Load tenant businessConfig to get nfeCompanyId
+      const bizConfig = await prisma.businessConfig.findUnique({
+        where: { tenantId },
+        select: { nfeCompanyId: true },
+      });
+      if (bizConfig?.nfeCompanyId) {
+        // Check for existing FiscalEmissionRecord to avoid duplicate emission
+        const existingFiscal = await prisma.fiscalEmissionRecord.findFirst({
+          where: { tenantId, externalReferenceId: payment.id },
+        });
+        if (!existingFiscal) {
+          const nfePayload = {
+            external_reference_id: payment.id,
+            company_id:            bizConfig.nfeCompanyId,
+            natureza_operacao:     'Venda de mercadoria',
+            customer: {
+              document: payment.customerCpfCnpj,
+              name:     payment.customerName,
+              ...(payment.customerEmail ? { email: payment.customerEmail } : {}),
+              address: { street: '', number: '', district: '', city: '', state: '', zipCode: '' },
+            },
+            items: [{
+              codigo_produto: payment.id.slice(0, 12),
+              descricao:      payment.description ?? 'Produto/Serviço',
+              quantidade:     1,
+              valor_unitario: payment.amount,
+            }],
+          };
+
+          const fiscalPromise = issueExternalNfe(nfePayload, randomUUID(), tenantId);
+          const timeoutPromise = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('Fiscal timeout')), 8000)
+          );
+
+          const nfeResult = await Promise.race([fiscalPromise, timeoutPromise]);
+
+          await prisma.fiscalEmissionRecord.create({
+            data: {
+              tenantId,
+              externalReferenceId: payment.id,
+              invoiceId:           nfeResult.invoice_id,
+              requestId:           nfeResult.request_id,
+              status:              nfeResult.status,
+              rawStatus:           nfeResult.status,
+              mode:                'real',
+              customerNome:        payment.customerName,
+              customerDocumento:   payment.customerCpfCnpj,
+              total:               payment.amount,
+            },
+          });
+        }
+      }
+    } catch (err: any) {
+      console.error('[PaymentWebhook] Fiscal emission failed (non-fatal):', err.message);
+    }
+  }
+
   return { status: 200, message: 'OK' };
 }
 
@@ -404,6 +503,8 @@ export interface ListPaymentsFilters {
   status?: string;
   dateFrom?: Date;
   dateTo?: Date;
+  contactId?: string;
+  conversationId?: string;
   page?: number;
   limit?: number;
 }
@@ -414,7 +515,9 @@ export async function listPayments(tenantId: string, filters?: ListPaymentsFilte
   const skip  = (page - 1) * limit;
 
   const where: any = { tenantId };
-  if (filters?.status) where.status = filters.status;
+  if (filters?.status)         where.status         = filters.status;
+  if (filters?.contactId)      where.contactId      = filters.contactId;
+  if (filters?.conversationId) where.conversationId = filters.conversationId;
   if (filters?.dateFrom || filters?.dateTo) {
     where.createdAt = {};
     if (filters.dateFrom) where.createdAt.gte = filters.dateFrom;

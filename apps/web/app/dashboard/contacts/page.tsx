@@ -68,7 +68,23 @@ type ListResult = {
   totalPages: number;
 };
 
-type DrawerTab = 'profile' | 'timeline' | 'orders' | 'appointments';
+type DrawerTab = 'profile' | 'timeline' | 'orders' | 'appointments' | 'payments';
+
+type ContactPayment = {
+  id: string;
+  status: string;
+  sourceType: string;
+  amount: number;
+  currency: string;
+  billingType: string;
+  description: string | null;
+  invoiceUrl: string | null;
+  dueDate: string;
+  paidAt: string | null;
+  createdAt: string;
+  orderId: string | null;
+  appointmentId: string | null;
+};
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -204,6 +220,10 @@ export default function ContactsPage() {
   const [timeline, setTimeline] = useState<ContactEvent[]>([]);
   const [timelineLoading, setTimelineLoading] = useState(false);
 
+  // Payments
+  const [contactPayments, setContactPayments] = useState<ContactPayment[]>([]);
+  const [paymentsLoading, setPaymentsLoading] = useState(false);
+
   // Duplicates
   const [duplicates, setDuplicates] = useState<DuplicateContact[]>([]);
   const [merging, setMerging] = useState<string | null>(null);
@@ -263,6 +283,7 @@ export default function ContactsPage() {
     setEditing(false);
     setDetail(null);
     setTimeline([]);
+    setContactPayments([]);
     setDuplicates([]);
     setMergeConfirm(null);
     setDrawerTab('profile');
@@ -299,10 +320,33 @@ export default function ContactsPage() {
     }
   }
 
+  async function loadContactPayments(contactId: string) {
+    setPaymentsLoading(true);
+    try {
+      const token = typeof window !== 'undefined'
+        ? (localStorage.getItem('auth_token') ?? localStorage.getItem('token') ?? '')
+        : '';
+      const res = await fetch(`/api/contacts/${contactId}/payments?limit=20`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setContactPayments(data.payments ?? []);
+      }
+    } catch {
+      setContactPayments([]);
+    } finally {
+      setPaymentsLoading(false);
+    }
+  }
+
   function handleTabChange(tab: DrawerTab) {
     setDrawerTab(tab);
     if (tab === 'timeline' && selectedId && timeline.length === 0) {
       loadTimeline(selectedId);
+    }
+    if (tab === 'payments' && selectedId) {
+      loadContactPayments(selectedId);
     }
   }
 
@@ -591,8 +635,8 @@ export default function ContactsPage() {
 
               {/* Tabs */}
               <div className="flex border-b border-gray-100 px-5">
-                {(['profile', 'timeline', 'orders', 'appointments'] as DrawerTab[]).map((tab) => {
-                  const labels: Record<DrawerTab, string> = { profile: 'Perfil', timeline: 'Timeline', orders: 'Pedidos', appointments: 'Agenda' };
+                {(['profile', 'timeline', 'orders', 'appointments', 'payments'] as DrawerTab[]).map((tab) => {
+                  const labels: Record<DrawerTab, string> = { profile: 'Perfil', timeline: 'Timeline', orders: 'Pedidos', appointments: 'Agenda', payments: 'Cobranças' };
                   return (
                     <button key={tab} onClick={() => handleTabChange(tab)}
                       className={`px-3 py-2.5 text-xs font-semibold border-b-2 transition-colors ${drawerTab === tab ? 'border-[#4f46e5] text-[#4f46e5]' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>
@@ -829,6 +873,63 @@ export default function ContactsPage() {
                             </p>
                           </div>
                         ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ── Payments tab ──────────────────────────────────────────── */}
+                {drawerTab === 'payments' && (
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Cobranças</p>
+                      <a href="/dashboard/payments" className="text-xs text-[#4f46e5] hover:underline">Ver todas →</a>
+                    </div>
+                    {paymentsLoading ? (
+                      <div className="flex justify-center py-6">
+                        <div className="w-5 h-5 border-2 border-gray-200 border-t-[#4f46e5] rounded-full animate-spin" />
+                      </div>
+                    ) : contactPayments.length === 0 ? (
+                      <p className="text-sm text-gray-400 italic">Nenhuma cobrança vinculada.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {contactPayments.map((p) => {
+                          const statusLabel: Record<string, string> = {
+                            pending: 'Pendente', confirmed: 'Pago', overdue: 'Vencido',
+                            failed: 'Falhou', canceled: 'Cancelado', refunded: 'Estornado',
+                          };
+                          const statusColor: Record<string, string> = {
+                            pending: 'text-amber-600', confirmed: 'text-emerald-600',
+                            overdue: 'text-orange-600', failed: 'text-red-600',
+                            canceled: 'text-gray-400', refunded: 'text-gray-500',
+                          };
+                          return (
+                            <div key={p.id} className="bg-gray-50 rounded-xl px-3 py-2.5 flex items-center justify-between gap-2 text-sm">
+                              <div className="min-w-0">
+                                <p className="font-medium text-gray-800 truncate">
+                                  {p.description ?? (p.sourceType === 'order' ? 'Pedido' : p.sourceType === 'appointment' ? 'Agendamento' : 'Cobrança avulsa')}
+                                </p>
+                                <p className="text-xs text-gray-400">Venc. {p.dueDate}</p>
+                              </div>
+                              <div className="text-right flex-shrink-0 space-y-0.5">
+                                <p className="font-semibold text-gray-900">{currency(p.amount, p.currency)}</p>
+                                <p className={`text-xs font-medium ${statusColor[p.status] ?? 'text-gray-500'}`}>
+                                  {statusLabel[p.status] ?? p.status}
+                                </p>
+                                {p.invoiceUrl && p.status !== 'confirmed' && (
+                                  <a
+                                    href={p.invoiceUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-[11px] text-[#4f46e5] hover:underline block"
+                                  >
+                                    Abrir link →
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>

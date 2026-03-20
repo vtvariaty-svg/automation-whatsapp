@@ -139,6 +139,7 @@ model Contact {
   conversations    Conversation[]
   orders           Order[]
   appointments     Appointment[]
+  payments         Payment[]       // PAY-INT1
   memory           CustomerMemory? @relation("ContactMemory")
   events           ContactEvent[]
   mergesAsSurvivor ContactMerge[]  @relation("MergeSurvivor")
@@ -309,6 +310,7 @@ model Conversation {
   tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   contact       Contact?  @relation(fields: [contactId], references: [id], onDelete: SetNull)
   messages      Message[]
+  payments      Payment[] // PAY-INT1
 
   @@index([tenantId, status])
   @@index([tenantId, lastMessageAt])
@@ -1314,9 +1316,12 @@ model TenantPaymentConfig {
 model Payment {
   id                 String    @id @default(uuid())
   tenantId           String
-  // Source: either an order or an appointment (both optional for standalone charges)
+  // PAY-INT1: source type and traceability links
+  sourceType         String    @default("standalone") // order | appointment | standalone
   orderId            String?
   appointmentId      String?
+  contactId          String?   // traceability to Contact
+  conversationId     String?   // traceability to originating Conversation
   provider           String    @default("asaas")
   providerPaymentId  String?   @unique // Asaas payment ID
   providerCustomerId String?   // Asaas customer ID — reused on future charges
@@ -1345,6 +1350,9 @@ model Payment {
   order       Order?       @relation("PaymentToOrder", fields: [orderId], references: [id], onDelete: SetNull)
   // Payment → Appointment (find which appointment this payment is for)
   appointment Appointment? @relation("PaymentToAppointment", fields: [appointmentId], references: [id], onDelete: SetNull)
+  // PAY-INT1: traceability relations
+  contact      Contact?      @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  conversation Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
   // Back-relations (Order/Appointment → this Payment, via their paymentId FK)
   orderRef       Order?       @relation("OrderActivePayment")
   appointmentRef Appointment? @relation("AppointmentActivePayment")
@@ -1352,6 +1360,8 @@ model Payment {
 
   @@index([tenantId, status])
   @@index([tenantId, createdAt])
+  @@index([tenantId, contactId])
+  @@index([tenantId, conversationId])
   @@map("payments")
 }
 

@@ -10,7 +10,9 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
 
   const filters = {
-    status:   searchParams.get('status')   || undefined,
+    status:         searchParams.get('status')         || undefined,
+    conversationId: searchParams.get('conversationId') || undefined,
+    contactId:      searchParams.get('contactId')      || undefined,
     dateFrom: searchParams.get('dateFrom') ? new Date(searchParams.get('dateFrom')!) : undefined,
     dateTo:   searchParams.get('dateTo')   ? new Date(searchParams.get('dateTo')!)   : undefined,
     page:     searchParams.get('page')     ? parseInt(searchParams.get('page')!)     : 1,
@@ -38,7 +40,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Body inválido' }, { status: 400 });
   }
 
-  const { customerData, amount, description, dueDate, billingType, orderId, appointmentId } = body;
+  const { customerData, amount, description, dueDate, billingType, orderId, appointmentId, contactId, conversationId } = body;
 
   if (!customerData?.name || !customerData?.phone) {
     return NextResponse.json({ error: 'customerData.name e customerData.phone são obrigatórios' }, { status: 400 });
@@ -52,9 +54,11 @@ export async function POST(request: Request) {
 
   try {
     const payment = await createPaymentLink({
-      tenantId:     auth.tenantId,
-      orderId:      orderId      ?? undefined,
-      appointmentId: appointmentId ?? undefined,
+      tenantId:       auth.tenantId,
+      orderId:        orderId        ?? undefined,
+      appointmentId:  appointmentId  ?? undefined,
+      contactId:      contactId      ?? undefined,
+      conversationId: conversationId ?? undefined,
       customerData: {
         name:      customerData.name,
         phone:     customerData.phone,

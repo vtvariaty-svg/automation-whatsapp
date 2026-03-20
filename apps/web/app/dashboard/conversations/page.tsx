@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useEntitlements } from "@/hooks/useEntitlements";
 import { planAtLeast } from "@/lib/config/plans";
@@ -23,6 +24,16 @@ type LinkedOrder = {
   product: string | null;
   createdAt: string;
   origin: string;
+};
+
+type LinkedPayment = {
+  id: string;
+  status: string;
+  amount: number;
+  billingType: string;
+  invoiceUrl: string | null;
+  dueDate: string;
+  createdAt: string;
 };
 
 type Message = {
@@ -53,6 +64,7 @@ function authHeaders(): Record<string, string> {
 export default function InboxPage() {
   const { user } = useAuth();
   const ent = useEntitlements();
+  const router = useRouter();
   const tenantId = user?.tenantId;
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedPhone, setSelectedPhone] = useState<string | null>(null);
@@ -72,6 +84,10 @@ export default function InboxPage() {
   const [showOrderDialog, setShowOrderDialog] = useState(false);
   const [creatingOrder, setCreatingOrder] = useState(false);
   const canCreateOrder = !ent.loading && planAtLeast(ent.plan, "standard");
+
+  // Payment states
+  const [linkedPayments, setLinkedPayments] = useState<LinkedPayment[]>([]);
+  const canCreatePayment = !ent.loading && planAtLeast(ent.plan, "standard");
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -123,6 +139,21 @@ export default function InboxPage() {
     }
   }, [canCreateOrder]);
 
+  const loadLinkedPayments = useCallback(async (conversationId: string) => {
+    if (!canCreatePayment) return;
+    try {
+      const res = await fetch(`/api/payments?conversationId=${conversationId}&limit=10`, { headers: authHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        setLinkedPayments(data.payments ?? []);
+      } else {
+        setLinkedPayments([]);
+      }
+    } catch {
+      setLinkedPayments([]);
+    }
+  }, [canCreatePayment]);
+
   const loadMessages = async (phone: string, status: string) => {
     setSelectedPhone(phone);
     setCurrentStatus(status);
@@ -140,8 +171,10 @@ export default function InboxPage() {
     } finally {
       setLoadingChat(false);
     }
-    // Load linked orders for this contact
+    // Load linked orders and payments for this conversation
     loadLinkedOrders(phone);
+    const conv = conversations.find((c) => c.phone_number === phone);
+    if (conv?.id) loadLinkedPayments(conv.id);
   };
 
   useEffect(() => {
@@ -500,6 +533,22 @@ export default function InboxPage() {
                       <span>🛍️</span> <span>Criar Pedido</span>
                     </button>
                   )}
+                  {canCreatePayment && (() => {
+                    const conv = conversations.find((c) => c.phone_number === selectedPhone);
+                    const params = new URLSearchParams({
+                      newCharge: "1",
+                      conversationId: conv?.id ?? "",
+                      customerPhone: selectedPhone ?? "",
+                    });
+                    return (
+                      <button
+                        onClick={() => router.push(`/dashboard/payments?${params}`)}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 rounded-xl text-sm font-semibold hover:bg-indigo-100 transition-all border border-indigo-100"
+                      >
+                        <span>💸</span> <span>Gerar cobrança</span>
+                      </button>
+                    );
+                  })()}
                 </div>
               </div>
 
@@ -521,6 +570,40 @@ export default function InboxPage() {
                       <span className="text-gray-700">#{o.id.slice(0, 6)}</span>
                       <span className="text-gray-400">R$ {Number(o.price).toFixed(2).replace(".", ",")}</span>
                     </a>
+                  ))}
+                </div>
+              )}
+
+              {/* Linked payments bar */}
+              {linkedPayments.length > 0 && (
+                <div className="px-6 py-2 border-b border-gray-100 bg-indigo-50/30 flex items-center gap-2 overflow-x-auto shrink-0">
+                  <span className="text-xs font-semibold text-indigo-500 shrink-0">💸 Cobranças:</span>
+                  {linkedPayments.map((p) => (
+                    <div key={p.id} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-white border border-indigo-100 shrink-0">
+                      <span className={`w-1.5 h-1.5 rounded-full ${
+                        p.status === "confirmed" ? "bg-emerald-500" :
+                        p.status === "failed" || p.status === "canceled" ? "bg-red-400" :
+                        p.status === "overdue" ? "bg-amber-500" : "bg-indigo-400"
+                      }`} />
+                      <span className="text-gray-700">
+                        {p.status === "confirmed" ? "Pago" :
+                         p.status === "overdue"   ? "Vencido" :
+                         p.status === "failed"    ? "Falhou" :
+                         p.status === "canceled"  ? "Cancelado" : "Pendente"}
+                      </span>
+                      <span className="text-gray-500">R$ {Number(p.amount).toFixed(2).replace(".", ",")}</span>
+                      {p.invoiceUrl && p.status !== "confirmed" && (
+                        <a
+                          href={p.invoiceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-indigo-500 hover:text-indigo-700 underline ml-0.5"
+                          title="Abrir link de pagamento"
+                        >
+                          link
+                        </a>
+                      )}
+                    </div>
                   ))}
                 </div>
               )}

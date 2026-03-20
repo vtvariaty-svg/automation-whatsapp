@@ -21,7 +21,7 @@ function headers(apiKey: string) {
 }
 
 async function asaasRequest<T>(
-  method: 'GET' | 'POST',
+  method: 'GET' | 'POST' | 'DELETE',
   env: string,
   apiKey: string,
   path: string,
@@ -32,6 +32,12 @@ async function asaasRequest<T>(
     headers: headers(apiKey),
     body: body ? JSON.stringify(body) : undefined,
   });
+
+  // DELETE returns 200/204 with empty body
+  if (method === 'DELETE') {
+    if (!res.ok) throw new Error(`[Asaas] DELETE failed: ${res.status}`);
+    return {} as T;
+  }
 
   const data = await res.json();
 
@@ -172,6 +178,65 @@ export async function createCharge(
     status: payment.status,
     billingType: payment.billingType,
   };
+}
+
+// ── Webhook registration ───────────────────────────────────────────────────────
+
+const PAYMENT_WEBHOOK_EVENTS = [
+  'PAYMENT_RECEIVED',
+  'PAYMENT_CONFIRMED',
+  'PAYMENT_OVERDUE',
+  'PAYMENT_DELETED',
+  'PAYMENT_REFUNDED',
+];
+
+export interface AsaasWebhookResult {
+  webhookId: string;
+}
+
+/**
+ * Registers (or updates) the webhook endpoint in the Asaas account.
+ * If webhookId is provided, deletes the old one first then creates fresh.
+ */
+export async function registerWebhook(
+  apiKey: string,
+  env: string,
+  webhookUrl: string,
+  authToken: string,
+  existingWebhookId?: string
+): Promise<AsaasWebhookResult> {
+  // Remove existing webhook if present, so we don't accumulate duplicates
+  if (existingWebhookId) {
+    try {
+      await asaasRequest('DELETE', env, apiKey, `/webhooks/${existingWebhookId}`);
+    } catch {
+      // Non-fatal — old webhook may have been deleted manually
+    }
+  }
+
+  const result = await asaasRequest<{ id: string }>(
+    'POST', env, apiKey,
+    '/webhooks',
+    {
+      url:        webhookUrl,
+      email:      '',            // optional in Asaas
+      apiVersion: 3,
+      enabled:    true,
+      interrupted: false,
+      authToken,
+      events: PAYMENT_WEBHOOK_EVENTS,
+    }
+  );
+
+  return { webhookId: result.id };
+}
+
+export async function deleteWebhook(
+  apiKey: string,
+  env: string,
+  webhookId: string
+): Promise<void> {
+  await asaasRequest('DELETE', env, apiKey, `/webhooks/${webhookId}`);
 }
 
 // ── Get charge status ──────────────────────────────────────────────────────────

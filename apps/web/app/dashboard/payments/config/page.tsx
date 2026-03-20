@@ -10,7 +10,7 @@ interface PaymentConfig {
   environment: string;
   enabled: boolean;
   apiKeyMasked?: string;
-  hasWebhookToken?: boolean;
+  webhookRegistered?: boolean;
   updatedAt?: string;
 }
 
@@ -27,9 +27,7 @@ export default function PaymentsConfigPage() {
   const [environment, setEnvironment] = useState("sandbox");
   const [enabled, setEnabled] = useState(false);
   const [apiKey, setApiKey] = useState("");
-  const [webhookAuthToken, setWebhookAuthToken] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
-  const [showWebhookToken, setShowWebhookToken] = useState(false);
 
   useEffect(() => {
     if (!token) return;
@@ -61,19 +59,12 @@ export default function PaymentsConfigPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          provider: "asaas",
-          environment,
-          enabled,
-          apiKey,
-          webhookAuthToken,
-        }),
+        body: JSON.stringify({ environment, enabled, apiKey }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Erro ao salvar configuração");
       setConfig(data);
       setApiKey("");
-      setWebhookAuthToken("");
       setSuccess(true);
     } catch (err: any) {
       setError(err.message);
@@ -81,11 +72,6 @@ export default function PaymentsConfigPage() {
       setSaving(false);
     }
   }
-
-  const webhookUrl =
-    typeof window !== "undefined"
-      ? `${window.location.origin}/api/webhook/asaas?tenantId=SEU_TENANT_ID`
-      : "/api/webhook/asaas?tenantId=SEU_TENANT_ID";
 
   if (loading) {
     return (
@@ -107,36 +93,39 @@ export default function PaymentsConfigPage() {
         <h1 className="text-xl font-semibold text-white">Configuração de Pagamentos</h1>
       </div>
 
+      {/* Current config summary */}
       {config?.id && (
-        <div className="mb-6 p-4 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-300 space-y-1">
-          <p>
-            <span className="text-gray-400">Provider:</span>{" "}
-            <span className="text-white font-medium">{config.provider}</span>
-          </p>
-          <p>
-            <span className="text-gray-400">API Key:</span>{" "}
+        <div className="mb-6 p-4 rounded-xl bg-white/5 border border-white/10 text-sm text-gray-300 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-gray-400">API Key</span>
             <span className="font-mono">{config.apiKeyMasked}</span>
-          </p>
-          <p>
-            <span className="text-gray-400">Webhook Token:</span>{" "}
-            <span>{config.hasWebhookToken ? "Configurado ✓" : "Não configurado"}</span>
-          </p>
-          <p>
-            <span className="text-gray-400">Status:</span>{" "}
-            <span
-              className={
-                config.enabled
-                  ? "text-green-400 font-medium"
-                  : "text-yellow-400 font-medium"
-              }
-            >
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-gray-400">Ambiente</span>
+            <span className={config.environment === "production" ? "text-green-400 font-medium" : "text-yellow-400 font-medium"}>
+              {config.environment === "production" ? "Produção" : "Sandbox"}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-gray-400">Webhook</span>
+            {config.webhookRegistered ? (
+              <span className="text-green-400 font-medium flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
+                Registrado automaticamente
+              </span>
+            ) : (
+              <span className="text-red-400 font-medium">Não registrado</span>
+            )}
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-gray-400">Status</span>
+            <span className={config.enabled ? "text-green-400 font-medium" : "text-gray-400"}>
               {config.enabled ? "Habilitado" : "Desabilitado"}
             </span>
-          </p>
+          </div>
           {config.updatedAt && (
-            <p className="text-gray-500 text-xs">
-              Atualizado em{" "}
-              {new Date(config.updatedAt).toLocaleString("pt-BR")}
+            <p className="text-gray-500 text-xs pt-1 border-t border-white/5">
+              Atualizado em {new Date(config.updatedAt).toLocaleString("pt-BR")}
             </p>
           )}
         </div>
@@ -157,9 +146,9 @@ export default function PaymentsConfigPage() {
 
         <div>
           <label className="block text-sm text-gray-300 mb-1.5">
-            API Key Asaas{" "}
-            <span className="text-gray-500 font-normal">
-              (Conta → Integrações → Gerar chave)
+            API Key Asaas
+            <span className="text-gray-500 font-normal ml-1">
+              (Conta Asaas → Integrações → Gerar chave)
             </span>
           </label>
           <div className="relative">
@@ -167,60 +156,30 @@ export default function PaymentsConfigPage() {
               type={showApiKey ? "text" : "password"}
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
-              placeholder={
-                config?.apiKeyMasked ? `Atual: ${config.apiKeyMasked}` : "Cole aqui a sua API Key"
-              }
-              className="w-full px-3 py-2 pr-10 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+              placeholder={config?.apiKeyMasked ? `Atual: ${config.apiKeyMasked}` : "Cole aqui a sua API Key"}
+              className="w-full px-3 py-2 pr-20 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500"
             />
             <button
               type="button"
               onClick={() => setShowApiKey((v) => !v)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white text-xs"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white text-xs px-1"
             >
               {showApiKey ? "Ocultar" : "Mostrar"}
             </button>
           </div>
           <p className="text-xs text-gray-500 mt-1">
-            A chave é salva de forma segura e nunca é exibida novamente.
+            A chave é salva com segurança e nunca exibida novamente.
           </p>
         </div>
 
-        <div>
-          <label className="block text-sm text-gray-300 mb-1.5">
-            Webhook Auth Token{" "}
-            <span className="text-gray-500 font-normal">
-              (configure no painel Asaas → Webhooks)
-            </span>
-          </label>
-          <div className="relative">
-            <input
-              type={showWebhookToken ? "text" : "password"}
-              value={webhookAuthToken}
-              onChange={(e) => setWebhookAuthToken(e.target.value)}
-              placeholder={
-                config?.hasWebhookToken ? "Token já configurado" : "Token de autenticação do webhook"
-              }
-              className="w-full px-3 py-2 pr-10 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-indigo-500"
-            />
-            <button
-              type="button"
-              onClick={() => setShowWebhookToken((v) => !v)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white text-xs"
-            >
-              {showWebhookToken ? "Ocultar" : "Mostrar"}
-            </button>
-          </div>
-        </div>
-
-        <div className="p-4 rounded-lg bg-white/5 border border-white/10">
-          <p className="text-xs text-gray-400 mb-2 font-medium">URL do Webhook (configure no Asaas)</p>
-          <code className="text-xs text-indigo-300 break-all">
-            {`${typeof window !== "undefined" ? window.location.origin : ""}/api/webhook/asaas?tenantId=`}
-            <span className="text-yellow-300">SEU_TENANT_ID</span>
-          </code>
-          <p className="text-xs text-gray-500 mt-2">
-            Eventos: PAYMENT_RECEIVED, PAYMENT_CONFIRMED, PAYMENT_OVERDUE, PAYMENT_DELETED, PAYMENT_REFUNDED
-          </p>
+        {/* What happens automatically */}
+        <div className="p-4 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-sm space-y-1.5">
+          <p className="text-indigo-300 font-medium text-xs uppercase tracking-wide">O que acontece ao salvar</p>
+          <ul className="text-gray-300 space-y-1 text-xs">
+            <li>✓ Token de segurança gerado automaticamente</li>
+            <li>✓ Webhook registrado na sua conta Asaas automaticamente</li>
+            <li>✓ Nenhuma configuração manual necessária no painel Asaas</li>
+          </ul>
         </div>
 
         <div className="flex items-center gap-3">
@@ -249,18 +208,29 @@ export default function PaymentsConfigPage() {
         )}
 
         {success && (
-          <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 text-sm">
-            Configuração salva com sucesso.
+          <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 text-sm space-y-0.5">
+            <p className="font-medium">Configuração salva com sucesso.</p>
+            {config?.webhookRegistered ? (
+              <p className="text-xs text-green-300">Webhook registrado automaticamente na sua conta Asaas.</p>
+            ) : (
+              <p className="text-xs text-yellow-300">Aviso: não foi possível registrar o webhook automaticamente. Tente salvar novamente.</p>
+            )}
           </div>
         )}
 
         <button
           type="submit"
-          disabled={saving || !apiKey.trim() || !webhookAuthToken.trim()}
+          disabled={saving || !apiKey.trim()}
           className="w-full py-2.5 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium transition-colors"
         >
-          {saving ? "Salvando..." : "Salvar configuração"}
+          {saving ? "Salvando e registrando webhook..." : "Salvar configuração"}
         </button>
+
+        {config?.id && !config.webhookRegistered && (
+          <p className="text-xs text-center text-yellow-400">
+            Webhook não registrado. Salve novamente para tentar o registro automático.
+          </p>
+        )}
       </form>
     </div>
   );

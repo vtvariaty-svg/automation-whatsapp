@@ -1301,6 +1301,7 @@ model TenantPaymentConfig {
   enabled          Boolean  @default(false)
   apiKey           String   // server-side only — never exposed to frontend
   webhookAuthToken String   // validated against asaas-access-token header
+  webhookId        String?  // Asaas webhook registration ID (for update/delete)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 

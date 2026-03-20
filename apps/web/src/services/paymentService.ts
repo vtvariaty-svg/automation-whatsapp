@@ -8,7 +8,9 @@ import { prisma } from '@/lib/prisma';
 import {
   createOrFindAsaasCustomer,
   createCharge,
+  registerWebhook,
 } from '@/lib/services/asaasService';
+import { randomUUID } from 'crypto';
 
 // ── Valid Payment status transitions ──────────────────────────────────────────
 const PAYMENT_TRANSITIONS: Record<string, string[]> = {
@@ -32,6 +34,99 @@ const EVENT_TO_STATUS: Record<string, string | null> = {
   PAYMENT_DELETED:   'canceled',
   PAYMENT_REFUNDED:  'refunded',
 };
+
+// ── setupPaymentConfig ────────────────────────────────────────────────────────
+
+export interface SetupPaymentConfigInput {
+  tenantId: string;
+  apiKey: string;
+  environment: string; // sandbox | production
+  enabled: boolean;
+}
+
+export interface SetupPaymentConfigResult {
+  id: string;
+  provider: string;
+  environment: string;
+  enabled: boolean;
+  apiKeyMasked: string;
+  webhookRegistered: boolean;
+  updatedAt: Date;
+}
+
+/**
+ * Saves Asaas config for a tenant and auto-registers the webhook.
+ * Generates webhookAuthToken automatically — never exposed to frontend.
+ */
+export async function setupPaymentConfig(
+  input: SetupPaymentConfigInput
+): Promise<SetupPaymentConfigResult> {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+  const webhookUrl = `${appUrl}/api/webhook/asaas?tenantId=${input.tenantId}`;
+
+  // Load existing config to get previous webhookId (for cleanup)
+  const existing = await prisma.tenantPaymentConfig.findUnique({
+    where: { tenantId: input.tenantId },
+  });
+
+  // Generate a fresh secure token for this registration
+  const webhookAuthToken = randomUUID();
+
+  // Register webhook in Asaas (delete old one if exists)
+  let webhookId: string | null = null;
+  let webhookRegistered = false;
+
+  try {
+    const result = await registerWebhook(
+      input.apiKey,
+      input.environment,
+      webhookUrl,
+      webhookAuthToken,
+      existing?.webhookId ?? undefined
+    );
+    webhookId = result.webhookId;
+    webhookRegistered = true;
+  } catch (err: any) {
+    // Non-fatal: save config even if webhook registration fails
+    // (tenant can retry by saving again)
+    console.error('[PaymentConfig] Webhook registration failed:', err.message);
+  }
+
+  const config = await prisma.tenantPaymentConfig.upsert({
+    where:  { tenantId: input.tenantId },
+    create: {
+      tenantId:         input.tenantId,
+      provider:         'asaas',
+      environment:      input.environment,
+      enabled:          input.enabled,
+      apiKey:           input.apiKey.trim(),
+      webhookAuthToken,
+      webhookId:        webhookId ?? undefined,
+    },
+    update: {
+      environment:      input.environment,
+      enabled:          input.enabled,
+      apiKey:           input.apiKey.trim(),
+      webhookAuthToken,
+      webhookId:        webhookId ?? undefined,
+    },
+  });
+
+  return {
+    id:                config.id,
+    provider:          config.provider,
+    environment:       config.environment,
+    enabled:           config.enabled,
+    apiKeyMasked:      maskSecret(config.apiKey),
+    webhookRegistered,
+    updatedAt:         config.updatedAt,
+  };
+}
+
+function maskSecret(value: string): string {
+  if (value.length <= 8) return '••••••••';
+  return '••••••' + value.slice(-4);
+}
 
 // ── createPaymentLink ─────────────────────────────────────────────────────────
 

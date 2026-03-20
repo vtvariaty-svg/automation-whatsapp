@@ -72,8 +72,11 @@ export const registerUser = async (name: string, email: string, passwordPlain: s
 };
 
 export const loginUser = async (email: string, passwordPlain: string, meta?: { ip?: string, userAgent?: string }) => {
+  email = email.trim();
+  passwordPlain = passwordPlain.trim();
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) throw new Error('Invalid credentials');
+
 
   // Bloquear conta desativada pelo superadmin
   if (!user.isActive) throw new Error('Conta desativada. Entre em contato com o suporte.');

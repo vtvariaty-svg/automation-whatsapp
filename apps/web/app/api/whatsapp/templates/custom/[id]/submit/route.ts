@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAuthTenant } from '@/lib/getAuthTenant';
 import { prisma } from '@/lib/prisma';
-import { submitToMeta } from '../../route';
+import { submitToMeta } from '@/src/services/customTemplateService';
 
 export const dynamic = 'force-dynamic';
 

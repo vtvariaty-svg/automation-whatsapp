@@ -257,6 +257,7 @@ model User {
   isActive           Boolean      @default(true)
   lastLoginAt        DateTime?
   forcePasswordReset Boolean      @default(false)
+  sessionVersion     Int          @default(1)
   createdAt          DateTime     @default(now())
   tenant             Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   loginEvents        LoginEvent[]

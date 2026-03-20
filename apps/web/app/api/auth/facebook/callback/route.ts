@@ -89,7 +89,7 @@ export async function GET(request: Request) {
 
     // Generate JWT
     const token = jwt.sign(
-      { userId: user.id, tenantId: user.tenantId, role: user.role },
+      { userId: user.id, tenantId: user.tenantId, role: user.role, sessionVersion: user.sessionVersion || 1 },
       JWT_SECRET,
       { expiresIn: '1d' }
     );

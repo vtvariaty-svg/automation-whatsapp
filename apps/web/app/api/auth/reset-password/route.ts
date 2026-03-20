@@ -49,7 +49,7 @@ export async function POST(req: Request) {
     await prisma.$transaction([
       prisma.user.update({
         where: { id: user.id },
-        data: { passwordHash }
+        data: { passwordHash, forcePasswordReset: false, sessionVersion: { increment: 1 } }
       }),
       prisma.verificationToken.update({
         where: { id: resetToken.id },

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Search, MoreVertical, Ban, CheckCircle, Key, Mail, ShieldAlert } from 'lucide-react';
+import { Search, MoreVertical, Ban, CheckCircle, Key, Mail, ShieldAlert, CreditCard, Box, X, Save } from 'lucide-react';
 
 interface User {
   id: string;
@@ -11,7 +11,7 @@ interface User {
   isActive: boolean;
   forcePasswordReset: boolean;
   lastLoginAt: string | null;
-  tenant: { name: string } | null;
+  tenant: { id: string; name: string } | null;
 }
 
 export default function SuperAdminUsers() {
@@ -19,6 +19,10 @@ export default function SuperAdminUsers() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  const [overrideModal, setOverrideModal] = useState<User | null>(null);
+  const [newPlan, setNewPlan] = useState('pro');
+  const [newLimits, setNewLimits] = useState('{}');
 
   const fetchUsers = async () => {
     try {
@@ -56,7 +60,7 @@ export default function SuperAdminUsers() {
   };
 
   const forceReset = async (user: User) => {
-    if (!window.confirm(`Forçar reset de senha para ${user.email}? A conta receberá a flag forcePasswordReset.`)) return;
+    if (!window.confirm(`Forçar reset de senha para ${user.email}?\nIsso vai INVALIDAR todas as sessões ativas deste usuário IMEDIATAMENTE e exigir nova senha.`)) return;
     
     setActionLoading(user.id);
     try {
@@ -89,6 +93,39 @@ export default function SuperAdminUsers() {
       fetchUsers();
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  const handleOverride = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!overrideModal || !overrideModal.tenant) return;
+    
+    let parsedLimits = undefined;
+    if (newLimits.trim() !== '' && newLimits !== '{}') {
+      try {
+        parsedLimits = JSON.parse(newLimits);
+      } catch (err) {
+        alert('JSON de limites inválido.');
+        return;
+      }
+    }
+
+    try {
+      const res = await fetch(`/api/superadmin/tenants/${overrideModal.tenant.id}/override-plan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: newPlan, entitlementsOverride: parsedLimits })
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        alert(`Erro: ${data.error}`);
+        return;
+      }
+      setOverrideModal(null);
+      alert(`Plano do tenant associado atualizado com sucesso para ${newPlan}`);
+      fetchUsers();
+    } catch (err) {
+      alert('Falha na requisição');
     }
   };
 
@@ -181,6 +218,21 @@ export default function SuperAdminUsers() {
                     >
                       <Key className="h-4 w-4" />
                     </button>
+                    <button 
+                      onClick={() => {
+                        if (!user.tenant) {
+                          alert('Usuário não possui Tenant vinculado.');
+                          return;
+                        }
+                        setOverrideModal(user);
+                        setNewPlan('pro');
+                      }}
+                      disabled={actionLoading === user.id}
+                      className="p-2 text-slate-400 hover:text-emerald-600 bg-slate-100 hover:bg-emerald-50 rounded-lg transition-colors"
+                      title="Alterar Plano do Tenant associado"
+                    >
+                      <CreditCard className="h-4 w-4" />
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -188,6 +240,74 @@ export default function SuperAdminUsers() {
           </table>
         </div>
       </div>
+
+      {overrideModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden border border-slate-200">
+            <div className="bg-slate-900 px-6 py-4 flex items-center justify-between text-white">
+              <div className="flex items-center space-x-2">
+                <Box className="h-5 w-5 text-amber-500" />
+                <h2 className="font-bold text-lg">Alterar Plano (Tenant vinculado)</h2>
+              </div>
+              <button onClick={() => setOverrideModal(null)} className="text-slate-400 hover:text-white transition-colors">
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleOverride} className="p-6 space-y-6 text-left">
+              <div className="bg-amber-50 p-4 rounded-lg flex items-start space-x-3 text-amber-800 border border-amber-200">
+                <CreditCard className="h-5 w-5 shrink-0 mt-0.5" />
+                <p className="text-sm font-medium">
+                  Atenção: A ação abaixo altera o plano do <strong>Tenant</strong> associado a este usuário ({overrideModal.tenant?.name || overrideModal.email}). Todos os usuários e integrações deste Tenant serão impactados e registradas na auditoria.
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-800 mb-1">Novo Plano Base</label>
+                  <select 
+                    value={newPlan} 
+                    onChange={(e) => setNewPlan(e.target.value)}
+                    className="w-full border border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-slate-900 focus:border-slate-900 outline-none bg-white"
+                  >
+                    <option value="free">Free</option>
+                    <option value="starter">Starter</option>
+                    <option value="pro">Pro</option>
+                    <option value="enterprise">Enterprise</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-semibold text-slate-800 mb-1">Entitlements Override (JSON)</label>
+                  <p className="text-xs text-slate-500 mb-2">Se vazio ou {"{}"}, os limites seguirão o standard do plano. Suporte para {"{\"aiLimit\": 5000}"}</p>
+                  <textarea
+                    value={newLimits}
+                    onChange={(e) => setNewLimits(e.target.value)}
+                    className="w-full border border-slate-300 rounded-lg px-4 py-3 h-32 focus:ring-2 focus:ring-slate-900 focus:border-slate-900 outline-none font-mono text-sm bg-slate-50"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end space-x-3 pt-4 border-t border-slate-100">
+                <button 
+                  type="button" 
+                  onClick={() => setOverrideModal(null)}
+                  className="px-5 py-2.5 text-sm font-medium text-slate-600 hover:text-slate-900 bg-white border border-slate-300 rounded-lg transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="submit" 
+                  className="px-5 py-2.5 text-sm font-bold text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors flex items-center space-x-2"
+                >
+                  <Save className="h-4 w-4" />
+                  <span>Aplicar Atualização</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

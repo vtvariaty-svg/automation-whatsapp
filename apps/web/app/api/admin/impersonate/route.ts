@@ -37,6 +37,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Tenant não encontrado' }, { status: 404 });
   }
 
+  // Buscar a versão da sessão do admin
+  const dbUser = await prisma.user.findUnique({
+    where: { id: user.userId },
+    select: { sessionVersion: true }
+  });
+
   // Emitir token de impersonação com expiração curta
   const impersonationToken = jwt.sign(
     {
@@ -44,6 +50,7 @@ export async function POST(req: Request) {
       tenantId: targetTenantId,
       role: 'superadmin',
       impersonating: targetTenantId,
+      sessionVersion: dbUser?.sessionVersion || 1,
     },
     JWT_SECRET,
     { expiresIn: '2h' }

@@ -187,7 +187,12 @@ export default function Sidebar() {
               <span className="text-[10px] font-bold text-rose-400 uppercase tracking-widest">⚡ Superadmin</span>
             </div>
             <p className="text-white font-bold text-sm">Acesso total</p>
-            <div className="flex flex-col gap-1 mt-2">
+            <div className="flex flex-col gap-1 mt-3 mb-2">
+              <Link href="/superadmin" className="flex items-center gap-2 px-3 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-lg text-xs font-bold transition-all shadow-lg shadow-rose-500/20 mb-2">
+                <span className="text-sm">🛡️</span> Painel Superadmin →
+              </Link>
+            </div>
+            <div className="flex flex-col gap-1 mt-1">
               <Link href="/dashboard/admin/diagnostics" className="inline-flex items-center gap-1 text-[11px] text-rose-400 hover:text-rose-300 font-medium transition-colors">🔍 Diagnóstico →</Link>
               <Link href="/dashboard/admin/retention" className="inline-flex items-center gap-1 text-[11px] text-rose-400 hover:text-rose-300 font-medium transition-colors">📊 Retenção →</Link>
               <Link href="/dashboard/admin/feedback" className="inline-flex items-center gap-1 text-[11px] text-rose-400 hover:text-rose-300 font-medium transition-colors">💬 Feedback →</Link>

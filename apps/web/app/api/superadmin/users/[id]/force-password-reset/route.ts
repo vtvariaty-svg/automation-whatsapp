@@ -26,7 +26,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       }),
       prisma.user.update({
         where: { id },
-        data: { forcePasswordReset: true }
+        data: { forcePasswordReset: true, sessionVersion: { increment: 1 } }
       })
     ]);
 

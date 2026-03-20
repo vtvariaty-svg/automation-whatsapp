@@ -5,9 +5,9 @@ import jwt from 'jsonwebtoken';
 if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET environment variable is required');
 const JWT_SECRET = process.env.JWT_SECRET;
 
-export const generateToken = (userId: string, tenantId: string, role: string) => {
+export const generateToken = (userId: string, tenantId: string, role: string, sessionVersion: number = 1) => {
   return jwt.sign(
-    { userId, tenantId, role },
+    { userId, tenantId, role, sessionVersion },
     JWT_SECRET,
     { expiresIn: '1d' }
   );
@@ -104,10 +104,10 @@ export const loginUser = async (email: string, passwordPlain: string, meta?: { i
     })
   ]);
 
-  const token = generateToken(user.id, user.tenantId, user.role);
+  const token = generateToken(user.id, user.tenantId, user.role, user.sessionVersion);
 
   return {
-    user: { id: user.id, email: user.email, tenantId: user.tenantId, role: user.role, forcePasswordReset: user.forcePasswordReset },
+    user: { id: user.id, email: user.email, tenantId: user.tenantId, role: user.role, forcePasswordReset: user.forcePasswordReset, sessionVersion: user.sessionVersion },
     token
   };
 };

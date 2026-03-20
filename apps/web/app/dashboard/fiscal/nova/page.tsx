@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getFiscalCustomers, getFiscalCatalog } from '@/lib/fiscal/service';
 import type { FiscalCustomer, FiscalCatalogItem, FiscalDocumentItem } from '@/lib/fiscal/types';
+import { ContactSearchInput } from '@/components/contacts/ContactSearchInput';
 
 type Step = 1 | 2 | 3;
 
@@ -41,6 +42,8 @@ export default function NovaEmissaoPage() {
   const [observacoes, setObservacoes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
+  const [customerTab, setCustomerTab] = useState<'fiscal' | 'contacts'>('fiscal');
+  const [contactDocumento, setContactDocumento] = useState('');
   const [emissionResult, setEmissionResult] = useState<EmissionResult | null>(null);
   const [emissionError, setEmissionError] = useState<string | null>(null);
   // Stable per business transaction — generated once on mount, reused on retry.
@@ -166,6 +169,8 @@ export default function NovaEmissaoPage() {
     setDocType('nfse');
     setSelectedCustomer(null);
     setCustomerSearch('');
+    setCustomerTab('fiscal');
+    setContactDocumento('');
     setItems([]);
     setDesconto(0);
     setObservacoes('');
@@ -312,44 +317,112 @@ export default function NovaEmissaoPage() {
               </div>
 
               <div className="border-t border-gray-100 pt-5">
-                <h2 className="font-semibold text-gray-900 mb-3">Cliente</h2>
-                <input
-                  value={customerSearch}
-                  onChange={(e) => setCustomerSearch(e.target.value)}
-                  placeholder="Buscar cliente por nome ou CPF/CNPJ..."
-                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20 focus:border-[#4f46e5] mb-3"
-                />
-                <div className="space-y-2 max-h-52 overflow-y-auto">
-                  {filteredCustomers.map((c) => (
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="font-semibold text-gray-900">Cliente</h2>
+                  <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs font-medium">
                     <button
-                      key={c.id}
-                      onClick={() => setSelectedCustomer(c)}
-                      className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
-                        selectedCustomer?.id === c.id
-                          ? 'border-[#4f46e5] bg-indigo-50/50'
-                          : 'border-gray-100 hover:border-gray-200 bg-gray-50'
-                      }`}
+                      type="button"
+                      onClick={() => { setCustomerTab('fiscal'); setSelectedCustomer(null); setContactDocumento(''); }}
+                      className={`px-3 py-1.5 transition-colors ${customerTab === 'fiscal' ? 'bg-[#4f46e5] text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
                     >
-                      <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 font-bold flex items-center justify-center text-sm flex-shrink-0">
-                        {c.nome[0]}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-900 text-sm truncate">{c.nome}</p>
-                        <p className="text-xs text-gray-400">{c.documento}</p>
-                      </div>
-                      {selectedCustomer?.id === c.id && <span className="text-[#4f46e5]">✓</span>}
+                      Clientes Fiscais
                     </button>
-                  ))}
-                  {filteredCustomers.length === 0 && (
-                    <p className="text-sm text-gray-400 py-4 text-center">Nenhum cliente encontrado.</p>
-                  )}
+                    <button
+                      type="button"
+                      onClick={() => { setCustomerTab('contacts'); setSelectedCustomer(null); setContactDocumento(''); }}
+                      className={`px-3 py-1.5 transition-colors ${customerTab === 'contacts' ? 'bg-[#4f46e5] text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
+                    >
+                      Contatos
+                    </button>
+                  </div>
                 </div>
+
+                {customerTab === 'fiscal' ? (
+                  <>
+                    <input
+                      value={customerSearch}
+                      onChange={(e) => setCustomerSearch(e.target.value)}
+                      placeholder="Buscar cliente por nome ou CPF/CNPJ..."
+                      className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20 focus:border-[#4f46e5] mb-3"
+                    />
+                    <div className="space-y-2 max-h-52 overflow-y-auto">
+                      {filteredCustomers.map((c) => (
+                        <button
+                          key={c.id}
+                          onClick={() => setSelectedCustomer(c)}
+                          className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
+                            selectedCustomer?.id === c.id
+                              ? 'border-[#4f46e5] bg-indigo-50/50'
+                              : 'border-gray-100 hover:border-gray-200 bg-gray-50'
+                          }`}
+                        >
+                          <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 font-bold flex items-center justify-center text-sm flex-shrink-0">
+                            {c.nome[0]}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-gray-900 text-sm truncate">{c.nome}</p>
+                            <p className="text-xs text-gray-400">{c.documento}</p>
+                          </div>
+                          {selectedCustomer?.id === c.id && <span className="text-[#4f46e5]">✓</span>}
+                        </button>
+                      ))}
+                      {filteredCustomers.length === 0 && (
+                        <p className="text-sm text-gray-400 py-4 text-center">Nenhum cliente encontrado.</p>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <div className="space-y-3">
+                    <ContactSearchInput
+                      placeholder="Digite nome ou telefone do contato..."
+                      theme="light"
+                      onSelect={(c) => {
+                        setContactDocumento('');
+                        setSelectedCustomer({
+                          id: c.id,
+                          nome: c.name ?? c.phone ?? '',
+                          documento: '',
+                          tipo: 'pf',
+                          email: c.email ?? undefined,
+                        } as FiscalCustomer);
+                      }}
+                    />
+
+                    {selectedCustomer && (
+                      <div className="p-3 bg-indigo-50/50 border border-indigo-100 rounded-xl space-y-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-600 font-bold flex items-center justify-center text-xs flex-shrink-0">
+                            {selectedCustomer.nome[0]}
+                          </div>
+                          <p className="text-sm font-medium text-gray-900">{selectedCustomer.nome}</p>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">
+                            CPF / CNPJ <span className="text-red-500">*</span>
+                            <span className="text-gray-400 font-normal ml-1">(obrigatório para emissão fiscal)</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={contactDocumento}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setContactDocumento(val);
+                              setSelectedCustomer((prev) => prev ? { ...prev, documento: val } : prev);
+                            }}
+                            placeholder="000.000.000-00 ou 00.000.000/0001-00"
+                            className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20 focus:border-[#4f46e5]"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-end pt-2">
                 <button
                   onClick={() => setStep(2)}
-                  disabled={!selectedCustomer}
+                  disabled={!selectedCustomer || !selectedCustomer.documento}
                   className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] text-white rounded-xl font-semibold text-sm hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Próximo →

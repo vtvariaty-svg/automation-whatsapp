@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { ContactSearchInput } from "@/components/contacts/ContactSearchInput";
 
 interface AppointmentFormDialogProps {
   isOpen: boolean;
@@ -62,6 +63,19 @@ export function AppointmentFormDialog({ isOpen, onClose, onSuccess, tenantId }: 
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <ContactSearchInput
+            label="Buscar contato salvo (opcional)"
+            placeholder="Digite nome ou telefone..."
+            theme="light"
+            onSelect={(c) => {
+              setForm((f) => ({
+                ...f,
+                customerName: c.name ?? f.customerName,
+                customerPhone: c.phone ?? f.customerPhone,
+              }));
+            }}
+          />
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Nome do Cliente</label>
             <input

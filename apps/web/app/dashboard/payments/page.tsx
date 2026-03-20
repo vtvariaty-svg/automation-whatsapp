@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { ContactSearchInput } from "@/components/contacts/ContactSearchInput";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -97,8 +98,9 @@ function NewChargeModal({ token, onClose, onCreated, prefillOrderId, prefillAppo
   const [billingType, setBillingType] = useState("UNDEFINED");
   const [orderId, setOrderId] = useState(prefillOrderId ?? "");
   const [appointmentId, setAppointmentId] = useState(prefillAppointmentId ?? "");
-  // contactId and conversationId are immutable once set — not exposed as editable fields
-  const contactId     = prefillContactId      ?? "";
+  // contactId is resolved via ContactSearchInput or pre-filled from URL
+  const [contactId, setContactId] = useState(prefillContactId ?? "");
+  // conversationId is immutable context — not editable by user
   const conversationId = prefillConversationId ?? "";
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -153,7 +155,20 @@ function NewChargeModal({ token, onClose, onCreated, prefillOrderId, prefillAppo
         </div>
 
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
-          {/* Customer */}
+          {/* Contact search */}
+          <ContactSearchInput
+            label="Buscar contato salvo (opcional)"
+            placeholder="Digite nome ou telefone..."
+            theme="dark"
+            onSelect={(c) => {
+              if (c.name)  setName(c.name);
+              if (c.phone) setPhone(c.phone);
+              if (c.email) setEmail(c.email);
+              setContactId(c.id);
+            }}
+          />
+
+          {/* Customer fields */}
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
               <label className="block text-xs text-gray-400 mb-1">Nome do cliente *</label>

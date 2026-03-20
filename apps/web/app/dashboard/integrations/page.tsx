@@ -166,18 +166,40 @@ function IntegrationsContent() {
       (response: any) => {
         clearTimeout(timeout);
         window.removeEventListener("message", messageHandler);
-        if (response.authResponse?.accessToken) {
-          saveWhatsAppToken(response.authResponse.accessToken, capturedWabaId, capturedPhoneId);
+        if (response.authResponse?.code || response.authResponse?.accessToken) {
+          const code = response.authResponse.code;
+          const token = response.authResponse.accessToken;
+          if (code) {
+            // Exchange code server-side via embedded-signup route
+            fetch("/api/integrations/whatsapp/embedded-signup", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", ...authHeaders() },
+              body: JSON.stringify({ code, wabaId: capturedWabaId, phoneNumberId: capturedPhoneId }),
+            })
+              .then((r) => r.json())
+              .then((data) => {
+                if (data.success) {
+                  setMessage(data.phoneDisplay ? `✅ WhatsApp conectado! Número: ${data.phoneDisplay}` : "✅ WhatsApp conectado!");
+                  fetchAll();
+                } else {
+                  setMessage("❌ " + (data.error || "Falha ao conectar"));
+                }
+              })
+              .catch((err) => setMessage("❌ Erro: " + err.message))
+              .finally(() => setEmbeddedLoading(false));
+          } else {
+            saveWhatsAppToken(token, capturedWabaId, capturedPhoneId);
+          }
         } else {
           setEmbeddedLoading(false);
           setMessage("❌ Autorização cancelada.");
         }
       },
       {
-        scope: "whatsapp_business_management,whatsapp_business_messaging",
+        config_id: "915379134697380",
+        response_type: "code",
+        override_default_response_type: true,
         extras: {
-          feature: "whatsapp_embedded_signup",
-          version: 2,
           sessionInfoVersion: 3,
         },
       }

@@ -114,12 +114,12 @@ function IntegrationsContent() {
     }
   }, [appId]);
 
-  const saveWhatsAppToken = async (accessToken: string) => {
+  const saveWhatsAppToken = async (accessToken: string, wabaId?: string, phoneNumberId?: string) => {
     try {
       const res = await fetch("/api/integrations/whatsapp/callback", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeaders() },
-        body: JSON.stringify({ accessToken }),
+        body: JSON.stringify({ accessToken, wabaId, phoneNumberId }),
       });
       const data = await res.json();
       if (res.ok && data.success) {
@@ -140,14 +140,47 @@ function IntegrationsContent() {
     if (embeddedLoading) { setEmbeddedLoading(false); return; }
     setEmbeddedLoading(true);
     setMessage("");
-    const timeout = setTimeout(() => setEmbeddedLoading(false), 60000);
+
+    // Capture WABA ID and Phone Number ID sent by Meta during Embedded Signup
+    let capturedWabaId: string | undefined;
+    let capturedPhoneId: string | undefined;
+
+    const messageHandler = (event: MessageEvent) => {
+      if (event.origin !== "https://www.facebook.com") return;
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === "WA_EMBEDDED_SIGNUP" && data.event === "FINISH") {
+          capturedWabaId = data.data?.waba_id || undefined;
+          capturedPhoneId = data.data?.phone_number_id || undefined;
+        }
+      } catch {}
+    };
+    window.addEventListener("message", messageHandler);
+
+    const timeout = setTimeout(() => {
+      setEmbeddedLoading(false);
+      window.removeEventListener("message", messageHandler);
+    }, 60000);
+
     (window as any).FB.login(
       (response: any) => {
         clearTimeout(timeout);
-        if (response.authResponse?.accessToken) saveWhatsAppToken(response.authResponse.accessToken);
-        else { setEmbeddedLoading(false); setMessage("❌ Autorização cancelada."); }
+        window.removeEventListener("message", messageHandler);
+        if (response.authResponse?.accessToken) {
+          saveWhatsAppToken(response.authResponse.accessToken, capturedWabaId, capturedPhoneId);
+        } else {
+          setEmbeddedLoading(false);
+          setMessage("❌ Autorização cancelada.");
+        }
       },
-      { scope: "whatsapp_business_management,whatsapp_business_messaging" }
+      {
+        scope: "whatsapp_business_management,whatsapp_business_messaging",
+        extras: {
+          feature: "whatsapp_embedded_signup",
+          version: 2,
+          sessionInfoVersion: 3,
+        },
+      }
     );
   };
 

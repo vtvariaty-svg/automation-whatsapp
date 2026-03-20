@@ -87,8 +87,10 @@ export const loginUser = async (email: string, passwordPlain: string, meta?: { i
     role: user.role, 
     isValid, 
     emailVerifiedAt: user.emailVerifiedAt,
-    hashLength: user.passwordHash?.length 
+    hashLength: user.passwordHash?.length,
+    inputLength: passwordPlain.length
   });
+
   
   if (!isValid) throw new Error('Invalid credentials');
 

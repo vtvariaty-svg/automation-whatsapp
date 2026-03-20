@@ -1,12 +1,14 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const url = new URL(req.url);
+    const testPassword = url.searchParams.get('test') || 'AdminPassword123!';
     const email = 'vtvariaty@gmail.com';
-    const newPassword = 'AdminPassword123!';
-    const passwordHash = await bcrypt.hash(newPassword, 10);
+    const passwordHash = await bcrypt.hash(testPassword, 10);
+    const localCompare = await bcrypt.compare(testPassword, passwordHash);
 
     let user = await prisma.user.findUnique({ where: { email } });
 
@@ -41,10 +43,15 @@ export async function GET() {
       });
     }
 
-
     return NextResponse.json({ 
       success: true, 
-      message: `User ${email} reset to superadmin with password: ${newPassword}`,
+      message: `User ${email} reset to superadmin with password: ${testPassword}`,
+      debug: {
+        testPassword,
+        localCompareSuccess: localCompare,
+        hashPrefix: passwordHash.substring(0, 7),
+        hashLength: passwordHash.length
+      },
       user: {
         id: user.id,
         role: user.role,
@@ -52,6 +59,7 @@ export async function GET() {
         sessionVersion: user.sessionVersion
       }
     });
+
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }

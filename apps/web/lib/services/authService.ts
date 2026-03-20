@@ -85,17 +85,8 @@ export const loginUser = async (email: string, passwordPlain: string, meta?: { i
   if (!user.passwordHash) throw new Error('Use social login for this account');
 
   const isValid = await verifyPassword(passwordPlain, user.passwordHash || '');
-  console.log('[LOGIN_DIAGNOSTIC]', { 
-    email: user.email, 
-    role: user.role, 
-    isValid, 
-    emailVerifiedAt: user.emailVerifiedAt,
-    hashLength: user.passwordHash?.length,
-    inputLength: passwordPlain.length
-  });
-
-  
   if (!isValid) throw new Error('Invalid credentials');
+
 
   // Bloquear login se o e-mail não estiver verificado e o role não for superadmin
   if (!user.emailVerifiedAt && user.role !== 'superadmin') {

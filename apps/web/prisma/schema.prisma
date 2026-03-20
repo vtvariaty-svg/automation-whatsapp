@@ -86,6 +86,7 @@ model Tenant {
   professionals             Professional[]
   // TD1 Template Delivery
   templateBroadcasts        TemplateBroadcast[]
+  customTemplates           CustomTemplate[]
   // Fiscal Integration
   fiscalEmissionRecords     FiscalEmissionRecord[]
   // V2 Identity Support
@@ -1224,6 +1225,31 @@ model TemplateBroadcastRecipient {
   @@unique([broadcastId, phone])
   @@index([broadcastId, status])
   @@map("template_broadcast_recipients")
+}
+
+// ─── TD2 Custom Templates (tenant-managed, submitted to Meta for approval) ────
+
+model CustomTemplate {
+  id             String   @id @default(uuid())
+  tenantId       String
+  name           String   // snake_case, unique per tenant
+  category       String   @default("UTILITY") // UTILITY | MARKETING | AUTHENTICATION
+  language       String   @default("pt_BR")
+  body           String
+  header         String?
+  footer         String?
+  exampleVars    String[] @default([]) // example values for {{1}}, {{2}}... (required by Meta)
+  metaTemplateId String?  // ID returned by Meta after submission
+  status         String   @default("DRAFT") // DRAFT | PENDING | APPROVED | REJECTED
+  rejectedReason String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, name])
+  @@index([tenantId, status])
+  @@map("custom_templates")
 }
 
 // ─── Fiscal Integration Records ───────────────────────────────────────────────

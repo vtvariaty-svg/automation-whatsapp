@@ -3,6 +3,27 @@ import { prisma } from '@/lib/prisma';
 import { getAuthTenant } from '@/lib/getAuthTenant';
 import { decrypt } from '@/lib/utils/crypto';
 
+// Map CustomTemplate DB record → Template shape used by the frontend
+function customTemplateToShape(t: {
+  name: string; category: string; language: string; body: string;
+  header: string | null; footer: string | null; exampleVars: string[]; status: string;
+}) {
+  const placeholders = [...new Set((t.body.match(/\{\{\d+\}\}/g) || []))];
+  return {
+    name: t.name,
+    category: t.category,
+    language: t.language,
+    status: t.status,
+    body: t.body,
+    header: t.header || '',
+    footer: t.footer || '',
+    buttons: [],
+    placeholders,
+    placeholderLabels: placeholders.map((_, i) => t.exampleVars[i] ? `Ex: ${t.exampleVars[i]}` : `Variável ${i + 1}`),
+    isCustom: true,
+  };
+}
+
 export const dynamic = 'force-dynamic';
 
 // Templates-semente em PT-BR para demonstração e App Review da Meta.
@@ -127,10 +148,19 @@ export async function GET(request: Request) {
       }
     }
 
-    // Merge: templates da Meta primeiro, seeds que não existam por nome
+    // Load APPROVED custom templates from DB
+    const customTemplates = await prisma.customTemplate.findMany({
+      where: { tenantId: auth.tenantId, status: 'APPROVED' },
+    });
+
+    // Merge: Meta live first, then seeds not already present, then custom not already present
     const liveNames = new Set(liveTemplates.map((t: any) => t.name));
     const seedsToAdd = SEED_TEMPLATES.filter(s => !liveNames.has(s.name));
-    const allTemplates = [...liveTemplates, ...seedsToAdd];
+    const customToAdd = customTemplates
+      .filter(c => !liveNames.has(c.name))
+      .map(customTemplateToShape);
+
+    const allTemplates = [...liveTemplates, ...seedsToAdd, ...customToAdd];
 
     return NextResponse.json(allTemplates);
   } catch (error: any) {

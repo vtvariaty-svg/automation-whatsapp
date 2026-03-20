@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -384,9 +384,9 @@ function CreatedPaymentModal({ payment, onClose }: CreatedPaymentModalProps) {
   );
 }
 
-// ── Main page ─────────────────────────────────────────────────────────────────
+// ── Main page (inner — uses useSearchParams, must be inside Suspense) ─────────
 
-export default function PaymentsPage() {
+function PaymentsContent() {
   const { token } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -609,5 +609,19 @@ export default function PaymentsPage() {
         />
       )}
     </div>
+  );
+}
+
+// ── Default export wrapped in Suspense (required by Next.js 15 for useSearchParams) ──
+
+export default function PaymentsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-[300px]">
+        <div className="animate-spin w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full" />
+      </div>
+    }>
+      <PaymentsContent />
+    </Suspense>
   );
 }

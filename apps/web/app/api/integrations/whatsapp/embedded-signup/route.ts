@@ -11,7 +11,7 @@ import { encrypt } from '@/lib/utils/crypto';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { code, wabaId: embeddedWabaId, phoneNumberId: embeddedPhoneId } = body;
+    const { code, wabaId: embeddedWabaId, phoneNumberId: embeddedPhoneId, isCoexistence } = body;
 
     // Get tenant from auth
     const auth = await getAuthTenant(request);
@@ -219,11 +219,49 @@ export async function POST(request: Request) {
       }
     }
 
+    // Coexistência: sincronizar contatos e histórico de mensagens do app
+    if (isCoexistence && finalPhoneId && accessToken) {
+      console.log('[coexistence] Iniciando sincronização de contatos e histórico...');
+      try {
+        const syncHeaders = {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        };
+
+        // Sincronizar contatos (só pode ser feito uma vez por integração)
+        const contactsRes = await fetch(
+          `https://graph.facebook.com/v22.0/${finalPhoneId}/smb_app_data`,
+          {
+            method: 'POST',
+            headers: syncHeaders,
+            body: JSON.stringify({ messaging_product: 'whatsapp', sync_type: 'smb_app_state_sync' }),
+          }
+        );
+        const contactsData = await contactsRes.json();
+        console.log('[coexistence] Sync contatos:', JSON.stringify(contactsData).slice(0, 200));
+
+        // Sincronizar histórico de mensagens (até 6 meses, se cliente permitiu)
+        const historyRes = await fetch(
+          `https://graph.facebook.com/v22.0/${finalPhoneId}/smb_app_data`,
+          {
+            method: 'POST',
+            headers: syncHeaders,
+            body: JSON.stringify({ messaging_product: 'whatsapp', sync_type: 'history' }),
+          }
+        );
+        const historyData = await historyRes.json();
+        console.log('[coexistence] Sync histórico:', JSON.stringify(historyData).slice(0, 200));
+      } catch (coexErr: any) {
+        console.warn('[coexistence] Erro não-fatal ao sincronizar dados:', coexErr.message);
+      }
+    }
+
     return NextResponse.json({
       success: true,
       wabaId: finalWabaId,
       phoneNumberId: finalPhoneId,
       phoneDisplay,
+      isCoexistence: !!isCoexistence,
     });
   } catch (error: any) {
     console.error('Embedded Signup error:', error);

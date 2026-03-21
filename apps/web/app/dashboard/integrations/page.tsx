@@ -144,14 +144,21 @@ function IntegrationsContent() {
     // Capture WABA ID and Phone Number ID sent by Meta during Embedded Signup
     let capturedWabaId: string | undefined;
     let capturedPhoneId: string | undefined;
+    let isCoexistenceSignup = false;
 
     const messageHandler = (event: MessageEvent) => {
       if (event.origin !== "https://www.facebook.com") return;
       try {
         const data = JSON.parse(event.data);
-        if (data.type === "WA_EMBEDDED_SIGNUP" && data.event === "FINISH") {
-          capturedWabaId = data.data?.waba_id || undefined;
-          capturedPhoneId = data.data?.phone_number_id || undefined;
+        if (data.type === "WA_EMBEDDED_SIGNUP") {
+          if (data.event === "FINISH") {
+            capturedWabaId = data.data?.waba_id || undefined;
+            capturedPhoneId = data.data?.phone_number_id || undefined;
+          } else if (data.event === "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING") {
+            capturedWabaId = data.data?.waba_id || undefined;
+            capturedPhoneId = data.data?.phone_number_id || undefined;
+            isCoexistenceSignup = true;
+          }
         }
       } catch {}
     };
@@ -174,7 +181,7 @@ function IntegrationsContent() {
             fetch("/api/integrations/whatsapp/embedded-signup", {
               method: "POST",
               headers: { "Content-Type": "application/json", ...authHeaders() },
-              body: JSON.stringify({ code, wabaId: capturedWabaId, phoneNumberId: capturedPhoneId }),
+              body: JSON.stringify({ code, wabaId: capturedWabaId, phoneNumberId: capturedPhoneId, isCoexistence: isCoexistenceSignup }),
             })
               .then((r) => r.json())
               .then((data) => {
@@ -200,6 +207,7 @@ function IntegrationsContent() {
         response_type: "code",
         override_default_response_type: true,
         extras: {
+          featureType: "whatsapp_business_app_onboarding",
           sessionInfoVersion: 3,
         },
       }

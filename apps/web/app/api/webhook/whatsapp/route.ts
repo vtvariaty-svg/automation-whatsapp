@@ -102,6 +102,26 @@ export async function POST(req: Request) {
 
     console.log(`[Webhook] Recebido — entries: ${body.entry?.length ?? 0}`);
 
+    // Coexistência: processar mensagens enviadas via app do celular (smb_message_echoes)
+    const changeField = body.entry?.[0]?.changes?.[0]?.field;
+    if (changeField === 'smb_message_echoes') {
+      const value = body.entry?.[0]?.changes?.[0]?.value;
+      const phoneId = value?.metadata?.phone_number_id;
+      const msg = value?.messages?.[0];
+      if (phoneId && msg?.type === 'text' && msg?.to && msg?.text?.body) {
+        const tenant = await getTenantByPhoneId(phoneId);
+        if (tenant && isChannelEnabled(tenant, 'whatsapp')) {
+          try {
+            await saveAIMessage(msg.to, msg.text.body, tenant.id, 'open', false, 'whatsapp');
+            console.log(`[Webhook][coexistence] Echo do celular salvo — para: ${maskPhone(msg.to)}`);
+          } catch (echoErr) {
+            console.error('[Webhook][coexistence] Erro ao salvar echo:', echoErr);
+          }
+        }
+      }
+      return new Response('OK', { status: 200 });
+    }
+
     const event = normalizeWhatsAppInbound(body);
     if (event) {
       const { accountId: phoneId, from, text: textBody, messageId } = event;

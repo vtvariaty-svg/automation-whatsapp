@@ -196,7 +196,7 @@ function IntegrationsContent() {
         }
       },
       {
-        config_id: "1901478813834470",
+        config_id: "1603049500912992",
         response_type: "code",
         override_default_response_type: true,
         extras: {

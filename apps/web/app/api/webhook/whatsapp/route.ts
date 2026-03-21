@@ -89,6 +89,8 @@ export async function POST(req: Request) {
 
   // 3. Validar assinatura HMAC da Meta
   const signature = (req.headers as any).get?.('x-hub-signature-256') ?? null;
+  console.log('[Webhook] x-hub-signature-256 recebido:', signature ? signature.slice(0, 20) + '...' : 'AUSENTE');
+  console.log('[Webhook] rawBody length:', rawBody.length, '| primeiros 100 chars:', rawBody.slice(0, 100));
   const signatureValid = await verifyMetaSignature(rawBody, signature);
   if (!signatureValid) {
     console.warn('[Webhook] Assinatura HMAC inválida — requisição rejeitada');

@@ -12,7 +12,7 @@ export default function TermsPage() {
       <nav className="border-b border-gray-100 bg-white/80 backdrop-blur-xl">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link href="/">
-            <img src="/logo.png" alt="Variaty Secretary" className="h-16 w-auto" />
+            <img src="/logo.png" alt="Variaty Secretary" className="h-20 w-auto" />
           </Link>
           <Link href="/" className="text-sm text-[#4f46e5] hover:underline">← Voltar</Link>
         </div>

@@ -91,11 +91,9 @@ export default function Sidebar() {
   const navContent = (
     <>
       {/* Logo */}
-      <div className="h-16 flex items-center px-6 border-b border-white/[0.06] shrink-0">
+      <div className="h-20 flex items-center px-4 border-b border-white/[0.06] shrink-0">
         <div className="flex items-center">
-          <div className="bg-white rounded-xl p-1.5">
-            <img src="/logo.png" alt="Variaty Secretary" className="h-11 w-auto" />
-          </div>
+          <img src="/logo.png" alt="Variaty Secretary" className="h-16 w-auto" />
         </div>
         <button
           onClick={() => setIsOpen(false)}

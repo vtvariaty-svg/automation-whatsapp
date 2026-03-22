@@ -29,7 +29,7 @@ export default function LoginPage() {
       <div className="flex flex-1 flex-col justify-center py-12 px-4 sm:px-6 lg:px-20 xl:px-24 bg-white">
         <div className="mx-auto w-full max-w-sm lg:w-96">
           <div className="mb-8">
-            <Image src="/logo.png" alt="Variaty Secretary" unoptimized width={240} height={110} className="h-24 w-auto object-contain" priority />
+            <img src="/logo.png" alt="Variaty Secretary" className="h-28 w-auto" />
           </div>
 
           <h2 className="mt-6 text-3xl font-extrabold text-gray-900">

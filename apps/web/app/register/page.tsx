@@ -42,7 +42,7 @@ export default function RegisterPage() {
       <div className="flex flex-1 flex-col justify-center py-12 px-4 sm:px-6 lg:px-20 xl:px-24 bg-white">
         <div className="mx-auto w-full max-w-sm lg:w-96">
           <div className="mb-8">
-            <img src="/logo.png" alt="Variaty Secretary" className="h-36 w-auto" />
+            <img src="/logo.webp" alt="Variaty Secretary" className="h-36 w-auto" />
           </div>
 
           <h2 className="mt-6 text-3xl font-extrabold text-gray-900">

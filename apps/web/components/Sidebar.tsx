@@ -93,7 +93,7 @@ export default function Sidebar() {
       {/* Logo */}
       <div className="h-20 flex items-center px-4 border-b border-white/[0.06] shrink-0">
         <div className="flex items-center">
-          <img src="/logo.png" alt="Variaty Secretary" className="h-16 w-auto" />
+          <img src="/logo.webp" alt="Variaty Secretary" className="h-16 w-auto" />
         </div>
         <button
           onClick={() => setIsOpen(false)}

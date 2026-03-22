@@ -31,7 +31,7 @@ export default function OnboardingLayout({ children }: { children: React.ReactNo
       {/* Top bar */}
       <div className="border-b border-gray-200/60 bg-white/80 backdrop-blur-sm">
         <div className="max-w-3xl mx-auto px-6 py-4 flex items-center gap-3">
-          <Image src="/logo.png" alt="Variaty Secretary" width={130} height={55} className="h-9 w-auto object-contain" />
+          <Image src="/logo.png" alt="Variaty Secretary" width={180} height={80} className="h-14 w-auto object-contain" />
           <p className="text-[10px] text-gray-400 font-medium uppercase tracking-wider border-l border-gray-200 pl-3">Configuração Inicial</p>
         </div>
       </div>

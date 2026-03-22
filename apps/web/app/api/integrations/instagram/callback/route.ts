@@ -7,7 +7,8 @@ import { audit } from '@/lib/audit';
 const GRAPH = 'https://graph.facebook.com/v22.0';
 
 export async function GET(req: Request) {
-  const base = process.env.NEXT_PUBLIC_BASE_URL || 'https://automation-whatsapp.onrender.com';
+  let base = process.env.NEXT_PUBLIC_BASE_URL || 'https://automation-whatsapp.onrender.com';
+  if (!base.startsWith('http')) base = `https://${base}`;
   const { searchParams } = new URL(req.url);
   const code = searchParams.get('code');
   const stateRaw = searchParams.get('state');

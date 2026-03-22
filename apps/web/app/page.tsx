@@ -17,11 +17,8 @@ function Navbar() {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-gray-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
-        <Link href="/" className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#4f46e5] to-[#7c3aed] flex items-center justify-center shadow-md shadow-indigo-200">
-            <span className="text-white font-bold text-lg">V</span>
-          </div>
-          <span className="font-bold text-lg text-gray-900 tracking-tight">Variaty<span className="text-[#4f46e5]"> Secretary</span></span>
+        <Link href="/" className="flex items-center">
+          <Image src="/logo.png" alt="Variaty Secretary" width={140} height={60} className="h-10 w-auto object-contain" priority />
         </Link>
         <div className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-600">
           <a href="#recursos" className="hover:text-[#4f46e5] transition-colors">Recursos</a>
@@ -500,11 +497,10 @@ function Footer() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
           <div className="md:col-span-2">
-            <div className="flex items-center gap-2.5 mb-4">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#4f46e5] to-[#7c3aed] flex items-center justify-center">
-                <span className="text-white font-bold text-lg">V</span>
+            <div className="mb-4">
+              <div className="inline-flex bg-white rounded-xl p-1.5 shadow-sm">
+                <Image src="/logo.png" alt="Variaty Secretary" width={140} height={60} className="h-10 w-auto object-contain" />
               </div>
-              <span className="font-bold text-lg text-white">Variaty Secretary IA</span>
             </div>
             <p className="text-gray-500 leading-relaxed max-w-md">
               Plataforma de automação de atendimento via WhatsApp com Inteligência Artificial. Conectado à API Oficial da Meta.

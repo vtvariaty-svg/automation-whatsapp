@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useAuth } from "@/hooks/useAuth";
@@ -27,11 +28,8 @@ export default function LoginPage() {
       {/* Left side: Form */}
       <div className="flex flex-1 flex-col justify-center py-12 px-4 sm:px-6 lg:px-20 xl:px-24 bg-white">
         <div className="mx-auto w-full max-w-sm lg:w-96">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#4f46e5] to-[#4338ca] flex items-center justify-center shadow-lg">
-              <span className="text-white font-bold text-xl">V</span>
-            </div>
-            <span className="text-gray-900 font-bold text-xl tracking-tight">VTvariaty</span>
+          <div className="mb-8">
+            <Image src="/logo.png" alt="Variaty Secretary" width={160} height={70} className="h-14 w-auto object-contain" priority />
           </div>
 
           <h2 className="mt-6 text-3xl font-extrabold text-gray-900">

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -91,13 +92,9 @@ export default function Sidebar() {
     <>
       {/* Logo */}
       <div className="h-16 flex items-center px-6 border-b border-white/[0.06] shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#4f46e5] to-[#7c3aed] flex items-center justify-center shadow-lg shadow-indigo-500/20">
-            <span className="text-white font-bold text-lg">V</span>
-          </div>
-          <div>
-            <span className="text-white font-bold text-[15px] tracking-tight block leading-tight">Variaty</span>
-            <span className="text-indigo-300 text-[10px] font-medium tracking-wider uppercase">Secretary IA</span>
+        <div className="flex items-center">
+          <div className="bg-white rounded-xl p-1.5 shadow-sm">
+            <Image src="/logo.png" alt="Variaty Secretary" width={120} height={50} className="h-8 w-auto object-contain" />
           </div>
         </div>
         <button

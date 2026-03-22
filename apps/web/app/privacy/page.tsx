@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 export const metadata = {
   title: "Política de Privacidade — Variaty Secretary IA",
@@ -10,11 +11,8 @@ export default function PrivacyPage() {
     <div className="min-h-screen bg-white">
       <nav className="border-b border-gray-100 bg-white/80 backdrop-blur-xl">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#4f46e5] to-[#7c3aed] flex items-center justify-center">
-              <span className="text-white font-bold">V</span>
-            </div>
-            <span className="font-bold text-gray-900">Variaty Secretary IA</span>
+          <Link href="/">
+            <Image src="/logo.png" alt="Variaty Secretary" width={120} height={50} className="h-9 w-auto object-contain" />
           </Link>
           <Link href="/" className="text-sm text-[#4f46e5] hover:underline">← Voltar</Link>
         </div>

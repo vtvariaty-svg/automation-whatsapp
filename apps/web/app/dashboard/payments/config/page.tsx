@@ -33,16 +33,19 @@ export default function PaymentsConfigPage() {
     if (!token) return;
     fetch("/api/payments/config", {
       headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(15000),
     })
       .then((r) => r.json())
       .then((data) => {
-        if (data) {
+        if (data && !data.error) {
           setConfig(data);
-          setEnvironment(data.environment);
-          setEnabled(data.enabled);
+          setEnvironment(data.environment ?? "sandbox");
+          setEnabled(data.enabled ?? false);
         }
       })
-      .catch(() => {})
+      .catch((err) => {
+        if (err?.name !== "AbortError") setError("Erro ao carregar configuração.");
+      })
       .finally(() => setLoading(false));
   }, [token]);
 

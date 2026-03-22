@@ -8,9 +8,15 @@ export async function GET(request: Request) {
   const auth = await getAuthTenant(request);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const config = await prisma.tenantPaymentConfig.findUnique({
-    where: { tenantId: auth.tenantId },
-  });
+  let config: any = null;
+  try {
+    config = await prisma.tenantPaymentConfig.findUnique({
+      where: { tenantId: auth.tenantId },
+    });
+  } catch (err: any) {
+    console.error('[GET /api/payments/config]', err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
 
   if (!config) return NextResponse.json(null);
 

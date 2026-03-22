@@ -415,6 +415,7 @@ function PaymentsContent() {
 
   const [data, setData] = useState<PaymentsResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -437,6 +438,7 @@ function PaymentsContent() {
   const fetchPayments = useCallback(async () => {
     if (!token) return;
     setLoading(true);
+    setError(null);
     const params = new URLSearchParams({ page: String(page), limit: "20" });
     if (statusFilter) params.set("status", statusFilter);
     if (dateFrom)     params.set("dateFrom", dateFrom);
@@ -445,11 +447,19 @@ function PaymentsContent() {
     try {
       const res = await fetch(`/api/payments?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
+        signal: AbortSignal.timeout(15000),
       });
       const json = await res.json();
-      if (res.ok) setData(json);
-    } catch {}
-    finally { setLoading(false); }
+      if (res.ok) {
+        setData(json);
+      } else {
+        setError(json?.error ?? `Erro ${res.status}`);
+      }
+    } catch (err: any) {
+      setError(err?.name === "TimeoutError" ? "Tempo limite excedido. Tente novamente." : (err?.message ?? "Erro ao carregar cobranças."));
+    } finally {
+      setLoading(false);
+    }
   }, [token, page, statusFilter, dateFrom, dateTo]);
 
   useEffect(() => { fetchPayments(); }, [fetchPayments]);
@@ -531,6 +541,13 @@ function PaymentsContent() {
       {loading ? (
         <div className="flex items-center justify-center py-16">
           <div className="animate-spin w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full" />
+        </div>
+      ) : error ? (
+        <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
+          <p className="text-red-500 text-sm">{error}</p>
+          <button onClick={fetchPayments} className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm">
+            Tentar novamente
+          </button>
         </div>
       ) : !data?.payments.length ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">

@@ -18,7 +18,7 @@ function Navbar() {
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-gray-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-20">
         <Link href="/" className="flex items-center">
-          <img src="/logo.png" alt="Variaty Secretary" className="h-16 w-auto" />
+          <img src="/logo.png" alt="Variaty Secretary" className="h-24 w-auto" />
         </Link>
         <div className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-600">
           <a href="#recursos" className="hover:text-[#4f46e5] transition-colors">Recursos</a>
@@ -498,7 +498,7 @@ function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
           <div className="md:col-span-2">
             <div className="mb-4">
-              <img src="/logo.png" alt="Variaty Secretary" className="h-16 w-auto" />
+              <img src="/logo.png" alt="Variaty Secretary" className="h-24 w-auto" />
             </div>
             <p className="text-gray-500 leading-relaxed max-w-md">
               Plataforma de automação de atendimento via WhatsApp com Inteligência Artificial. Conectado à API Oficial da Meta.

@@ -11,7 +11,6 @@ import { prisma } from '@/lib/prisma';
 import { getPageKnowledge, GENERAL_FAQ, getFaqAnswer } from '@/lib/supportCopilot/knowledgeBase';
 import OpenAI from 'openai';
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const RATE_LIMIT_PER_HOUR = 20;
 
 // Suggested links per topic keyword
@@ -159,6 +158,7 @@ REGRAS DE RESPOSTA:
       { role: 'user', content: question },
     ];
 
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const completion = await openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
       messages,

@@ -1,12 +1,13 @@
 import Stripe from 'stripe';
 import { PLANS, TRIAL_DAYS } from '../config/plans';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2024-11-20.acacia' as any,
-});
+const getStripe = () =>
+  new Stripe(process.env.STRIPE_SECRET_KEY || '', {
+    apiVersion: '2024-11-20.acacia' as any,
+  });
 
 export const createCustomer = async (email: string, name: string) => {
-  const customer = await stripe.customers.create({
+  const customer = await getStripe().customers.create({
     email,
     name,
   });
@@ -23,7 +24,7 @@ export const createCheckoutSession = async (
   const planConfig = PLANS[plan];
   if (!planConfig) throw new Error(`Invalid plan: ${plan}`);
 
-  const session = await stripe.checkout.sessions.create({
+  const session = await getStripe().checkout.sessions.create({
     customer: customerId,
     mode: 'subscription',
     payment_method_types: ['card'],
@@ -52,7 +53,7 @@ export const createCheckoutSession = async (
 };
 
 export const cancelSubscription = async (subscriptionId: string) => {
-  const subscription = await stripe.subscriptions.cancel(subscriptionId);
+  const subscription = await getStripe().subscriptions.cancel(subscriptionId);
   return subscription;
 };
 
@@ -61,7 +62,5 @@ export const constructWebhookEvent = (
   signature: string
 ) => {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
-  return stripe.webhooks.constructEvent(payload, signature, webhookSecret);
+  return getStripe().webhooks.constructEvent(payload, signature, webhookSecret);
 };
-
-export default stripe;

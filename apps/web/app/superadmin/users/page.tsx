@@ -173,7 +173,7 @@ export default function SuperAdminUsers() {
                     <div className="font-medium text-slate-900">{user.name || 'Sem nome'}</div>
                     <div className="text-sm text-slate-500 flex items-center space-x-1">
                       <span>{user.email}</span>
-                      {user.forcePasswordReset && <ShieldAlert className="h-3 w-3 text-red-500" title="Reset Pendente" />}
+                      {user.forcePasswordReset && <span title="Reset Pendente"><ShieldAlert className="h-3 w-3 text-red-500" /></span>}
                     </div>
                   </td>
                   <td className="px-6 py-4 text-sm text-slate-600">

@@ -18,8 +18,8 @@ function CallbackContent() {
       return;
     }
 
-    // Save token to localStorage (same as normal login)
-    localStorage.setItem("token", token);
+    // Save token to localStorage (must match authStorage key = "auth_token")
+    localStorage.setItem("auth_token", token);
 
     // Set cookie too for API routes
     document.cookie = `auth_token=${token}; path=/; max-age=86400; Secure; SameSite=Strict`;

@@ -5,62 +5,27 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useEntitlements } from "@/hooks/useEntitlements";
 import Link from "next/link";
-import { CheckCircleIcon, BoltIcon, SparklesIcon } from "@heroicons/react/24/outline";
+import {
+  CheckCircleIcon,
+  BoltIcon,
+  SparklesIcon,
+  ExclamationTriangleIcon,
+  ClipboardDocumentIcon,
+  CheckIcon,
+} from "@heroicons/react/24/outline";
+import { marketplaceBots } from "@/lib/marketplace/bots";
 
-// ─── Tipos e dados ────────────────────────────────────────────────────────────
+// ─── Tipos ────────────────────────────────────────────────────────────────────
 
-type Tab = "marketplace" | "comportamento";
+type Tab = "marketplace" | "meubot" | "comportamento";
 
-const BOTS = [
-  {
-    id: "bot-imobiliaria",
-    name: "Bot Imobiliária",
-    emoji: "🏠",
-    nicheLabel: "Imobiliária",
-    description:
-      "Qualifica leads automaticamente, responde dúvidas sobre imóveis disponíveis, agenda visitas e apresenta portfólio. Ideal para corretores e imobiliárias.",
-    tags: ["imóveis", "corretor", "locação", "venda", "visita"],
-    automationsCount: 6,
-    color: "from-amber-500 to-orange-500",
-    tagColor: "bg-amber-100 text-amber-700",
-  },
-  {
-    id: "bot-clinica",
-    name: "Bot Clínica",
-    emoji: "🏥",
-    nicheLabel: "Clínica / Consultório",
-    description:
-      "Atendimento humanizado para clínicas e consultórios. Agenda consultas, responde sobre procedimentos, horários e convênios. Nunca emite diagnósticos.",
-    tags: ["saúde", "consulta", "agendamento", "convênio"],
-    automationsCount: 5,
-    color: "from-sky-500 to-blue-600",
-    tagColor: "bg-sky-100 text-sky-700",
-  },
-  {
-    id: "bot-ecommerce",
-    name: "Bot E-commerce",
-    emoji: "🛍️",
-    nicheLabel: "Loja / E-commerce",
-    description:
-      "Atendimento completo para lojas online. Ajuda clientes a encontrar produtos, acompanhar pedidos e esclarecer dúvidas sobre frete, troca e pagamento.",
-    tags: ["loja", "pedido", "frete", "troca", "suporte"],
-    automationsCount: 6,
-    color: "from-violet-500 to-purple-600",
-    tagColor: "bg-violet-100 text-violet-700",
-  },
-  {
-    id: "bot-cabeleireiro",
-    name: "Bot Cabeleireiro",
-    emoji: "💇",
-    nicheLabel: "Salão / Barbearia",
-    description:
-      "Agendamentos, tabela de serviços, promoções e fidelização para salões e barbearias. Tom descontraído e próximo do cliente.",
-    tags: ["corte", "coloração", "agendamento", "promoção"],
-    automationsCount: 6,
-    color: "from-pink-500 to-rose-500",
-    tagColor: "bg-pink-100 text-pink-700",
-  },
-];
+// Dados de exibição (cor, estilo) separados dos dados de negócio
+const BOT_DISPLAY: Record<string, { color: string; tagColor: string; automationsCount: number }> = {
+  "bot-imobiliaria": { color: "from-amber-500 to-orange-500", tagColor: "bg-amber-100 text-amber-700", automationsCount: 6 },
+  "bot-clinica":     { color: "from-sky-500 to-blue-600",     tagColor: "bg-sky-100 text-sky-700",     automationsCount: 5 },
+  "bot-ecommerce":   { color: "from-violet-500 to-purple-600",tagColor: "bg-violet-100 text-violet-700",automationsCount: 6 },
+  "bot-cabeleireiro":{ color: "from-pink-500 to-rose-500",    tagColor: "bg-pink-100 text-pink-700",   automationsCount: 6 },
+};
 
 // ─── Página principal ─────────────────────────────────────────────────────────
 
@@ -71,6 +36,26 @@ function BotsIAContent() {
   const searchParams = useSearchParams();
 
   const tab = (searchParams.get("tab") as Tab) || "marketplace";
+
+  // Estado compartilhado: bot ativo e itens pendentes da última ativação
+  const [activeBotId, setActiveBotId] = useState<string | null>(null);
+  const [pendingSetup, setPendingSetup] = useState<string[]>([]);
+  const [tenantSettings, setTenantSettings] = useState<any>(null);
+
+  // Carrega tenant settings e deriva qual bot está instalado via businessType
+  useEffect(() => {
+    if (!user?.tenantId) return;
+    fetch(`/api/tenant/settings?tenantId=${user.tenantId}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (!data) return;
+        setTenantSettings(data);
+        const bt = data.businessType || data.business_type || "";
+        const found = marketplaceBots.find((b) => b.niche === bt);
+        if (found) setActiveBotId(found.id);
+      })
+      .catch(() => {});
+  }, [user?.tenantId]);
 
   const setTab = (next: Tab) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -83,44 +68,55 @@ function BotsIAContent() {
     router.push(`/dashboard/bots${qs ? `?${qs}` : ""}`);
   };
 
+  const onBotActivated = (botId: string, pending: string[]) => {
+    setActiveBotId(botId);
+    setPendingSetup(pending);
+    setTab("meubot");
+  };
+
+  const tabBtn = (id: Tab, label: string) => (
+    <button
+      onClick={() => setTab(id)}
+      className={`px-5 py-2 text-sm font-semibold rounded-lg transition-all relative ${
+        tab === id ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
+      }`}
+    >
+      {label}
+      {id === "meubot" && activeBotId && tab !== "meubot" && (
+        <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-indigo-500" />
+      )}
+    </button>
+  );
+
   return (
     <div className="max-w-6xl mx-auto space-y-6 pb-20">
-      {/* Header da página */}
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-gray-900 flex items-center gap-2">
           🤖 Bots & IA
         </h1>
         <p className="text-sm text-gray-500 mt-1">
-          Escolha um bot para o seu segmento, configure o comportamento da IA e publique — tudo em um só lugar.
+          Escolha um bot, configure o comportamento da IA e publique — tudo em um só lugar.
         </p>
       </div>
 
-      {/* Tab bar */}
       <div className="flex gap-1 p-1 bg-gray-100 rounded-xl w-fit">
-        <button
-          onClick={() => setTab("marketplace")}
-          className={`px-5 py-2 text-sm font-semibold rounded-lg transition-all ${
-            tab === "marketplace"
-              ? "bg-white text-gray-900 shadow-sm"
-              : "text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          ✨ Marketplace
-        </button>
-        <button
-          onClick={() => setTab("comportamento")}
-          className={`px-5 py-2 text-sm font-semibold rounded-lg transition-all ${
-            tab === "comportamento"
-              ? "bg-white text-gray-900 shadow-sm"
-              : "text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          ⚙️ Comportamento da IA
-        </button>
+        {tabBtn("marketplace", "✨ Marketplace")}
+        {tabBtn("meubot", "🤖 Meu Bot")}
+        {tabBtn("comportamento", "⚙️ Comportamento da IA")}
       </div>
 
-      {/* Conteúdo das abas */}
-      {tab === "marketplace" && <MarketplaceTab user={user} ent={ent} onConfigureClick={() => setTab("comportamento")} />}
+      {tab === "marketplace" && (
+        <MarketplaceTab user={user} ent={ent} onBotActivated={onBotActivated} activeBotId={activeBotId} />
+      )}
+      {tab === "meubot" && (
+        <MeuBotTab
+          activeBotId={activeBotId}
+          pendingSetup={pendingSetup}
+          tenantSettings={tenantSettings}
+          onGoMarketplace={() => setTab("marketplace")}
+          onGoComportamento={() => setTab("comportamento")}
+        />
+      )}
       {tab === "comportamento" && <ComportamentoTab user={user} />}
     </div>
   );
@@ -128,11 +124,13 @@ function BotsIAContent() {
 
 export default function BotsIAPage() {
   return (
-    <Suspense fallback={
-      <div className="flex items-center justify-center py-32">
-        <div className="w-8 h-8 border-2 border-gray-200 border-t-[#4f46e5] rounded-full animate-spin" />
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center py-32">
+          <div className="w-8 h-8 border-2 border-gray-200 border-t-[#4f46e5] rounded-full animate-spin" />
+        </div>
+      }
+    >
       <BotsIAContent />
     </Suspense>
   );
@@ -143,15 +141,17 @@ export default function BotsIAPage() {
 function MarketplaceTab({
   user,
   ent,
-  onConfigureClick,
+  onBotActivated,
+  activeBotId,
 }: {
   user: any;
   ent: any;
-  onConfigureClick: () => void;
+  onBotActivated: (botId: string, pending: string[]) => void;
+  activeBotId: string | null;
 }) {
   const hasPremiumTemplates = ent.loading || ent.features.premiumTemplates;
   const [activating, setActivating] = useState<string | null>(null);
-  const [activated, setActivated] = useState<Record<string, { automationsCreated: number; automationsSkipped: number }>>({});
+  const [justActivated, setJustActivated] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedBot, setSelectedBot] = useState<string | null>(null);
 
@@ -163,16 +163,14 @@ function MarketplaceTab({
       const token = localStorage.getItem("auth_token");
       const res = await fetch("/api/marketplace/activate", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ botId }),
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setActivated((prev) => ({ ...prev, [botId]: data }));
+        setJustActivated(botId);
         setSelectedBot(null);
+        onBotActivated(botId, data.pendingSetup ?? []);
       } else {
         setError(data.error || "Erro ao ativar o bot.");
       }
@@ -186,23 +184,25 @@ function MarketplaceTab({
   return (
     <div className="space-y-8">
       {error && (
-        <div className="p-4 bg-red-50 border border-red-100 rounded-xl text-sm text-red-700">
-          {error}
-        </div>
+        <div className="p-4 bg-red-50 border border-red-100 rounded-xl text-sm text-red-700">{error}</div>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {BOTS.map((bot) => {
-          const isActivated = !!activated[bot.id];
+        {marketplaceBots.map((bot) => {
+          const display = BOT_DISPLAY[bot.id];
+          const isActive = activeBotId === bot.id;
           const isActivating = activating === bot.id;
-          const result = activated[bot.id];
+          const isJust = justActivated === bot.id;
 
           return (
             <div
               key={bot.id}
-              className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-all flex flex-col"
+              className={`bg-white rounded-2xl border shadow-sm overflow-hidden hover:shadow-md transition-all flex flex-col ${
+                isActive ? "border-indigo-300 ring-1 ring-indigo-200" : "border-gray-100"
+              }`}
             >
-              <div className={`p-6 bg-gradient-to-br ${bot.color} relative overflow-hidden`}>
+              {/* Card header */}
+              <div className={`p-6 bg-gradient-to-br ${display.color} relative overflow-hidden`}>
                 <div className="absolute inset-0 opacity-10">
                   <div className="absolute -right-4 -top-4 w-32 h-32 rounded-full bg-white" />
                   <div className="absolute -left-8 -bottom-8 w-40 h-40 rounded-full bg-white" />
@@ -215,46 +215,52 @@ function MarketplaceTab({
                       {bot.nicheLabel}
                     </span>
                   </div>
-                  <div className="text-right text-white/80 text-sm font-medium">
-                    <BoltIcon className="w-5 h-5 inline-block mr-1" />
-                    {bot.automationsCount} automações
+                  <div className="flex flex-col items-end gap-1">
+                    {isActive && (
+                      <span className="px-2 py-0.5 bg-white/90 text-indigo-700 text-xs font-bold rounded-full">
+                        ativo
+                      </span>
+                    )}
+                    <span className="text-white/80 text-sm font-medium">
+                      <BoltIcon className="w-4 h-4 inline-block mr-1" />
+                      {display.automationsCount} automações
+                    </span>
                   </div>
                 </div>
               </div>
 
+              {/* Card body */}
               <div className="p-6 flex flex-col flex-1">
                 <p className="text-sm text-gray-600 leading-relaxed">{bot.description}</p>
-                <div className="flex flex-wrap gap-2 mt-4">
+
+                <div className="flex flex-wrap gap-2 mt-3">
                   {bot.tags.map((tag) => (
-                    <span key={tag} className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${bot.tagColor}`}>
+                    <span key={tag} className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${display.tagColor}`}>
                       {tag}
                     </span>
                   ))}
                 </div>
 
+                {/* Tom e objetivo */}
+                <div className="mt-4 flex gap-4 text-xs text-gray-500">
+                  <span>🎤 <strong>Tom:</strong> {bot.toneOfVoice}</span>
+                  <span>🎯 <strong>Foco:</strong> {bot.objective}</span>
+                </div>
+
                 <div className="mt-auto pt-5">
-                  {isActivated ? (
+                  {isJust ? (
                     <div className="space-y-3">
                       <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-sm text-emerald-700">
                         <CheckCircleIcon className="w-5 h-5 shrink-0" />
                         <span>
-                          <strong>Bot ativado!</strong>{" "}
-                          {result.automationsCreated} automação(ões) adicionada(s)
-                          {result.automationsSkipped > 0 && `, ${result.automationsSkipped} já existia(m)`}.
-                          Prompt e boas-vindas atualizados.
+                          <strong>Bot ativado!</strong> Prompt, boas-vindas e automações configurados.
                         </span>
                       </div>
-                      <button
-                        onClick={onConfigureClick}
-                        className={`w-full py-2.5 text-sm font-semibold text-white rounded-xl bg-gradient-to-r ${bot.color} hover:shadow-lg transition-all`}
-                      >
-                        Configurar comportamento da IA →
-                      </button>
                     </div>
                   ) : selectedBot === bot.id ? (
                     <div className="space-y-3">
                       <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl text-xs text-amber-700">
-                        <strong>Atenção:</strong> Isso atualizará o prompt da IA e a mensagem de boas-vindas. Automações com mesmos gatilhos <strong>não serão duplicadas</strong>.
+                        <strong>Atenção:</strong> O prompt da IA e a mensagem de boas-vindas serão atualizados. Automações com os mesmos gatilhos <strong>não serão duplicadas</strong>.
                       </div>
                       <div className="flex gap-2">
                         <button
@@ -266,7 +272,7 @@ function MarketplaceTab({
                         <button
                           onClick={() => handleActivate(bot.id)}
                           disabled={isActivating}
-                          className={`flex-1 py-2.5 text-sm font-semibold text-white rounded-xl transition-all bg-gradient-to-r ${bot.color} hover:shadow-lg disabled:opacity-60`}
+                          className={`flex-1 py-2.5 text-sm font-semibold text-white rounded-xl transition-all bg-gradient-to-r ${display.color} hover:shadow-lg disabled:opacity-60`}
                         >
                           {isActivating ? (
                             <span className="flex items-center justify-center gap-2">
@@ -274,7 +280,7 @@ function MarketplaceTab({
                               Ativando...
                             </span>
                           ) : (
-                            "Confirmar"
+                            "Confirmar ativação"
                           )}
                         </button>
                       </div>
@@ -282,9 +288,9 @@ function MarketplaceTab({
                   ) : hasPremiumTemplates ? (
                     <button
                       onClick={() => setSelectedBot(bot.id)}
-                      className={`w-full py-2.5 text-sm font-semibold text-white rounded-xl bg-gradient-to-r ${bot.color} hover:shadow-lg hover:scale-[1.01] transition-all`}
+                      className={`w-full py-2.5 text-sm font-semibold text-white rounded-xl bg-gradient-to-r ${display.color} hover:shadow-lg hover:scale-[1.01] transition-all`}
                     >
-                      Ativar este bot
+                      {isActive ? "Reinstalar este bot" : "Ativar este bot"}
                     </button>
                   ) : (
                     <Link
@@ -301,7 +307,6 @@ function MarketplaceTab({
         })}
       </div>
 
-      {/* Info box */}
       <div className="bg-indigo-50/60 border border-indigo-100 rounded-2xl p-5 flex gap-4 items-start">
         <div className="w-10 h-10 shrink-0 bg-white rounded-xl flex items-center justify-center shadow-sm text-indigo-600">
           <SparklesIcon className="w-5 h-5" />
@@ -309,13 +314,254 @@ function MarketplaceTab({
         <div>
           <h4 className="font-semibold text-gray-900 text-sm">Como funciona</h4>
           <p className="text-sm text-gray-600 mt-1">
-            Ao ativar um bot, o prompt da IA e a mensagem de boas-vindas são atualizados para o perfil do segmento escolhido.
-            As automações de resposta rápida são adicionadas sem sobrescrever as que você já tem.
-            Tudo pode ser ajustado depois em <strong>Respostas Rápidas</strong> e na aba{" "}
-            <button onClick={onConfigureClick} className="font-semibold text-indigo-600 hover:underline">
-              Comportamento da IA
-            </button>.
+            Ao ativar um bot, o prompt da IA, a mensagem de boas-vindas e as automações de resposta rápida são
+            pré-configurados para o seu segmento. Acesse a aba <strong>Meu Bot</strong> para ver o checklist
+            de configuração e testar o comportamento antes de ir ao ar.
           </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Aba: Meu Bot ─────────────────────────────────────────────────────────────
+
+function MeuBotTab({
+  activeBotId,
+  pendingSetup,
+  tenantSettings,
+  onGoMarketplace,
+  onGoComportamento,
+}: {
+  activeBotId: string | null;
+  pendingSetup: string[];
+  tenantSettings: any;
+  onGoMarketplace: () => void;
+  onGoComportamento: () => void;
+}) {
+  const [copied, setCopied] = useState<string | null>(null);
+
+  if (!activeBotId) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center">
+        <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center text-3xl mb-4">🤖</div>
+        <h3 className="text-lg font-bold text-gray-900">Nenhum bot ativo</h3>
+        <p className="text-sm text-gray-500 mt-1 max-w-xs">
+          Escolha um bot no Marketplace para pré-configurar o atendimento do seu segmento em um clique.
+        </p>
+        <button
+          onClick={onGoMarketplace}
+          className="mt-6 px-6 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-sm font-semibold rounded-xl hover:shadow-lg transition-all"
+        >
+          Ver Marketplace →
+        </button>
+      </div>
+    );
+  }
+
+  const bot = marketplaceBots.find((b) => b.id === activeBotId);
+  if (!bot) return null;
+
+  const display = BOT_DISPLAY[bot.id];
+
+  // Calcula quais itens do checklist estão concluídos com base em tenantSettings
+  const checklistWithStatus = bot.setupChecklist.map((item) => {
+    let done = false;
+    if (item.id === "channel") {
+      done = !!(tenantSettings?.whatsappToken || tenantSettings?.instagramPageId || tenantSettings?.facebookPageId);
+    } else if (item.id === "business_hours") {
+      done = !!tenantSettings?.businessHours?.trim();
+    } else if (item.id === "prompt_review") {
+      done = !!tenantSettings?.aiPrompt?.trim();
+    } else if (item.id === "welcome_review") {
+      done = !!tenantSettings?.welcomeMessage?.trim();
+    }
+    // services / products: não há dado suficiente no settings endpoint — mostra como sugestão
+    return { ...item, done };
+  });
+
+  const doneCount = checklistWithStatus.filter((c) => c.done).length;
+  const totalCount = checklistWithStatus.length;
+  const pct = Math.round((doneCount / totalCount) * 100);
+
+  const copyScenario = (msg: string) => {
+    navigator.clipboard.writeText(msg).catch(() => {});
+    setCopied(msg);
+    setTimeout(() => setCopied(null), 1500);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Bot identity */}
+      <div className={`rounded-2xl p-6 bg-gradient-to-br ${display.color} relative overflow-hidden`}>
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute -right-4 -top-4 w-40 h-40 rounded-full bg-white" />
+        </div>
+        <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <span className="text-5xl">{bot.emoji}</span>
+            <div>
+              <h2 className="text-2xl font-bold text-white">{bot.name}</h2>
+              <p className="text-white/80 text-sm mt-0.5">{bot.nicheLabel} · {bot.toneOfVoice}</p>
+              <p className="text-white/70 text-xs mt-1">🎯 {bot.objective}</p>
+            </div>
+          </div>
+          <div className="flex flex-col items-end gap-2">
+            <span className="px-3 py-1 bg-white/20 text-white text-xs font-semibold rounded-full">ativo</span>
+            <button
+              onClick={onGoComportamento}
+              className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white text-xs font-semibold rounded-xl transition-all"
+            >
+              Editar comportamento →
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Checklist */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
+          <div>
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-gray-900 text-sm">Checklist de ativação</h3>
+              <span className={`text-xs font-bold ${pct === 100 ? "text-emerald-600" : "text-amber-600"}`}>
+                {doneCount}/{totalCount} concluído(s)
+              </span>
+            </div>
+            <div className="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${pct === 100 ? "bg-emerald-500" : "bg-amber-400"}`}
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+          </div>
+
+          <ul className="space-y-3">
+            {checklistWithStatus.map((item) => (
+              <li key={item.id} className="flex items-start gap-3">
+                <div className={`mt-0.5 w-5 h-5 shrink-0 rounded-full flex items-center justify-center ${
+                  item.done
+                    ? "bg-emerald-100 text-emerald-600"
+                    : item.required
+                    ? "bg-amber-100 text-amber-600"
+                    : "bg-gray-100 text-gray-400"
+                }`}>
+                  {item.done ? (
+                    <CheckIcon className="w-3 h-3" />
+                  ) : (
+                    <ExclamationTriangleIcon className="w-3 h-3" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-sm font-semibold ${item.done ? "text-gray-400 line-through" : "text-gray-900"}`}>
+                      {item.label}
+                    </span>
+                    {item.required && !item.done && (
+                      <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">
+                        necessário
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-400 mt-0.5">{item.description}</p>
+                  {!item.done && (
+                    <Link href={item.href} className="text-xs text-indigo-600 font-semibold hover:underline mt-0.5 inline-block">
+                      Configurar →
+                    </Link>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+
+          {pct === 100 && (
+            <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-xs text-emerald-700 flex items-center gap-2">
+              <CheckCircleIcon className="w-4 h-4 shrink-0" />
+              Tudo configurado! Seu bot está pronto para atender.
+            </div>
+          )}
+        </div>
+
+        {/* Cenários de teste */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
+          <h3 className="font-bold text-gray-900 text-sm">Cenários de teste sugeridos</h3>
+          <p className="text-xs text-gray-500">
+            Envie estas mensagens para o canal conectado para validar o comportamento do bot.
+          </p>
+
+          <ul className="space-y-3">
+            {bot.testScenarios.map((scenario, i) => (
+              <li key={i} className="bg-gray-50 border border-gray-100 rounded-xl p-4 space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex gap-2 items-start">
+                    <span className="text-xs font-bold text-gray-400 mt-0.5">#{i + 1}</span>
+                    <p className="text-sm font-medium text-gray-900">"{scenario.userMessage}"</p>
+                  </div>
+                  <button
+                    onClick={() => copyScenario(scenario.userMessage)}
+                    className="shrink-0 p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                    title="Copiar mensagem"
+                  >
+                    {copied === scenario.userMessage ? (
+                      <CheckIcon className="w-4 h-4 text-emerald-500" />
+                    ) : (
+                      <ClipboardDocumentIcon className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 pl-5">
+                  <span className="font-semibold text-gray-600">Esperado:</span> {scenario.expectedBehavior}
+                </p>
+              </li>
+            ))}
+          </ul>
+
+          {bot.suggestedTools.length > 0 && (
+            <div className="mt-2 pt-4 border-t border-gray-100">
+              <p className="text-xs font-semibold text-gray-500 mb-2">Ferramentas recomendadas para este bot</p>
+              <div className="flex flex-wrap gap-2">
+                {bot.suggestedTools.map((tool) => {
+                  const toolLinks: Record<string, { label: string; href: string; icon: string }> = {
+                    agenda:     { label: "Agenda",     href: "/dashboard/appointments", icon: "📅" },
+                    serviços:   { label: "Serviços",   href: "/dashboard/services",    icon: "🔧" },
+                    produtos:   { label: "Produtos",   href: "/dashboard/products",    icon: "📦" },
+                    pagamentos: { label: "Pagamentos", href: "/dashboard/payments",    icon: "💳" },
+                  };
+                  const t = toolLinks[tool];
+                  if (!t) return null;
+                  return (
+                    <Link
+                      key={tool}
+                      href={t.href}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 text-xs font-semibold rounded-lg hover:bg-indigo-100 transition-all"
+                    >
+                      {t.icon} {t.label}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* O que foi configurado */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        <h3 className="font-bold text-gray-900 text-sm mb-4">O que foi pré-configurado ao ativar</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {[
+            { icon: "🤖", label: "Prompt da IA", desc: "Personalidade, tom e regras de comportamento" },
+            { icon: "👋", label: "Boas-vindas",  desc: "Mensagem enviada na primeira interação" },
+            { icon: "⚡", label: `${display.automationsCount} automações`, desc: "Respostas rápidas para intenções comuns do segmento" },
+          ].map((item) => (
+            <div key={item.label} className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
+              <span className="text-2xl">{item.icon}</span>
+              <div>
+                <p className="text-sm font-semibold text-gray-900">{item.label}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{item.desc}</p>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>
@@ -418,10 +664,10 @@ function ComportamentoTab({ user }: { user: any }) {
               rows={6}
               value={aiPrompt}
               onChange={(e) => setAiPrompt(e.target.value)}
-              placeholder="Ex: Você é Maria, assistente virtual da loja Boutique Fashion. Seja educada, simpática e ajude os clientes com informações sobre produtos, preços e disponibilidade. Quando não souber algo, ofereça conectar com um atendente humano."
+              placeholder="Ex: Você é Maria, assistente virtual da loja Boutique Fashion. Seja educada, simpática e ajude os clientes com informações sobre produtos, preços e disponibilidade."
               className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20 focus:border-[#4f46e5]/40 transition-all placeholder:text-gray-400 resize-none leading-relaxed"
             />
-            <p className="text-xs text-gray-400 mt-2">💡 Dica: Quanto mais detalhado o prompt, melhor será o atendimento da IA.</p>
+            <p className="text-xs text-gray-400 mt-2">💡 Dica: Quanto mais detalhado o prompt, melhor será o atendimento.</p>
           </div>
         </div>
 
@@ -443,12 +689,12 @@ function ComportamentoTab({ user }: { user: any }) {
               rows={4}
               value={welcomeMessage}
               onChange={(e) => setWelcomeMessage(e.target.value)}
-              placeholder="Ex: Olá! 👋 Sou a secretária virtual da Boutique Fashion. Posso te ajudar com informações sobre nossos produtos, preços e horários. Como posso te ajudar?"
+              placeholder="Ex: Olá! 👋 Sou a secretária virtual da Boutique Fashion. Como posso te ajudar?"
               className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500/40 transition-all placeholder:text-gray-400 resize-none leading-relaxed"
             />
             {welcomeMessage && (
               <div className="mt-4 p-4 bg-gradient-to-r from-[#4f46e5] to-[#5b51e0] rounded-xl text-white text-sm leading-relaxed">
-                <p className="text-[10px] text-indigo-200 font-bold uppercase tracking-wider mb-1">Prévia da mensagem</p>
+                <p className="text-[10px] text-indigo-200 font-bold uppercase tracking-wider mb-1">Prévia</p>
                 {welcomeMessage}
               </div>
             )}
@@ -473,7 +719,7 @@ function ComportamentoTab({ user }: { user: any }) {
               rows={4}
               value={businessHours}
               onChange={(e) => setBusinessHours(e.target.value)}
-              placeholder="Ex: Funcionamos de segunda a sexta das 08:00 às 18:00 e sábados das 09:00 às 13:00. Endereço: Rua das Flores, 123 - Centro. Formas de pagamento: PIX, Cartão e Boleto."
+              placeholder="Ex: Seg-Sex 08:00-18:00, Sáb 09:00-13:00. Endereço: Rua das Flores, 123. Formas de pagamento: PIX, Cartão e Boleto."
               className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500/40 transition-all placeholder:text-gray-400 resize-none leading-relaxed"
             />
           </div>

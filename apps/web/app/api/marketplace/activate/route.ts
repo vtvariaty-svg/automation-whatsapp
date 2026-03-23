@@ -80,11 +80,20 @@ export async function POST(request: Request) {
       },
     });
 
+    // 5. Calcular itens pendentes para o checklist de ativação
+    const pendingSetup: string[] = [];
+    const hasChannel = !!(tenant.whatsappToken || tenant.instagramPageId || tenant.facebookPageId);
+    if (!hasChannel) pendingSetup.push('channel');
+    if (!tenant.businessHours?.trim()) pendingSetup.push('business_hours');
+    if (bot.suggestedTools.includes('services') || bot.suggestedTools.includes('serviços')) pendingSetup.push('services');
+    if (bot.suggestedTools.includes('produtos') || bot.suggestedTools.includes('products')) pendingSetup.push('products');
+
     return NextResponse.json({
       success: true,
       botId,
       automationsCreated: toCreate.length,
       automationsSkipped: bot.automations.length - toCreate.length,
+      pendingSetup,
     });
   } catch (error: any) {
     console.error('Erro ao ativar bot do marketplace:', error);

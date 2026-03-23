@@ -15,6 +15,23 @@ interface ChecklistStep {
   priority: number;
 }
 
+interface BotSetupStep {
+  id: string;
+  title: string;
+  description: string;
+  href: string;
+  cta: string;
+  done: boolean;
+}
+
+interface BotSetup {
+  botId: string;
+  botName: string;
+  steps: BotSetupStep[];
+  completed: number;
+  total: number;
+}
+
 interface ChecklistData {
   plan: string;
   trialEnd: string | null;
@@ -27,6 +44,7 @@ interface ChecklistData {
     totalActiveAutomations: number;
     totalConversations: number;
   };
+  botSetup?: BotSetup;
 }
 
 const PLAN_LABELS: Record<string, string> = {
@@ -55,6 +73,68 @@ function StatusIcon({ status }: { status: StepStatus }) {
   return (
     <div className="w-8 h-8 rounded-full border-2 border-gray-200 flex items-center justify-center shrink-0">
       <div className="w-2 h-2 rounded-full bg-gray-300"></div>
+    </div>
+  );
+}
+
+function StepsList({ steps }: { steps: ChecklistStep[] }) {
+  return (
+    <div className="bg-white rounded-2xl border border-gray-200/60 shadow-sm overflow-hidden">
+      {steps.map((step, idx) => {
+        const isLast = idx === steps.length - 1;
+        return (
+          <div
+            key={step.id}
+            className={`flex items-start gap-4 px-6 py-4 ${!isLast ? "border-b border-gray-100" : ""} ${
+              step.status === "next" ? "bg-indigo-50/40" : ""
+            }`}
+          >
+            <div className="flex flex-col items-center pt-0.5">
+              <StatusIcon status={step.status} />
+              {!isLast && (
+                <div
+                  className={`w-0.5 flex-1 mt-1.5 min-h-[20px] ${
+                    step.status === "completed" ? "bg-emerald-200" : "bg-gray-200"
+                  }`}
+                />
+              )}
+            </div>
+            <div className="flex-1 min-w-0 pb-2">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <p
+                  className={`text-sm font-semibold ${
+                    step.status === "completed"
+                      ? "text-gray-500 line-through decoration-gray-300"
+                      : step.status === "next"
+                      ? "text-gray-900"
+                      : "text-gray-600"
+                  }`}
+                >
+                  {step.title}
+                  {step.status === "next" && (
+                    <span className="ml-2 text-[10px] font-bold text-indigo-600 bg-indigo-100 px-1.5 py-0.5 rounded uppercase tracking-wider not-italic no-underline" style={{ textDecoration: 'none' }}>
+                      Próximo
+                    </span>
+                  )}
+                </p>
+                {step.status !== "completed" && (
+                  <Link
+                    href={step.href}
+                    className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all ${
+                      step.status === "next"
+                        ? "bg-indigo-600 text-white hover:bg-indigo-700"
+                        : "border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-700"
+                    }`}
+                  >
+                    {step.cta}
+                  </Link>
+                )}
+              </div>
+              <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">{step.description}</p>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -108,8 +188,12 @@ export default function SetupChecklist() {
     );
   }
 
-  const { progress, steps, plan, trialEnd, isTrialing, analytics } = data;
-  const allDone = progress.completed === progress.total;
+  const { progress, steps, plan, trialEnd, isTrialing, analytics, botSetup } = data;
+
+  const totalCompleted = progress.completed + (botSetup?.completed ?? 0);
+  const totalSteps = progress.total + (botSetup?.total ?? 0);
+  const combinedPercent = totalSteps > 0 ? Math.round((totalCompleted / totalSteps) * 100) : 0;
+  const allDone = totalCompleted === totalSteps;
 
   return (
     <div className="space-y-5">
@@ -133,10 +217,10 @@ export default function SetupChecklist() {
             <p className="text-sm text-gray-500 mt-0.5">
               {allDone
                 ? "Todos os passos foram concluídos. Sua plataforma está ativa."
-                : `${progress.completed} de ${progress.total} etapas concluídas`}
+                : `${totalCompleted} de ${totalSteps} etapas concluídas`}
             </p>
           </div>
-          {/* Progress circle */}
+          {/* Progress circle — uses combined percent to avoid misleading 100% when bot setup is pending */}
           <div className="relative w-16 h-16 shrink-0">
             <svg className="w-16 h-16 -rotate-90" viewBox="0 0 64 64">
               <circle cx="32" cy="32" r="26" fill="none" stroke="#f3f4f6" strokeWidth="6" />
@@ -146,13 +230,13 @@ export default function SetupChecklist() {
                 stroke={allDone ? "#10b981" : "#4f46e5"}
                 strokeWidth="6"
                 strokeDasharray={`${2 * Math.PI * 26}`}
-                strokeDashoffset={`${2 * Math.PI * 26 * (1 - progress.percent / 100)}`}
+                strokeDashoffset={`${2 * Math.PI * 26 * (1 - combinedPercent / 100)}`}
                 strokeLinecap="round"
                 className="transition-all duration-700"
               />
             </svg>
             <span className="absolute inset-0 flex items-center justify-center text-sm font-bold text-gray-900">
-              {progress.percent}%
+              {combinedPercent}%
             </span>
           </div>
         </div>
@@ -161,71 +245,74 @@ export default function SetupChecklist() {
         <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
           <div
             className={`h-full rounded-full transition-all duration-700 ${allDone ? "bg-emerald-500" : "bg-indigo-600"}`}
-            style={{ width: `${progress.percent}%` }}
+            style={{ width: `${combinedPercent}%` }}
           />
         </div>
       </div>
 
-      {/* Steps */}
-      <div className="bg-white rounded-2xl border border-gray-200/60 shadow-sm overflow-hidden">
-        {steps.map((step, idx) => {
-          const isLast = idx === steps.length - 1;
-          return (
-            <div
-              key={step.id}
-              className={`flex items-start gap-4 px-6 py-4 ${!isLast ? "border-b border-gray-100" : ""} ${
-                step.status === "next" ? "bg-indigo-50/40" : ""
-              }`}
-            >
-              {/* Connector line */}
-              <div className="flex flex-col items-center pt-0.5">
-                <StatusIcon status={step.status} />
-                {!isLast && (
-                  <div
-                    className={`w-0.5 flex-1 mt-1.5 min-h-[20px] ${
-                      step.status === "completed" ? "bg-emerald-200" : "bg-gray-200"
-                    }`}
-                  />
-                )}
-              </div>
+      {/* Platform steps */}
+      {botSetup && (
+        <p className="text-xs font-bold uppercase tracking-widest text-gray-400 px-1">Ativação da Plataforma</p>
+      )}
+      <StepsList steps={steps} />
 
-              <div className="flex-1 min-w-0 pb-2">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <p
-                    className={`text-sm font-semibold ${
-                      step.status === "completed"
-                        ? "text-gray-500 line-through decoration-gray-300"
-                        : step.status === "next"
-                        ? "text-gray-900"
-                        : "text-gray-600"
-                    }`}
-                  >
-                    {step.title}
-                    {step.status === "next" && (
-                      <span className="ml-2 text-[10px] font-bold text-indigo-600 bg-indigo-100 px-1.5 py-0.5 rounded uppercase tracking-wider not-italic no-underline" style={{ textDecoration: 'none' }}>
-                        Próximo
-                      </span>
+      {/* Bot setup steps */}
+      {botSetup && (
+        <>
+          <div className="flex items-center gap-2 px-1">
+            <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Setup do Bot</p>
+            <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-[10px] font-bold rounded-full">
+              {botSetup.botName}
+            </span>
+          </div>
+          <div className="bg-white rounded-2xl border border-gray-200/60 shadow-sm overflow-hidden">
+            {botSetup.steps.map((step, idx) => {
+              const isLast = idx === botSetup.steps.length - 1;
+              const status: StepStatus = step.done ? "completed" : idx === botSetup.steps.findIndex((s) => !s.done) ? "next" : "pending";
+              return (
+                <div
+                  key={step.id}
+                  className={`flex items-start gap-4 px-6 py-4 ${!isLast ? "border-b border-gray-100" : ""} ${
+                    status === "next" ? "bg-indigo-50/40" : ""
+                  }`}
+                >
+                  <div className="flex flex-col items-center pt-0.5">
+                    <StatusIcon status={status} />
+                    {!isLast && (
+                      <div className={`w-0.5 flex-1 mt-1.5 min-h-[20px] ${status === "completed" ? "bg-emerald-200" : "bg-gray-200"}`} />
                     )}
-                  </p>
-                  {step.status !== "completed" && (
-                    <Link
-                      href={step.href}
-                      className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all ${
-                        step.status === "next"
-                          ? "bg-indigo-600 text-white hover:bg-indigo-700"
-                          : "border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-700"
-                      }`}
-                    >
-                      {step.cta}
-                    </Link>
-                  )}
+                  </div>
+                  <div className="flex-1 min-w-0 pb-2">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <p className={`text-sm font-semibold ${status === "completed" ? "text-gray-500 line-through decoration-gray-300" : status === "next" ? "text-gray-900" : "text-gray-600"}`}>
+                        {step.title}
+                        {status === "next" && (
+                          <span className="ml-2 text-[10px] font-bold text-indigo-600 bg-indigo-100 px-1.5 py-0.5 rounded uppercase tracking-wider not-italic no-underline" style={{ textDecoration: 'none' }}>
+                            Próximo
+                          </span>
+                        )}
+                      </p>
+                      {!step.done && (
+                        <Link
+                          href={step.href}
+                          className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all ${
+                            status === "next"
+                              ? "bg-indigo-600 text-white hover:bg-indigo-700"
+                              : "border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-700"
+                          }`}
+                        >
+                          {step.cta}
+                        </Link>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">{step.description}</p>
+                  </div>
                 </div>
-                <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">{step.description}</p>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+              );
+            })}
+          </div>
+        </>
+      )}
 
       {/* Analytics card */}
       {(analytics.totalActiveAutomations > 0 || analytics.totalConversations > 0) && (

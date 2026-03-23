@@ -9,7 +9,6 @@ import {
   CheckCircleIcon,
   BoltIcon,
   SparklesIcon,
-  ExclamationTriangleIcon,
   ClipboardDocumentIcon,
   CheckIcon,
 } from "@heroicons/react/24/outline";
@@ -37,10 +36,8 @@ function BotsIAContent() {
 
   const tab = (searchParams.get("tab") as Tab) || "marketplace";
 
-  // Estado compartilhado: bot ativo e itens pendentes da última ativação
+  // Estado compartilhado: bot ativo
   const [activeBotId, setActiveBotId] = useState<string | null>(null);
-  const [pendingSetup, setPendingSetup] = useState<string[]>([]);
-  const [tenantSettings, setTenantSettings] = useState<any>(null);
 
   // Carrega tenant settings e determina o bot ativo
   useEffect(() => {
@@ -49,7 +46,6 @@ function BotsIAContent() {
       .then((r) => r.ok ? r.json() : null)
       .then((data) => {
         if (!data) return;
-        setTenantSettings(data);
         if (data.activeBotKey) {
           // fonte de verdade primária
           setActiveBotId(data.activeBotKey);
@@ -74,9 +70,8 @@ function BotsIAContent() {
     router.push(`/dashboard/bots${qs ? `?${qs}` : ""}`);
   };
 
-  const onBotActivated = (botId: string, pending: string[]) => {
+  const onBotActivated = (botId: string) => {
     setActiveBotId(botId);
-    setPendingSetup(pending);
     setTab("meubot");
   };
 
@@ -117,8 +112,6 @@ function BotsIAContent() {
       {tab === "meubot" && (
         <MeuBotTab
           activeBotId={activeBotId}
-          pendingSetup={pendingSetup}
-          tenantSettings={tenantSettings}
           onGoMarketplace={() => setTab("marketplace")}
           onGoComportamento={() => setTab("comportamento")}
         />
@@ -152,7 +145,7 @@ function MarketplaceTab({
 }: {
   user: any;
   ent: any;
-  onBotActivated: (botId: string, pending: string[]) => void;
+  onBotActivated: (botId: string) => void;
   activeBotId: string | null;
 }) {
   const hasPremiumTemplates = ent.loading || ent.features.premiumTemplates;
@@ -176,7 +169,7 @@ function MarketplaceTab({
       if (res.ok && data.success) {
         setJustActivated(botId);
         setSelectedBot(null);
-        onBotActivated(botId, data.pendingSetup ?? []);
+        onBotActivated(botId);
       } else {
         setError(data.error || "Erro ao ativar o bot.");
       }
@@ -355,14 +348,10 @@ function MarketplaceTab({
 
 function MeuBotTab({
   activeBotId,
-  pendingSetup,
-  tenantSettings,
   onGoMarketplace,
   onGoComportamento,
 }: {
   activeBotId: string | null;
-  pendingSetup: string[];
-  tenantSettings: any;
   onGoMarketplace: () => void;
   onGoComportamento: () => void;
 }) {
@@ -390,26 +379,6 @@ function MeuBotTab({
   if (!bot) return null;
 
   const display = BLUEPRINT_DISPLAY[bot.blueprint as Blueprint];
-
-  // Calcula quais itens do checklist estão concluídos com base em tenantSettings
-  const checklistWithStatus = bot.setupChecklist.map((item) => {
-    let done = false;
-    if (item.id === "channel") {
-      done = !!(tenantSettings?.whatsappToken || tenantSettings?.instagramPageId || tenantSettings?.facebookPageId);
-    } else if (item.id === "business_hours") {
-      done = !!tenantSettings?.businessHours?.trim();
-    } else if (item.id === "prompt_review") {
-      done = !!tenantSettings?.aiPrompt?.trim();
-    } else if (item.id === "welcome_review") {
-      done = !!tenantSettings?.welcomeMessage?.trim();
-    }
-    // services / products: não há dado suficiente no settings endpoint — mostra como sugestão
-    return { ...item, done };
-  });
-
-  const doneCount = checklistWithStatus.filter((c) => c.done).length;
-  const totalCount = checklistWithStatus.length;
-  const pct = Math.round((doneCount / totalCount) * 100);
 
   const copyScenario = (msg: string) => {
     navigator.clipboard.writeText(msg).catch(() => {});
@@ -446,68 +415,24 @@ function MeuBotTab({
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Checklist */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
+        {/* Link para Setup */}
+        <Link
+          href="/dashboard/setup"
+          className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex flex-col justify-between hover:shadow-md hover:border-indigo-200 transition-all group"
+        >
           <div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 mb-1">
+              <CheckCircleIcon className="w-5 h-5 text-indigo-500" />
               <h3 className="font-bold text-gray-900 text-sm">Checklist de ativação</h3>
-              <span className={`text-xs font-bold ${pct === 100 ? "text-emerald-600" : "text-amber-600"}`}>
-                {doneCount}/{totalCount} concluído(s)
-              </span>
             </div>
-            <div className="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all ${pct === 100 ? "bg-emerald-500" : "bg-amber-400"}`}
-                style={{ width: `${pct}%` }}
-              />
-            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Veja o progresso completo da configuração da plataforma e do bot em um só lugar.
+            </p>
           </div>
-
-          <ul className="space-y-3">
-            {checklistWithStatus.map((item) => (
-              <li key={item.id} className="flex items-start gap-3">
-                <div className={`mt-0.5 w-5 h-5 shrink-0 rounded-full flex items-center justify-center ${
-                  item.done
-                    ? "bg-emerald-100 text-emerald-600"
-                    : item.required
-                    ? "bg-amber-100 text-amber-600"
-                    : "bg-gray-100 text-gray-400"
-                }`}>
-                  {item.done ? (
-                    <CheckIcon className="w-3 h-3" />
-                  ) : (
-                    <ExclamationTriangleIcon className="w-3 h-3" />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className={`text-sm font-semibold ${item.done ? "text-gray-400 line-through" : "text-gray-900"}`}>
-                      {item.label}
-                    </span>
-                    {item.required && !item.done && (
-                      <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">
-                        necessário
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-gray-400 mt-0.5">{item.description}</p>
-                  {!item.done && (
-                    <Link href={item.href} className="text-xs text-indigo-600 font-semibold hover:underline mt-0.5 inline-block">
-                      Configurar →
-                    </Link>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
-
-          {pct === 100 && (
-            <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-xs text-emerald-700 flex items-center gap-2">
-              <CheckCircleIcon className="w-4 h-4 shrink-0" />
-              Tudo configurado! Seu bot está pronto para atender.
-            </div>
-          )}
-        </div>
+          <div className="mt-4 text-xs font-semibold text-indigo-600 group-hover:underline">
+            Abrir checklist →
+          </div>
+        </Link>
 
         {/* Cenários de teste */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">

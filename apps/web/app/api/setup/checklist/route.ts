@@ -7,6 +7,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthTenant } from '@/lib/getAuthTenant';
+import { marketplaceBots } from '@/lib/marketplace/bots';
 
 export const dynamic = 'force-dynamic';
 
@@ -67,6 +68,23 @@ type StepStatus = 'completed' | 'next' | 'pending';
 
 interface ChecklistStep extends StepDef {
   status: StepStatus;
+}
+
+interface BotSetupStep {
+  id: string;
+  title: string;
+  description: string;
+  href: string;
+  cta: string;
+  done: boolean;
+}
+
+interface BotSetup {
+  botId: string;
+  botName: string;
+  steps: BotSetupStep[];
+  completed: number;
+  total: number;
 }
 
 // ─── Completion map ────────────────────────────────────────────────────────────
@@ -148,6 +166,66 @@ async function buildAnalytics(tenantId: string) {
   };
 }
 
+// ─── Bot setup section ────────────────────────────────────────────────────────
+
+async function buildBotSetup(tenantId: string): Promise<BotSetup | null> {
+  const tenant = await prisma.tenant.findUnique({
+    where: { id: tenantId },
+    select: { activeBotKey: true, whatsappToken: true, facebookToken: true, businessHours: true, aiPrompt: true, welcomeMessage: true },
+  });
+
+  if (!tenant?.activeBotKey) return null;
+
+  const bot = marketplaceBots.find((b) => b.id === tenant.activeBotKey);
+  if (!bot) return null;
+
+  const instagramConn = await prisma.instagramConnection.findUnique({
+    where: { tenantId },
+    select: { status: true },
+  });
+
+  const hasChannel = !!(tenant.whatsappToken || tenant.facebookToken || instagramConn?.status === 'connected');
+
+  const steps: BotSetupStep[] = [
+    {
+      id: 'bot_channel',
+      title: 'Canal conectado',
+      description: 'Conecte WhatsApp, Instagram ou Facebook para o bot atender.',
+      href: '/dashboard/integrations',
+      cta: 'Conectar canal',
+      done: hasChannel,
+    },
+    {
+      id: 'bot_hours',
+      title: 'Horário de atendimento',
+      description: 'Informe os horários para o bot informar os clientes corretamente.',
+      href: '/onboarding/step/1',
+      cta: 'Configurar horários',
+      done: !!tenant.businessHours?.trim(),
+    },
+    {
+      id: 'bot_prompt',
+      title: 'Prompt da IA revisado',
+      description: 'Revise e personalize o prompt gerado pelo bot.',
+      href: '/dashboard/bots?tab=comportamento',
+      cta: 'Revisar prompt',
+      done: !!tenant.aiPrompt?.trim(),
+    },
+    {
+      id: 'bot_welcome',
+      title: 'Mensagem de boas-vindas revisada',
+      description: 'Revise a mensagem de boas-vindas configurada pelo bot.',
+      href: '/dashboard/bots?tab=comportamento',
+      cta: 'Revisar boas-vindas',
+      done: !!tenant.welcomeMessage?.trim(),
+    },
+  ];
+
+  const completed = steps.filter((s) => s.done).length;
+
+  return { botId: bot.id, botName: bot.name, steps, completed, total: steps.length };
+}
+
 // ─── Handler ──────────────────────────────────────────────────────────────────
 
 export async function GET(request: Request) {
@@ -164,9 +242,10 @@ export async function GET(request: Request) {
   const plan = subscription?.plan ?? 'free';
   const stepDefs = PLAN_STEPS[plan] ?? PLAN_STEPS['free'];
 
-  const [completionMap, analytics] = await Promise.all([
+  const [completionMap, analytics, botSetup] = await Promise.all([
     buildCompletionMap(tenantId),
     buildAnalytics(tenantId),
+    buildBotSetup(tenantId),
   ]);
 
   // Build steps with real status
@@ -189,5 +268,6 @@ export async function GET(request: Request) {
     progress: { completed, total, percent: total > 0 ? Math.round((completed / total) * 100) : 0 },
     steps,
     analytics,
+    ...(botSetup ? { botSetup } : {}),
   });
 }

@@ -4,20 +4,21 @@ import { prisma } from '@/lib/prisma';
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   const user = await getAuthUser(req);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const product = await prisma.product.findFirst({
-    where: { id: params.id, tenantId: user.tenantId },
+    where: { id, tenantId: user.tenantId },
   });
   if (!product) return NextResponse.json({ error: 'Produto não encontrado' }, { status: 404 });
 
   const data = await req.json();
 
   const updated = await prisma.product.update({
-    where: { id: params.id },
+    where: { id },
     data: {
       ...(data.name        !== undefined && { name: data.name }),
       ...(data.description !== undefined && { description: data.description }),
@@ -33,16 +34,17 @@ export async function PATCH(
 
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   const user = await getAuthUser(req);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const product = await prisma.product.findFirst({
-    where: { id: params.id, tenantId: user.tenantId },
+    where: { id, tenantId: user.tenantId },
   });
   if (!product) return NextResponse.json({ error: 'Produto não encontrado' }, { status: 404 });
 
-  await prisma.product.delete({ where: { id: params.id } });
+  await prisma.product.delete({ where: { id } });
   return NextResponse.json({ success: true });
 }

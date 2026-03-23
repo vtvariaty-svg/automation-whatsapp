@@ -32,6 +32,7 @@ const navItems: NavItem[] = [
   { href: "/dashboard/appointments", label: "Agenda", icon: "📅", section: null, minPlan: "standard" },
   { href: "/dashboard/orders", label: "Pedidos", icon: "🛍️", section: null, minPlan: "standard" },
   { href: "/dashboard/payments", label: "Cobranças", icon: "💸", section: null, minPlan: "standard" },
+  { href: "/dashboard/vendas", label: "Catálogo & Vendas IA", icon: "🏪", section: null, minPlan: "standard" },
   { href: "/dashboard/services", label: "Serviços", icon: "✂️", section: null, minPlan: "standard" },
   { href: "/dashboard/professionals", label: "Profissionais", icon: "👤", section: null, minPlan: "standard" },
 
@@ -39,7 +40,6 @@ const navItems: NavItem[] = [
   { href: "/dashboard/integrations", label: "Canais", icon: "📡", section: "Canais & IA" },
   { href: "/dashboard/instagram-comments", label: "Comentários Instagram", icon: "💬", section: null, requiredFeature: "instagramComments", minPlan: "standard" },
   { href: "/dashboard/bots", label: "Bots & IA", icon: "🤖", section: null },
-  { href: "/dashboard/automations", label: "Respostas Rápidas", icon: "⚡", section: null },
   { href: "/dashboard/templates", label: "Templates WhatsApp", icon: "📋", section: null, requiredFeature: "whatsapp", minPlan: "standard" },
   { href: "/dashboard/broadcasts", label: "Envios em Lote", icon: "📨", section: null, requiredFeature: "whatsapp", minPlan: "standard" },
   { href: "/dashboard/insights", label: "Insights de IA", icon: "🔍", section: null, requiredFeature: "aiCopilot", minPlan: "pro" },
@@ -58,8 +58,7 @@ const navItems: NavItem[] = [
   { href: "/dashboard/fiscal/whatsapp", label: "Emissão por WhatsApp", icon: "📱", section: null, minPlan: "pro", hideWhenLocked: true },
 
   // ── Administração ──
-  { href: "/dashboard/products", label: "Produtos", icon: "📦", section: "Administração", minPlan: "standard" },
-  { href: "/dashboard/agency", label: "Agência", icon: "🏢", section: null, requiredFeature: "agencyReseller", minPlan: "business" },
+  { href: "/dashboard/agency", label: "Agência", icon: "🏢", section: "Administração", requiredFeature: "agencyReseller", minPlan: "business" },
   { href: "/dashboard/billing", label: "Assinatura", icon: "💳", section: null },
   { href: "/dashboard/settings", label: "Configurações", icon: "⚙️", section: null },
 ];

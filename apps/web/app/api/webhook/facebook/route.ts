@@ -89,7 +89,7 @@ export async function POST(req: Request) {
       }
     } catch {}
 
-    let status = await getConversationStatus(from, tenant.id);
+    let status = await getConversationStatus(from, tenant.id, 'facebook');
     if (status === 'closed') status = 'open';
     await saveUserMessage(from, textBody, tenant.id, status, 'facebook');
     if (status !== 'open' && status !== 'ai') return new Response('OK', { status: 200 });

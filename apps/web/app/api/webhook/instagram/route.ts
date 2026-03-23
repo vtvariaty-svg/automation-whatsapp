@@ -109,7 +109,7 @@ async function handleDM(body: any, pageId: string) {
     }
   } catch {}
 
-  let status = await getConversationStatus(from, tenant.id);
+  let status = await getConversationStatus(from, tenant.id, 'instagram');
   if (status === 'closed') status = 'open';
   await saveUserMessage(from, textBody, tenant.id, status, 'instagram');
 

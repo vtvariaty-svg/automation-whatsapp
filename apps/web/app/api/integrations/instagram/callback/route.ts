@@ -96,6 +96,7 @@ export async function GET(req: Request) {
       data: {
         instagramToken: encrypt(longToken),
         instagramAccountId: igAccountId,
+        instagramPageId: igAccountId,
         enabledChannels: addChannel(tenant.enabledChannels, 'instagram'),
       },
     });
@@ -104,14 +105,14 @@ export async function GET(req: Request) {
       where: { tenantId },
       create: {
         tenantId,
-        pageId: null,
+        pageId: igAccountId,
         accessToken: encrypt(longToken),
         igAccountId,
         username,
         status: 'connected',
       },
       update: {
-        pageId: null,
+        pageId: igAccountId,
         accessToken: encrypt(longToken),
         igAccountId,
         username,

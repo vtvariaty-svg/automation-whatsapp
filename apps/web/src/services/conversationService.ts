@@ -359,10 +359,10 @@ export async function getConversationsList(tenantId: string) {
 /**
  * Retorna o status atual de uma conversa (baseado na última mensagem).
  */
-export async function getConversationStatus(phoneNumber: string, tenantId: string) {
+export async function getConversationStatus(phoneNumber: string, tenantId: string, channel = 'whatsapp') {
   try {
     const conversation = await prisma.conversation.findFirst({
-      where: { customerPhone: phoneNumber, tenantId }
+      where: { customerPhone: phoneNumber, tenantId, channel }
     });
     return conversation?.status || 'ai';
   } catch (error) {

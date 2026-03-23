@@ -38,11 +38,10 @@ const navItems: NavItem[] = [
   // ── Canais & IA ──
   { href: "/dashboard/integrations", label: "Canais", icon: "📡", section: "Canais & IA" },
   { href: "/dashboard/instagram-comments", label: "Comentários Instagram", icon: "💬", section: null, requiredFeature: "instagramComments", minPlan: "standard" },
-  { href: "/dashboard/ai", label: "Configuração de IA", icon: "🤖", section: null },
+  { href: "/dashboard/bots", label: "Bots & IA", icon: "🤖", section: null },
   { href: "/dashboard/automations", label: "Respostas Rápidas", icon: "⚡", section: null },
   { href: "/dashboard/templates", label: "Templates WhatsApp", icon: "📋", section: null, requiredFeature: "whatsapp", minPlan: "standard" },
   { href: "/dashboard/broadcasts", label: "Envios em Lote", icon: "📨", section: null, requiredFeature: "whatsapp", minPlan: "standard" },
-  { href: "/dashboard/marketplace", label: "Marketplace de Bots", icon: "✨", section: null },
   { href: "/dashboard/insights", label: "Insights de IA", icon: "🔍", section: null, requiredFeature: "aiCopilot", minPlan: "pro" },
 
   // ── Crescimento ──

@@ -13,18 +13,18 @@ import {
   ClipboardDocumentIcon,
   CheckIcon,
 } from "@heroicons/react/24/outline";
-import { marketplaceBots } from "@/lib/marketplace/bots";
+import { marketplaceBots, BLUEPRINTS, MODULE_LABELS, Blueprint, Module } from "@/lib/marketplace/bots";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
 type Tab = "marketplace" | "meubot" | "comportamento";
 
-// Dados de exibição (cor, estilo) separados dos dados de negócio
-const BOT_DISPLAY: Record<string, { color: string; tagColor: string; automationsCount: number }> = {
-  "bot-imobiliaria": { color: "from-amber-500 to-orange-500", tagColor: "bg-amber-100 text-amber-700", automationsCount: 6 },
-  "bot-clinica":     { color: "from-sky-500 to-blue-600",     tagColor: "bg-sky-100 text-sky-700",     automationsCount: 5 },
-  "bot-ecommerce":   { color: "from-violet-500 to-purple-600",tagColor: "bg-violet-100 text-violet-700",automationsCount: 6 },
-  "bot-cabeleireiro":{ color: "from-pink-500 to-rose-500",    tagColor: "bg-pink-100 text-pink-700",   automationsCount: 6 },
+// Cores por blueprint — cobre todos os bots automaticamente
+const BLUEPRINT_DISPLAY: Record<Blueprint, { color: string; tagColor: string }> = {
+  "agenda-servicos": { color: "from-emerald-500 to-teal-500",  tagColor: "bg-emerald-100 text-emerald-700" },
+  "catalogo-vendas": { color: "from-violet-500 to-purple-600", tagColor: "bg-violet-100 text-violet-700"  },
+  "consulta-leads":  { color: "from-amber-500 to-orange-500",  tagColor: "bg-amber-100 text-amber-700"   },
+  "hibrido":         { color: "from-sky-500 to-blue-600",      tagColor: "bg-sky-100 text-sky-700"       },
 };
 
 // ─── Página principal ─────────────────────────────────────────────────────────
@@ -42,7 +42,7 @@ function BotsIAContent() {
   const [pendingSetup, setPendingSetup] = useState<string[]>([]);
   const [tenantSettings, setTenantSettings] = useState<any>(null);
 
-  // Carrega tenant settings e deriva qual bot está instalado via businessType
+  // Carrega tenant settings e determina o bot ativo
   useEffect(() => {
     if (!user?.tenantId) return;
     fetch(`/api/tenant/settings?tenantId=${user.tenantId}`)
@@ -50,9 +50,15 @@ function BotsIAContent() {
       .then((data) => {
         if (!data) return;
         setTenantSettings(data);
-        const bt = data.businessType || data.business_type || "";
-        const found = marketplaceBots.find((b) => b.niche === bt);
-        if (found) setActiveBotId(found.id);
+        if (data.activeBotKey) {
+          // fonte de verdade primária
+          setActiveBotId(data.activeBotKey);
+        } else {
+          // fallback somente-leitura para tenants antigos (não persiste)
+          const bt = data.businessType || "";
+          const found = marketplaceBots.find((b) => b.niche === bt);
+          if (found) setActiveBotId(found.id);
+        }
       })
       .catch(() => {});
   }, [user?.tenantId]);
@@ -187,125 +193,146 @@ function MarketplaceTab({
         <div className="p-4 bg-red-50 border border-red-100 rounded-xl text-sm text-red-700">{error}</div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {marketplaceBots.map((bot) => {
-          const display = BOT_DISPLAY[bot.id];
-          const isActive = activeBotId === bot.id;
-          const isActivating = activating === bot.id;
-          const isJust = justActivated === bot.id;
+      {(Object.keys(BLUEPRINTS) as Blueprint[]).map((blueprintId) => {
+        const bots = marketplaceBots.filter((b) => b.blueprint === blueprintId);
+        if (bots.length === 0) return null;
+        const bp = BLUEPRINTS[blueprintId];
+        const display = BLUEPRINT_DISPLAY[blueprintId];
 
-          return (
-            <div
-              key={bot.id}
-              className={`bg-white rounded-2xl border shadow-sm overflow-hidden hover:shadow-md transition-all flex flex-col ${
-                isActive ? "border-indigo-300 ring-1 ring-indigo-200" : "border-gray-100"
-              }`}
-            >
-              {/* Card header */}
-              <div className={`p-6 bg-gradient-to-br ${display.color} relative overflow-hidden`}>
-                <div className="absolute inset-0 opacity-10">
-                  <div className="absolute -right-4 -top-4 w-32 h-32 rounded-full bg-white" />
-                  <div className="absolute -left-8 -bottom-8 w-40 h-40 rounded-full bg-white" />
-                </div>
-                <div className="relative flex items-start justify-between">
-                  <div>
-                    <span className="text-4xl">{bot.emoji}</span>
-                    <h2 className="text-xl font-bold text-white mt-2">{bot.name}</h2>
-                    <span className="inline-block mt-1 px-3 py-0.5 bg-white/20 text-white text-xs font-semibold rounded-full">
-                      {bot.nicheLabel}
-                    </span>
-                  </div>
-                  <div className="flex flex-col items-end gap-1">
-                    {isActive && (
-                      <span className="px-2 py-0.5 bg-white/90 text-indigo-700 text-xs font-bold rounded-full">
-                        ativo
-                      </span>
-                    )}
-                    <span className="text-white/80 text-sm font-medium">
-                      <BoltIcon className="w-4 h-4 inline-block mr-1" />
-                      {display.automationsCount} automações
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Card body */}
-              <div className="p-6 flex flex-col flex-1">
-                <p className="text-sm text-gray-600 leading-relaxed">{bot.description}</p>
-
-                <div className="flex flex-wrap gap-2 mt-3">
-                  {bot.tags.map((tag) => (
-                    <span key={tag} className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${display.tagColor}`}>
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-
-                {/* Tom e objetivo */}
-                <div className="mt-4 flex gap-4 text-xs text-gray-500">
-                  <span>🎤 <strong>Tom:</strong> {bot.toneOfVoice}</span>
-                  <span>🎯 <strong>Foco:</strong> {bot.objective}</span>
-                </div>
-
-                <div className="mt-auto pt-5">
-                  {isJust ? (
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-sm text-emerald-700">
-                        <CheckCircleIcon className="w-5 h-5 shrink-0" />
-                        <span>
-                          <strong>Bot ativado!</strong> Prompt, boas-vindas e automações configurados.
-                        </span>
-                      </div>
-                    </div>
-                  ) : selectedBot === bot.id ? (
-                    <div className="space-y-3">
-                      <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl text-xs text-amber-700">
-                        <strong>Atenção:</strong> O prompt da IA e a mensagem de boas-vindas serão atualizados. Automações com os mesmos gatilhos <strong>não serão duplicadas</strong>.
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => setSelectedBot(null)}
-                          className="flex-1 py-2.5 text-sm font-semibold text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all"
-                        >
-                          Cancelar
-                        </button>
-                        <button
-                          onClick={() => handleActivate(bot.id)}
-                          disabled={isActivating}
-                          className={`flex-1 py-2.5 text-sm font-semibold text-white rounded-xl transition-all bg-gradient-to-r ${display.color} hover:shadow-lg disabled:opacity-60`}
-                        >
-                          {isActivating ? (
-                            <span className="flex items-center justify-center gap-2">
-                              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                              Ativando...
-                            </span>
-                          ) : (
-                            "Confirmar ativação"
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  ) : hasPremiumTemplates ? (
-                    <button
-                      onClick={() => setSelectedBot(bot.id)}
-                      className={`w-full py-2.5 text-sm font-semibold text-white rounded-xl bg-gradient-to-r ${display.color} hover:shadow-lg hover:scale-[1.01] transition-all`}
-                    >
-                      {isActive ? "Reinstalar este bot" : "Ativar este bot"}
-                    </button>
-                  ) : (
-                    <Link
-                      href="/dashboard/billing"
-                      className="w-full block py-2.5 text-sm font-semibold text-center text-gray-500 rounded-xl bg-gray-100 border border-gray-200 hover:bg-gray-200 transition-all"
-                    >
-                      Requer Pro — Fazer upgrade
-                    </Link>
-                  )}
-                </div>
+        return (
+          <div key={blueprintId} className="space-y-4">
+            {/* Cabeçalho da seção */}
+            <div className="flex items-center gap-3">
+              <div className={`h-1 w-6 rounded-full bg-gradient-to-r ${display.color}`} />
+              <div>
+                <span className="text-sm font-bold text-gray-800">{bp.label}</span>
+                <span className="ml-2 text-xs text-gray-400">{bp.description}</span>
               </div>
             </div>
-          );
-        })}
-      </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {bots.map((bot) => {
+                const isActive = activeBotId === bot.id;
+                const isActivating = activating === bot.id;
+                const isJust = justActivated === bot.id;
+
+                return (
+                  <div
+                    key={bot.id}
+                    className={`bg-white rounded-2xl border shadow-sm overflow-hidden hover:shadow-md transition-all flex flex-col ${
+                      isActive ? "border-indigo-300 ring-1 ring-indigo-200" : "border-gray-100"
+                    }`}
+                  >
+                    {/* Card header */}
+                    <div className={`p-6 bg-gradient-to-br ${display.color} relative overflow-hidden`}>
+                      <div className="absolute inset-0 opacity-10">
+                        <div className="absolute -right-4 -top-4 w-32 h-32 rounded-full bg-white" />
+                        <div className="absolute -left-8 -bottom-8 w-40 h-40 rounded-full bg-white" />
+                      </div>
+                      <div className="relative flex items-start justify-between">
+                        <div>
+                          <span className="text-4xl">{bot.emoji}</span>
+                          <h2 className="text-xl font-bold text-white mt-2">{bot.name}</h2>
+                          <span className="inline-block mt-1 px-3 py-0.5 bg-white/20 text-white text-xs font-semibold rounded-full">
+                            {bot.nicheLabel}
+                          </span>
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                          {isActive && (
+                            <span className="px-2 py-0.5 bg-white/90 text-indigo-700 text-xs font-bold rounded-full">
+                              ativo
+                            </span>
+                          )}
+                          <span className="text-white/80 text-sm font-medium">
+                            <BoltIcon className="w-4 h-4 inline-block mr-1" />
+                            {bot.automations.length} automações
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Card body */}
+                    <div className="p-6 flex flex-col flex-1">
+                      <p className="text-sm text-gray-600 leading-relaxed">{bot.description}</p>
+
+                      {/* Module chips */}
+                      <div className="flex flex-wrap gap-1.5 mt-3">
+                        {bot.modules.map((mod) => (
+                          <span
+                            key={mod}
+                            className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${display.tagColor}`}
+                          >
+                            {MODULE_LABELS[mod as Module]}
+                          </span>
+                        ))}
+                      </div>
+
+                      {/* Tom e objetivo */}
+                      <div className="mt-4 flex flex-wrap gap-4 text-xs text-gray-500">
+                        <span>🎤 <strong>Tom:</strong> {bot.toneOfVoice}</span>
+                        <span>🎯 <strong>Foco:</strong> {bot.objective}</span>
+                      </div>
+
+                      <div className="mt-auto pt-5">
+                        {isJust ? (
+                          <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-sm text-emerald-700">
+                            <CheckCircleIcon className="w-5 h-5 shrink-0" />
+                            <span>
+                              <strong>Bot ativado!</strong> Prompt, boas-vindas e automações configurados.
+                            </span>
+                          </div>
+                        ) : selectedBot === bot.id ? (
+                          <div className="space-y-3">
+                            <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl text-xs text-amber-700">
+                              <strong>Atenção:</strong> O prompt da IA e a mensagem de boas-vindas serão atualizados. Automações com os mesmos gatilhos <strong>não serão duplicadas</strong>.
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => setSelectedBot(null)}
+                                className="flex-1 py-2.5 text-sm font-semibold text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all"
+                              >
+                                Cancelar
+                              </button>
+                              <button
+                                onClick={() => handleActivate(bot.id)}
+                                disabled={isActivating}
+                                className={`flex-1 py-2.5 text-sm font-semibold text-white rounded-xl transition-all bg-gradient-to-r ${display.color} hover:shadow-lg disabled:opacity-60`}
+                              >
+                                {isActivating ? (
+                                  <span className="flex items-center justify-center gap-2">
+                                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    Ativando...
+                                  </span>
+                                ) : (
+                                  "Confirmar ativação"
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        ) : hasPremiumTemplates ? (
+                          <button
+                            onClick={() => setSelectedBot(bot.id)}
+                            className={`w-full py-2.5 text-sm font-semibold text-white rounded-xl bg-gradient-to-r ${display.color} hover:shadow-lg hover:scale-[1.01] transition-all`}
+                          >
+                            {isActive ? "Reinstalar este bot" : "Ativar este bot"}
+                          </button>
+                        ) : (
+                          <Link
+                            href="/dashboard/billing"
+                            className="w-full block py-2.5 text-sm font-semibold text-center text-gray-500 rounded-xl bg-gray-100 border border-gray-200 hover:bg-gray-200 transition-all"
+                          >
+                            Requer Pro — Fazer upgrade
+                          </Link>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
 
       <div className="bg-indigo-50/60 border border-indigo-100 rounded-2xl p-5 flex gap-4 items-start">
         <div className="w-10 h-10 shrink-0 bg-white rounded-xl flex items-center justify-center shadow-sm text-indigo-600">
@@ -362,7 +389,7 @@ function MeuBotTab({
   const bot = marketplaceBots.find((b) => b.id === activeBotId);
   if (!bot) return null;
 
-  const display = BOT_DISPLAY[bot.id];
+  const display = BLUEPRINT_DISPLAY[bot.blueprint as Blueprint];
 
   // Calcula quais itens do checklist estão concluídos com base em tenantSettings
   const checklistWithStatus = bot.setupChecklist.map((item) => {
@@ -552,7 +579,7 @@ function MeuBotTab({
           {[
             { icon: "🤖", label: "Prompt da IA", desc: "Personalidade, tom e regras de comportamento" },
             { icon: "👋", label: "Boas-vindas",  desc: "Mensagem enviada na primeira interação" },
-            { icon: "⚡", label: `${display.automationsCount} automações`, desc: "Respostas rápidas para intenções comuns do segmento" },
+            { icon: "⚡", label: `${bot.automations.length} automações`, desc: "Respostas rápidas para intenções comuns do segmento" },
           ].map((item) => (
             <div key={item.label} className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
               <span className="text-2xl">{item.icon}</span>

@@ -70,13 +70,14 @@ export async function POST(request: Request) {
       'REGRA GERAL: Responda sempre em português brasileiro de forma clara e objetiva.',
     ].join('\n');
 
-    // 4. Atualizar tenant com novo prompt, welcome e businessType
+    // 4. Atualizar tenant com novo prompt, welcome e activeBotKey
+    // IMPORTANTE: businessType não é alterado aqui — pertence ao onboarding do tenant
     await prisma.tenant.update({
       where: { id: auth.tenantId },
       data: {
         aiPrompt: systemPrompt,
         welcomeMessage: bot.welcomeMessage,
-        businessType: bot.niche,
+        activeBotKey: bot.id,
       },
     });
 

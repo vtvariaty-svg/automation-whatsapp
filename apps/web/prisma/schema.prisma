@@ -23,6 +23,7 @@ model Tenant {
   businessHours             String?
   setupStep                 Int                       @default(1)
   setupCompleted            Boolean                   @default(false)
+  activeBotKey              String?                   // bot ativo via marketplace (fonte de verdade)
   createdAt                 DateTime                  @default(now())
   // M0 – omnichannel
   enabledChannels           String? // comma-separated: "whatsapp,instagram"

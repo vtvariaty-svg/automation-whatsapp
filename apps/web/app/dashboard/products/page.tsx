@@ -15,6 +15,7 @@ interface Product {
   price: number;
   currency: string;
   stock: number | null;
+  active: boolean;
 }
 
 export default function ProductsPage() {
@@ -92,12 +93,21 @@ export default function ProductsPage() {
 
   const handleDelete = async (id: string, name: string) => {
     if (!window.confirm(`Tem certeza que deseja remover o produto "${name}"?`)) return;
-    
+
     try {
       await authApi.deleteProduct(id);
       loadProducts();
     } catch {
       alert("Erro ao remover produto");
+    }
+  };
+
+  const handleToggleActive = async (product: Product) => {
+    try {
+      await authApi.updateProduct(product.id, { active: !product.active });
+      setProducts((prev) => prev.map((p) => p.id === product.id ? { ...p, active: !product.active } : p));
+    } catch {
+      alert("Erro ao atualizar produto");
     }
   };
 
@@ -120,7 +130,14 @@ export default function ProductsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Produtos</h1>
-          <p className="text-sm text-gray-500 mt-1">{products.length} produto{products.length !== 1 ? "s" : ""} no catálogo</p>
+          <p className="text-sm text-gray-500 mt-1">
+            {products.length} produto{products.length !== 1 ? "s" : ""}
+            {products.length > 0 && (
+              <span className="ml-2 text-emerald-600 font-medium">
+                · {products.filter((p) => p.active).length} no catálogo
+              </span>
+            )}
+          </p>
         </div>
         <button
           onClick={() => handleOpenModal()}
@@ -174,12 +191,26 @@ export default function ProductsPage() {
             <div key={product.id} className="bg-white flex flex-col rounded-2xl border border-gray-200/60 shadow-sm p-5 hover:shadow-md transition-all duration-300 group">
               
               <div className="flex justify-between items-start mb-3">
-                {product.category ? (
-                  <span className="bg-gray-100 text-gray-600 px-2.5 py-1 rounded-md text-xs font-semibold uppercase tracking-wide">
-                    {product.category}
-                  </span>
-                ) : <span />}
-                
+                <div className="flex items-center gap-2">
+                  {product.category ? (
+                    <span className="bg-gray-100 text-gray-600 px-2.5 py-1 rounded-md text-xs font-semibold uppercase tracking-wide">
+                      {product.category}
+                    </span>
+                  ) : null}
+                  {/* Catalog badge */}
+                  <button
+                    onClick={() => handleToggleActive(product)}
+                    title={product.active ? "Publicado no catálogo — clique para despublicar" : "Fora do catálogo — clique para publicar"}
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all ${
+                      product.active
+                        ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+                        : "bg-gray-100 text-gray-400 hover:bg-gray-200"
+                    }`}
+                  >
+                    {product.active ? "✓ Catálogo" : "Inativo"}
+                  </button>
+                </div>
+
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button onClick={() => handleOpenModal(product)} className="p-1.5 text-gray-400 hover:text-[#4f46e5] bg-gray-50 rounded-lg" title="Editar">
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>

@@ -245,12 +245,15 @@ model Product {
   // PAY1 — product type for transactional payments
   type               String             @default("product") // product | service
   durationMinutes    Int?               // only for type=service
+  // CAT1 — published in catalog (bot + checkout see only active=true)
+  active             Boolean            @default(true)
   createdAt          DateTime           @default(now())
   tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   salesEvents        SalesEvent[]
   salesOpportunities SalesOpportunity[]
 
   @@index([tenantId])
+  @@index([tenantId, active])
 }
 
 model User {

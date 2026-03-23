@@ -179,10 +179,14 @@ async function buildBotSetup(tenantId: string): Promise<BotSetup | null> {
   const bot = marketplaceBots.find((b) => b.id === tenant.activeBotKey);
   if (!bot) return null;
 
-  const instagramConn = await prisma.instagramConnection.findUnique({
-    where: { tenantId },
-    select: { status: true },
-  });
+  const needsCatalog = bot.modules.includes('catalogo');
+
+  const [instagramConn, activeCatalogCount] = await Promise.all([
+    prisma.instagramConnection.findUnique({ where: { tenantId }, select: { status: true } }),
+    needsCatalog
+      ? prisma.product.count({ where: { tenantId, active: true } })
+      : Promise.resolve(0),
+  ]);
 
   const hasChannel = !!(tenant.whatsappToken || tenant.facebookToken || instagramConn?.status === 'connected');
 
@@ -220,6 +224,18 @@ async function buildBotSetup(tenantId: string): Promise<BotSetup | null> {
       done: !!tenant.welcomeMessage?.trim(),
     },
   ];
+
+  // CAT1 — catalog step only for bots that sell products
+  if (needsCatalog) {
+    steps.push({
+      id: 'bot_catalog',
+      title: 'Produtos no catálogo',
+      description: 'Adicione pelo menos 1 produto ativo para o bot poder apresentar e vender.',
+      href: '/dashboard/products',
+      cta: 'Gerenciar produtos',
+      done: activeCatalogCount > 0,
+    });
+  }
 
   const completed = steps.filter((s) => s.done).length;
 

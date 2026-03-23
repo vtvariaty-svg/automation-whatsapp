@@ -26,10 +26,11 @@ function Navbar() {
           <a href="#planos" className="hover:text-blue-600 transition-colors">Planos e Preços</a>
           <a href="#faq" className="hover:text-blue-600 transition-colors">FAQ</a>
         </div>
-        <div className="flex items-center gap-4">
-          <Link href="/login" className="text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors hidden sm:block">Entrar</Link>
-          <Link href="/register" className="text-sm font-bold bg-gray-900 text-white px-5 py-2.5 rounded-lg hover:bg-gray-800 shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5 border border-gray-700">
-            Automatizar meu Negócio
+        <div className="flex items-center gap-3 sm:gap-4">
+          <Link href="/login" className="text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors">Entrar</Link>
+          <Link href="/register" className="text-sm font-bold bg-gray-900 text-white px-4 sm:px-5 py-2.5 rounded-lg hover:bg-gray-800 shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5 border border-gray-700 whitespace-nowrap">
+            <span className="hidden sm:inline">Automatizar meu Negócio</span>
+            <span className="sm:hidden">Começar</span>
           </Link>
         </div>
       </div>
@@ -41,8 +42,9 @@ function HeroSection() {
   return (
     <section className="relative pt-32 pb-20 lg:pt-40 lg:pb-32 overflow-hidden bg-gray-50">
       {/* Premium Background Elements */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-50 via-gray-50 to-white"></div>
-      <div className="absolute top-0 right-0 -mr-20 -mt-20 w-96 h-96 bg-blue-400 rounded-full mix-blend-multiply filter blur-[128px] opacity-20 animate-pulse"></div>
+      <div className="absolute inset-0 bg-gradient-to-b from-indigo-50/50 via-white to-white"></div>
+      <div className="absolute top-20 left-1/4 w-[500px] h-[500px] bg-[#4f46e5] rounded-full mix-blend-multiply filter blur-[128px] opacity-10 animate-pulse"></div>
+      <div className="absolute top-40 right-1/4 w-[400px] h-[400px] bg-[#7c3aed] rounded-full mix-blend-multiply filter blur-[128px] opacity-10 animate-pulse" style={{ animationDelay: "1s" }}></div>
       
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <div className="max-w-4xl mx-auto">
@@ -77,18 +79,19 @@ function HeroSection() {
         </div>
 
         {/* Dashboard mockup */}
-        <div className="mt-20 relative max-w-5xl mx-auto">
-          <div className="absolute -inset-4 bg-gradient-to-r from-blue-500/10 to-indigo-500/10 rounded-3xl blur-2xl"></div>
-          <div className="relative bg-[#0f172a] rounded-2xl shadow-2xl overflow-hidden border border-gray-800">
-            <div className="flex items-center gap-2 px-4 py-3 bg-[#1e293b] border-b border-gray-800">
+        <div className="mt-16 sm:mt-20 relative max-w-5xl mx-auto w-full px-2 sm:px-0">
+          <div className="absolute -inset-2 sm:-inset-4 bg-gradient-to-r from-[#4f46e5]/20 to-[#7c3aed]/20 rounded-3xl blur-xl sm:blur-2xl"></div>
+          <div className="relative bg-gray-900 rounded-2xl shadow-2xl shadow-gray-900/20 overflow-hidden border border-gray-700/80 flex flex-col">
+            <div className="flex items-center gap-2 px-4 py-3 bg-gray-800 border-b border-gray-700">
               <div className="flex gap-2">
                 <div className="w-3 h-3 rounded-full bg-red-500/80"></div>
                 <div className="w-3 h-3 rounded-full bg-yellow-500/80"></div>
                 <div className="w-3 h-3 rounded-full bg-green-500/80"></div>
               </div>
-              <span className="mx-auto text-xs text-slate-400 font-mono">painel.variaty.com.br</span>
             </div>
-            <Image src="/hero-dashboard.png" alt="Painel Variaty SaaS" width={1200} height={675} className="w-full opacity-90 hover:opacity-100 transition-opacity" priority />
+            <div className="relative w-full aspect-[16/9] bg-gray-900">
+              <Image src="/hero-dashboard.png" alt="Painel Variaty SaaS" fill className="object-cover object-top" priority />
+            </div>
           </div>
         </div>
       </div>

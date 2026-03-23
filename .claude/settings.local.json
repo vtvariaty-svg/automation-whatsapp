@@ -45,7 +45,16 @@
       "WebSearch",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:raw.githubusercontent.com)",
-      "Bash(grep -r \"NFE_EXTERNAL\\\\|NFE_API\" /c/Users/vinic/Documents/automation-whatsapp/apps/web --include=*.ts --include=*.tsx --include=*.js --include=*.env*)"
+      "Bash(grep -r \"NFE_EXTERNAL\\\\|NFE_API\" /c/Users/vinic/Documents/automation-whatsapp/apps/web --include=*.ts --include=*.tsx --include=*.js --include=*.env*)",
+      "Bash(find /c/Users/vinic/Documents/automation-whatsapp -path */node_modules -prune -o -type f \\\\\\(-name *email* -o -name *template* \\\\\\) -print)",
+      "Bash(python -c \"from PIL import Image; print\\(''Pillow OK''\\)\")",
+      "Read(//c/Users/vinic/Downloads/**)",
+      "Read(//c/Users/vinic/Desktop/**)",
+      "Bash(python:*)",
+      "Bash(sed -i 's/className=\"\"h-24 w-auto\"\"/className=\"\"h-16 w-auto\"\"/g' apps/web/components/Sidebar.tsx)",
+      "Bash(sed -i 's/className=\"\"h-52 w-auto\"\"/className=\"\"h-36 w-auto\"\"/g' apps/web/app/login/page.tsx apps/web/app/register/page.tsx)",
+      "Bash(sed -i 's/className=\"\"h-28 w-auto\"\"/className=\"\"h-20 w-auto\"\"/g' apps/web/app/onboarding/layout.tsx apps/web/app/terms/page.tsx apps/web/app/privacy/page.tsx)",
+      "Bash(del appswebbackfill_check.js backfill_check.mjs)"
     ]
   }
 }

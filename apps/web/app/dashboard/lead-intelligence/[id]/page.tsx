@@ -48,6 +48,9 @@ interface CampaignDraft {
   subject: string | null;
   messageBody: string;
   createdAt: string;
+  approvedAt?: string | null;
+  sentAt?: string | null;
+  errorMessage?: string | null;
   leadCandidate?: {
     id: string;
     companyName: string;
@@ -325,6 +328,35 @@ export default function SearchRunDetailPage() {
       }
     } finally {
       setGeneratingDrafts(false);
+    }
+  }
+
+  const [draftActionIds, setDraftActionIds] = useState<Record<string, string>>({});
+
+  async function handleDraftApprove(draftId: string, action: 'approved' | 'rejected') {
+    setDraftActionIds(prev => ({ ...prev, [draftId]: 'approving' }));
+    try {
+      const res = await fetch(`/api/lead-intelligence/campaign-drafts/${draftId}/approve`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` },
+        body: JSON.stringify({ action }),
+      });
+      if (res.ok) await loadDrafts();
+    } finally {
+      setDraftActionIds(prev => ({ ...prev, [draftId]: '' }));
+    }
+  }
+
+  async function handleDraftSend(draftId: string) {
+    setDraftActionIds(prev => ({ ...prev, [draftId]: 'sending' }));
+    try {
+      const res = await fetch(`/api/lead-intelligence/campaign-drafts/${draftId}/send-email`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${getAuthToken()}` },
+      });
+      if (res.ok) await loadDrafts();
+    } finally {
+      setDraftActionIds(prev => ({ ...prev, [draftId]: '' }));
     }
   }
 
@@ -1152,26 +1184,85 @@ export default function SearchRunDetailPage() {
             ) : drafts.length === 0 ? (
               <p className="text-xs text-gray-400">Nenhum rascunho de campanha gerado para esta busca.</p>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {drafts.map(d => (
-                  <div key={d.id} className="border border-gray-200 rounded-xl p-4 bg-gray-50 space-y-2">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2">
+                  <div key={d.id} className="border border-gray-200 rounded-xl p-5 bg-white shadow-sm space-y-3">
+                    
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-3">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${d.channel === 'email' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'}`}>
                           {d.channel}
                         </span>
-                        <span className="text-sm font-semibold text-gray-800">{d.leadCandidate?.companyName}</span>
+                        <span className="text-sm font-bold text-gray-900">{d.leadCandidate?.companyName}</span>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
+                          d.status === 'draft' ? 'bg-gray-100 text-gray-600' :
+                          d.status === 'approved' ? 'bg-amber-100 text-amber-700' :
+                          d.status === 'sent' ? 'bg-emerald-100 text-emerald-700' :
+                          'bg-red-100 text-red-700'
+                        }`}>
+                          {d.status === 'draft' ? 'Rascunho' : d.status === 'approved' ? 'Aprovado' : d.status === 'sent' ? 'Enviado' : d.status === 'rejected' ? 'Rejeitado' : 'Falhou'}
+                        </span>
                       </div>
-                      <span className="text-[10px] bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full font-bold uppercase">
-                        {d.status}
-                      </span>
+                      
+                      {/* Draft actions */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {d.status === 'draft' && (
+                          <>
+                            <button
+                              onClick={() => handleDraftApprove(d.id, 'approved')}
+                              disabled={draftActionIds[d.id] === 'approving'}
+                              className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg text-xs font-bold transition-all disabled:opacity-50"
+                            >
+                              {draftActionIds[d.id] === 'approving' ? '⏳' : '✅ Aprovar'}
+                            </button>
+                            <button
+                              onClick={() => handleDraftApprove(d.id, 'rejected')}
+                              disabled={draftActionIds[d.id] === 'approving'}
+                              className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-xs font-bold transition-all disabled:opacity-50"
+                            >
+                              ❌ Rejeitar
+                            </button>
+                          </>
+                        )}
+                        {d.status === 'approved' && d.channel === 'email' && (
+                          <button
+                            onClick={() => handleDraftSend(d.id)}
+                            disabled={draftActionIds[d.id] === 'sending'}
+                            className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm disabled:opacity-60 flex items-center gap-1.5"
+                          >
+                            {draftActionIds[d.id] === 'sending' ? '⏳ Enviando...' : '🚀 Enviar email'}
+                          </button>
+                        )}
+                        {d.channel === 'whatsapp' && (
+                           <span className="text-[10px] text-gray-500 font-semibold bg-gray-50 border border-gray-200 px-2 py-1 rounded-lg">WhatsApp ainda não envia nesta etapa</span>
+                        )}
+                      </div>
                     </div>
-                    {d.subject && (
-                      <p className="text-xs font-semibold text-gray-700">Assunto: <span className="font-normal">{d.subject}</span></p>
+
+                    <div className="pt-1">
+                      {d.subject && (
+                        <p className="text-xs font-semibold text-gray-800 mb-2">Assunto: <span className="font-normal text-gray-600">{d.subject}</span></p>
+                      )}
+                      <div className="bg-gray-50 border border-gray-100 rounded-lg p-3 text-xs text-gray-700 whitespace-pre-wrap max-h-32 overflow-y-auto font-mono">
+                        {d.messageBody}
+                      </div>
+                    </div>
+
+                    {/* Metadata / Erros */}
+                    <div className="flex gap-4 pt-2 border-t border-gray-50">
+                      {d.approvedAt && (
+                        <p className="text-[10px] text-gray-400">Aprovado em: {formatDate(d.approvedAt)}</p>
+                      )}
+                      {d.sentAt && (
+                        <p className="text-[10px] text-emerald-600 font-semibold">Enviado em: {formatDate(d.sentAt)}</p>
+                      )}
+                    </div>
+                    {d.errorMessage && (
+                      <p className="text-xs text-red-700 bg-red-50 px-3 py-2 rounded-lg border border-red-100 mt-2">
+                        <strong>Falha no envio:</strong> {d.errorMessage}
+                      </p>
                     )}
-                    <div className="bg-white border border-gray-200 rounded p-2 text-xs text-gray-600 whitespace-pre-wrap max-h-24 overflow-y-auto">
-                      {d.messageBody}
-                    </div>
+
                   </div>
                 ))}
               </div>

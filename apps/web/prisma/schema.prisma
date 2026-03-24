@@ -1612,11 +1612,16 @@ model LeadCampaignDraft {
   searchRunId     String
   leadCandidateId String
   channel         String   // email | whatsapp
-  status          String   @default("draft") // draft | approved | rejected
+  status          String   @default("draft") // draft | approved | rejected | sent | failed
   subject         String?
   messageBody     String   @db.Text
   personalization Json?
   readinessSnapshot Json?
+  approvedAt      DateTime?
+  approvedBy      String?
+  sentAt          DateTime?
+  providerMessageId String?
+  errorMessage    String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

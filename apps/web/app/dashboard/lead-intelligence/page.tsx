@@ -288,6 +288,25 @@ export default function LeadIntelligencePage() {
         </button>
       </div>
 
+      {/* ── Operations entry card ──────────────────────────────────────────── */}
+      <Link
+        href="/dashboard/lead-intelligence/operations"
+        className="block bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 hover:border-indigo-400 rounded-2xl p-5 transition-all hover:-translate-y-0.5 hover:shadow-sm"
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xl">📋</span>
+              <p className="text-sm font-bold text-indigo-900">Abrir operação de leads</p>
+            </div>
+            <p className="text-xs text-indigo-700 max-w-lg">
+              Cockpit de follow-up diário. Visualize e priorize leads de todas as buscas em uma única fila — filtre por vencidos, hoje, sem responsável e registre contatos sem mudar de página.
+            </p>
+          </div>
+          <span className="text-indigo-400 text-lg shrink-0">→</span>
+        </div>
+      </Link>
+
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-xs text-blue-800 flex items-start gap-3">
         <span className="text-xl">ℹ️</span>
         <div className="flex-1">

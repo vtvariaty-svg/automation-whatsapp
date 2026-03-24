@@ -16,7 +16,7 @@ const RATE_LIMIT_PER_HOUR = 20;
 // Suggested links per topic keyword
 const SUGGESTED_LINKS: { keywords: string[]; href: string; label: string }[] = [
   { keywords: ['whatsapp', 'canal', 'conectar', 'waba'], href: '/dashboard/integrations', label: 'Conectar canais' },
-  { keywords: ['automação', 'automação', 'resposta rápida', 'keyword'], href: '/dashboard/automations', label: 'Respostas Rápidas' },
+  { keywords: ['automação', 'automação', 'resposta rápida', 'keyword'], href: '/dashboard/vendas?tab=automacoes', label: 'Automações' },
   { keywords: ['ia', 'prompt', 'inteligência'], href: '/dashboard/ai', label: 'Configuração de IA' },
   { keywords: ['assinatura', 'plano', 'upgrade', 'trial', 'billing'], href: '/dashboard/billing', label: 'Assinatura' },
   { keywords: ['conversa', 'inbox', 'mensagem', 'atendimento'], href: '/dashboard/conversations', label: 'Conversas' },

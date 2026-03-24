@@ -167,7 +167,7 @@ export default function OnboardingPage() {
     { key: 'niche',     label: 'Nicho escolhido',              done: !!selectedNiche },
     { key: 'template',  label: 'Template importado',           done: !!result },
     { key: 'message',   label: 'Mensagem de boas-vindas definida', done: !!welcomeMessage },
-    { key: 'published', label: 'Automações publicadas',        done: !!result, href: '/dashboard/automations' },
+    { key: 'published', label: 'Automações publicadas',        done: !!result, href: '/dashboard/vendas?tab=automacoes' },
   ];
 
   // ─── Render ─────────────────────────────────────────────────────────────────
@@ -416,7 +416,7 @@ export default function OnboardingPage() {
               💬 Ver conversas
             </Link>
             <Link
-              href="/dashboard/automations"
+              href="/dashboard/vendas?tab=automacoes"
               className="flex items-center justify-center gap-2 px-5 py-3 border border-gray-200 text-gray-700 rounded-xl font-medium text-sm hover:bg-gray-50 transition-colors"
             >
               ⚡ Gerenciar automações

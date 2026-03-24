@@ -697,7 +697,7 @@ INTENÇÕES PRINCIPAIS:
         id: 'products',
         label: 'Cadastrar produtos do catálogo',
         description: 'Produtos cadastrados são consultados pela IA para recomendações',
-        href: '/dashboard/products',
+        href: '/dashboard/vendas?tab=produtos',
         required: false,
       },
       {
@@ -769,7 +769,7 @@ REGRA GERAL: Não confirme disponibilidade de itens sem verificação. Prazos s�
     suggestedTools: ['produtos', 'pagamentos'],
     setupChecklist: [
       { id: 'channel', label: 'Conectar WhatsApp', description: '', href: '/dashboard/integrations', required: true },
-      { id: 'products', label: 'Cadastrar cardápio com preços', description: '', href: '/dashboard/products', required: true },
+      { id: 'products', label: 'Cadastrar cardápio com preços', description: '', href: '/dashboard/vendas?tab=produtos', required: true },
       { id: 'business_hours', label: 'Configurar horários e área de entrega', description: '', href: '/dashboard/bots?tab=comportamento', required: true },
       { id: 'prompt_review', label: 'Adicionar nome do restaurante ao prompt', description: '', href: '/dashboard/bots?tab=comportamento', required: true },
     ],
@@ -825,7 +825,7 @@ REGRA GERAL: Não confirme estoque sem verificação interna. Prazos de entrega 
     suggestedTools: ['produtos', 'pagamentos'],
     setupChecklist: [
       { id: 'channel', label: 'Conectar WhatsApp', description: '', href: '/dashboard/integrations', required: true },
-      { id: 'products', label: 'Cadastrar produtos com fotos e preços', description: '', href: '/dashboard/products', required: true },
+      { id: 'products', label: 'Cadastrar produtos com fotos e preços', description: '', href: '/dashboard/vendas?tab=produtos', required: true },
       { id: 'business_hours', label: 'Configurar horários e política de entrega', description: '', href: '/dashboard/bots?tab=comportamento', required: true },
       { id: 'prompt_review', label: 'Adicionar nome da loja ao prompt', description: '', href: '/dashboard/bots?tab=comportamento', required: true },
       { id: 'fiscal', label: 'Configurar emissão de NF-e', description: '', href: '/dashboard/fiscal', required: false },

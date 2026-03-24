@@ -476,7 +476,7 @@ function MeuBotTab({
                   const toolLinks: Record<string, { label: string; href: string; icon: string }> = {
                     agenda:     { label: "Agenda",     href: "/dashboard/appointments", icon: "📅" },
                     serviços:   { label: "Serviços",   href: "/dashboard/services",    icon: "🔧" },
-                    produtos:   { label: "Produtos",   href: "/dashboard/products",    icon: "📦" },
+                    produtos:   { label: "Produtos",   href: "/dashboard/vendas?tab=produtos",    icon: "📦" },
                     pagamentos: { label: "Pagamentos", href: "/dashboard/payments",    icon: "💳" },
                   };
                   const t = toolLinks[tool];

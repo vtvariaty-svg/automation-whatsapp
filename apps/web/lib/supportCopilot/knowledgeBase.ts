@@ -16,7 +16,9 @@ const PAGE_KNOWLEDGE: Record<string, string> = {
 
   '/dashboard/services': 'Catálogo de serviços para agendamento automático pela IA. Cadastre nome e duração. Ative/desative conforme disponibilidade.',
 
-  '/dashboard/products': 'Catálogo de produtos com nome, preço, categoria e estoque. A IA usa esses dados nos atendimentos.',
+  '/dashboard/products': 'Redireciona para /dashboard/vendas (aba Produtos).',
+
+  '/dashboard/vendas': 'Módulo Catálogo & Vendas IA — 4 abas: Produtos (cadastro com preço, categoria, estoque), Catálogo (produtos ativos visíveis pela IA), Automações (respostas por palavra-chave, executam antes da IA), Prontidão (checklist do bot de vendas ativo).',
 
   '/dashboard/integrations': 'Conexão de canais Meta. WhatsApp: Embedded Signup (recomendado) ou manual com WABA ID + Phone Number ID + Token. Instagram e Facebook: OAuth. Após conectar, clique "Ver Conversas" para testar.',
 
@@ -24,7 +26,7 @@ const PAGE_KNOWLEDGE: Record<string, string> = {
 
   '/dashboard/ai': 'Configuração da IA: prompt personalizado, mensagem de boas-vindas, horário de atendimento. A IA só responde dentro do horário configurado. Fora do horário envia mensagem de ausência automática.',
 
-  '/dashboard/automations': 'Respostas rápidas por palavra-chave. Executam ANTES da IA — ideais para FAQs sem gastar tokens. Configure trigger (exato ou contém) e resposta.',
+  '/dashboard/automations': 'Redireciona para /dashboard/vendas (aba Automações). Respostas rápidas por palavra-chave — executam ANTES da IA, ideais para FAQs sem gastar tokens.',
 
   '/dashboard/templates': 'Templates aprovados pela Meta para mensagens proativas (marketing, notificações). Preencha variáveis antes de enviar. Só templates com status APPROVED podem ser enviados.',
 

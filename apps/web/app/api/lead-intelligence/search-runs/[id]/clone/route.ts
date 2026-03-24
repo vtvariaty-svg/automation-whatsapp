@@ -13,7 +13,11 @@ export async function POST(
 
   const { id } = await context.params;
 
-  let body: any = {};
+  interface CloneBody {
+    templateName?: unknown;
+  }
+
+  let body: CloneBody = {};
   try {
     body = await request.json();
   } catch {

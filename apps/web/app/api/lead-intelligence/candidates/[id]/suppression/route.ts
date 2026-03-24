@@ -42,20 +42,28 @@ export async function POST(
 
   if (!candidate) return NextResponse.json({ error: 'Lead não encontrado' }, { status: 404 });
 
-  let body: any;
+  interface PostBody {
+    channel?: unknown;
+    reason?: unknown;
+    source?: unknown;
+  }
+
+  let body: PostBody;
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: 'Payload inválido' }, { status: 400 });
   }
 
-  const { channel, reason, source = 'manual' } = body;
+  const channel = typeof body.channel === 'string' ? body.channel : undefined;
+  const reason  = typeof body.reason  === 'string' ? body.reason  : undefined;
+  const source  = typeof body.source  === 'string' ? body.source  : 'manual';
 
   if (!channel || !['email', 'whatsapp', 'all'].includes(channel)) {
     return NextResponse.json({ error: 'Canal inválido ou não informado (email, whatsapp, all)' }, { status: 400 });
   }
 
-  if (!reason || typeof reason !== 'string') {
+  if (!reason) {
     return NextResponse.json({ error: 'Razão da supressão é obrigatória' }, { status: 400 });
   }
 
@@ -96,20 +104,26 @@ export async function PATCH(
 
   const { id } = await context.params;
 
-  let body: any;
+  interface PatchBody {
+    suppressionId?: unknown;
+    active?: unknown;
+  }
+
+  let body: PatchBody;
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: 'Payload inválido' }, { status: 400 });
   }
 
-  const { suppressionId, active } = body;
+  const suppressionId = typeof body.suppressionId === 'string' ? body.suppressionId : undefined;
+  const active        = typeof body.active        === 'boolean' ? body.active        : undefined;
 
   if (!suppressionId) {
     return NextResponse.json({ error: 'ID da supressão (suppressionId) obrigatório' }, { status: 400 });
   }
 
-  if (typeof active !== 'boolean') {
+  if (active === undefined) {
     return NextResponse.json({ error: 'Campo active inválido' }, { status: 400 });
   }
 

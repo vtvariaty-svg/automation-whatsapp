@@ -36,6 +36,7 @@ interface LeadCandidate {
   email: string | null;
   phone: string | null;
   mobilePhone: string | null;
+  address: string | null;
   category: string | null;
   rating: number | null;
   reviewsCount: number | null;
@@ -213,7 +214,9 @@ function formatDate(iso: string): string {
 function statusBadge(status: string): { label: string; color: string } {
   switch (status) {
     case 'queued':         return { label: 'Na fila',         color: 'bg-blue-100 text-blue-700' };
+    case 'running':        return { label: 'Executando',      color: 'bg-blue-100 text-blue-700' };
     case 'completed':      return { label: 'Concluída',       color: 'bg-green-100 text-green-700' };
+    case 'partial':        return { label: 'Parcial',         color: 'bg-amber-100 text-amber-700' };
     case 'failed':         return { label: 'Falhou',          color: 'bg-red-100 text-red-600' };
     case 'approved':       return { label: 'Aprovado',        color: 'bg-green-100 text-green-700' };
     case 'rejected':       return { label: 'Rejeitado',       color: 'bg-red-100 text-red-600' };
@@ -920,6 +923,104 @@ export default function SearchRunDetailPage() {
       pending:  cs.filter(c => c.status === 'pending_review').length,
     };
   }, [run]);
+
+  // ── Bulk selection state ─────────────────────────────────────────────────
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  function toggleSelect(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function selectByPredicate(pred: (c: LeadCandidate) => boolean) {
+    setSelectedIds(new Set(filteredCandidates.filter(pred).map(c => c.id)));
+  }
+
+  function clearSelection() { setSelectedIds(new Set()); }
+
+  function waEligibility(c: LeadCandidate): 'ready' | 'no_phone' | 'no_consent' | 'blocked' | 'not_approved' {
+    if (c.status !== 'approved') return 'not_approved';
+    if (!c.mobilePhone && !c.phone) return 'no_phone';
+    if (c.whatsappConsentStatus !== 'granted') return 'no_consent';
+    if (c.outreachStatus !== 'ready_whatsapp' && c.outreachStatus !== 'ready_multichannel') return 'blocked';
+    return 'ready';
+  }
+
+  const WA_ELIGIBILITY_BADGE: Record<string, { label: string; color: string }> = {
+    ready:        { label: 'Pronto para WhatsApp', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+    no_phone:     { label: 'Sem telefone',         color: 'bg-gray-100 text-gray-500 border-gray-200' },
+    no_consent:   { label: 'Sem consentimento',    color: 'bg-amber-50 text-amber-600 border-amber-200' },
+    blocked:      { label: 'Bloqueado',             color: 'bg-red-50 text-red-600 border-red-200' },
+    not_approved: { label: 'Não aprovado',          color: 'bg-gray-100 text-gray-400 border-gray-200' },
+  };
+
+  // ── WA Quick-batch modal state ────────────────────────────────────────────
+  const [waBatchOpen, setWaBatchOpen] = useState(false);
+  const [waBatchMessage, setWaBatchMessage] = useState('');
+  const [waBatchSize, setWaBatchSize] = useState(20);
+  const [waBatchSending, setWaBatchSending] = useState(false);
+  const [waBatchResult, setWaBatchResult] = useState<{
+    sent: number; failed: number; skipped: number;
+    skippedReasons: Record<string, number>; executionId?: string;
+  } | null>(null);
+
+  async function handleWaQuickBatch() {
+    setWaBatchSending(true);
+    setWaBatchResult(null);
+    try {
+      const res = await fetch(`/api/lead-intelligence/search-runs/${id}/whatsapp-quick-batch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` },
+        body: JSON.stringify({
+          candidateIds: Array.from(selectedIds),
+          messageBody: waBatchMessage,
+          batchSize: waBatchSize,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setWaBatchResult(data);
+        await loadRun();
+        await loadExecutions();
+      } else {
+        setWaBatchResult({ sent: 0, failed: 0, skipped: 0, skippedReasons: { Erro: 1 } });
+      }
+    } finally {
+      setWaBatchSending(false);
+    }
+  }
+
+  // ── Bulk download helpers ─────────────────────────────────────────────────
+  async function handleDownloadPhones(fmt: 'csv' | 'txt') {
+    const res = await fetch(`/api/lead-intelligence/search-runs/${id}/selected-phones`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` },
+      body: JSON.stringify({ candidateIds: Array.from(selectedIds), format: fmt }),
+    });
+    if (!res.ok) return;
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `numeros.${fmt}`; a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function handleExportSelected(fmt: 'csv' | 'json') {
+    const res = await fetch(`/api/lead-intelligence/search-runs/${id}/export-selected`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` },
+      body: JSON.stringify({ candidateIds: Array.from(selectedIds), format: fmt }),
+    });
+    if (!res.ok) return;
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `leads-exportados.${fmt}`; a.click();
+    URL.revokeObjectURL(url);
+  }
 
   // ── States ─────────────────────────────────────────────────────────────
 

@@ -33,7 +33,25 @@ export async function PATCH(
 
   const { id } = await context.params;
 
-  let body: any;
+  interface PatchTemplateBody {
+    name?: unknown;
+    niche?: unknown;
+    city?: unknown;
+    state?: unknown;
+    radiusKm?: unknown;
+    maxResults?: unknown;
+    minTicket?: unknown;
+    minRating?: unknown;
+    minReviews?: unknown;
+    requiresWebsite?: unknown;
+    requiresCommercialPhone?: unknown;
+    localB2BOnly?: unknown;
+    preferredChannel?: unknown;
+    notes?: unknown;
+    active?: unknown;
+  }
+
+  let body: PatchTemplateBody;
   try {
     body = await request.json();
   } catch {
@@ -48,7 +66,7 @@ export async function PATCH(
     return NextResponse.json({ error: 'Template não encontrado' }, { status: 404 });
   }
 
-  const updates: any = {};
+  const updates: Record<string, unknown> = {};
   
   if (body.name !== undefined) updates.name = body.name;
   if (body.niche !== undefined) updates.niche = body.niche;

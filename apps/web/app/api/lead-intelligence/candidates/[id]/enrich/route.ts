@@ -48,7 +48,7 @@ export async function POST(
     const result = await enrichFromWebsite(candidate.website);
 
     // Prepare candidate updates ONLY for empty fields
-    const dataUpdate: any = {};
+    const dataUpdate: Record<string, string> = {};
     const filledFields: string[] = [];
 
     if (result.email && !candidate.email) {
@@ -100,13 +100,14 @@ export async function POST(
       summary: responseSummary,
     });
 
-  } catch (error: any) {
+  } catch (err: unknown) {
     // Failsafe
+    const msg = err instanceof Error ? err.message : 'Erro inesperado no enriquecimento.';
     const failAttempt = await prisma.leadEnrichmentAttempt.update({
       where: { id: attempt.id },
       data: {
         status: 'failed',
-        errorMessage: error.message || 'Erro inesperado no enriquecimento.',
+        errorMessage: msg,
         completedAt: new Date(),
       },
     });

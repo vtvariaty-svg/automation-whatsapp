@@ -54,14 +54,24 @@ export async function POST(
     return NextResponse.json({ error: 'Busca não encontrada' }, { status: 404 });
   }
 
-  let body: any;
+  interface ExecutionBody {
+    channel?: unknown;
+    batchSize?: unknown;
+    draftIds?: unknown;
+    notes?: unknown;
+  }
+
+  let body: ExecutionBody;
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: 'Payload inválido' }, { status: 400 });
   }
 
-  const { channel, batchSize = 10, draftIds, notes } = body;
+  const channel  = typeof body.channel === 'string' ? body.channel : undefined;
+  const batchSize = body.batchSize ?? 10;
+  const draftIds  = Array.isArray(body.draftIds) ? (body.draftIds as string[]) : undefined;
+  const notes     = typeof body.notes === 'string' ? body.notes : undefined;
 
   if (channel !== 'email' && channel !== 'whatsapp') {
     return NextResponse.json({ error: 'Canal inválido' }, { status: 400 });
@@ -71,16 +81,13 @@ export async function POST(
   if (isNaN(cappedBatchSize) || cappedBatchSize < 1) cappedBatchSize = 1;
   if (cappedBatchSize > 20) cappedBatchSize = 20;
 
-  const draftsWhere: any = {
+  const draftsWhere: Prisma.LeadCampaignDraftWhereInput = {
     searchRunId: id,
     tenantId: auth.tenantId,
     channel,
-    status: 'approved'
+    status: 'approved',
+    ...(draftIds && draftIds.length > 0 ? { id: { in: draftIds } } : {}),
   };
-
-  if (Array.isArray(draftIds) && draftIds.length > 0) {
-    draftsWhere.id = { in: draftIds };
-  }
 
   const drafts = await prisma.leadCampaignDraft.findMany({
     where: draftsWhere,
@@ -123,11 +130,11 @@ export async function POST(
     let allowedToSend = false;
     let skippedReason = '';
 
-    const hasSuppression = candidate.suppressions.some((s: any) => s.channel === 'all' || s.channel === channel);
+    const hasSuppression = candidate.suppressions.some((s) => s.channel === 'all' || s.channel === channel);
 
     if (hasSuppression) {
       skippedReason = channel === 'email' ? 'Lead suprimido para email' : 'Lead suprimido para WhatsApp';
-      if (candidate.suppressions.some((s: any) => s.channel === 'all')) {
+      if (candidate.suppressions.some((s) => s.channel === 'all')) {
         skippedReason = 'Lead suprimido para todos os canais';
       }
     } else if (channel === 'email') {
@@ -167,7 +174,8 @@ export async function POST(
 
     let deliveredToValue: string | null = null;
     if (channel === 'whatsapp') {
-      deliveredToValue = (dispatchResult as any).deliveredTo || null;
+      const wpResult = dispatchResult as { deliveredTo?: string | null };
+      deliveredToValue = wpResult.deliveredTo || null;
     } else {
       deliveredToValue = candidate.email || null;
     }

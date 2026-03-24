@@ -14,8 +14,8 @@ export async function POST(request: Request) {
     const result = await processResendWebhook(payload);
 
     return NextResponse.json({ success: true, ...result });
-  } catch (error: any) {
-    console.error('Erro no processamento do webhook Resend:', error);
+  } catch (err: unknown) {
+    console.error('Erro no processamento do webhook Resend:', err);
     return NextResponse.json({ error: 'Erro interno' }, { status: 500 });
   }
 }

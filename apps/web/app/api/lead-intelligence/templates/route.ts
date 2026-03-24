@@ -11,7 +11,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const activeParam = searchParams.get('active');
 
-  const where: any = { tenantId: auth.tenantId };
+  const where: { tenantId: string; active?: boolean } = { tenantId: auth.tenantId };
   
   if (activeParam === 'true') where.active = true;
   else if (activeParam === 'false') where.active = false;
@@ -38,7 +38,24 @@ export async function POST(request: Request) {
   const auth = await getAuthTenant(request);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  let body: any;
+  interface CreateTemplateBody {
+    name?: unknown;
+    niche?: unknown;
+    city?: unknown;
+    state?: unknown;
+    radiusKm?: unknown;
+    maxResults?: unknown;
+    minTicket?: unknown;
+    minRating?: unknown;
+    minReviews?: unknown;
+    requiresWebsite?: unknown;
+    requiresCommercialPhone?: unknown;
+    localB2BOnly?: unknown;
+    preferredChannel?: unknown;
+    notes?: unknown;
+  }
+
+  let body: CreateTemplateBody;
   try {
     body = await request.json();
   } catch {
@@ -63,18 +80,18 @@ export async function POST(request: Request) {
       tenantId: auth.tenantId,
       name,
       niche,
-      city: city || null,
-      state: state || null,
-      radiusKm: radiusKm ? Number(radiusKm) : null,
-      maxResults: maxResults ? Number(maxResults) : 50,
-      minTicket: minTicket ? Number(minTicket) : null,
-      minRating: minRating ? Number(minRating) : null,
-      minReviews: minReviews ? Number(minReviews) : null,
-      requiresWebsite: Boolean(requiresWebsite),
+      city:                    typeof city             === 'string' ? city             : null,
+      state:                   typeof state            === 'string' ? state            : null,
+      radiusKm:                radiusKm               ? Number(radiusKm)               : null,
+      maxResults:              maxResults              ? Number(maxResults)              : 50,
+      minTicket:               minTicket               ? Number(minTicket)               : null,
+      minRating:               minRating               ? Number(minRating)               : null,
+      minReviews:              minReviews              ? Number(minReviews)              : null,
+      requiresWebsite:         Boolean(requiresWebsite),
       requiresCommercialPhone: Boolean(requiresCommercialPhone),
-      localB2BOnly: Boolean(localB2BOnly),
-      preferredChannel: preferredChannel || null,
-      notes: notes || null,
+      localB2BOnly:            Boolean(localB2BOnly),
+      preferredChannel:        typeof preferredChannel === 'string' ? preferredChannel : null,
+      notes:                   typeof notes            === 'string' ? notes            : null,
       active: true
     }
   });

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthTenant } from '@/lib/getAuthTenant';
+import { Prisma } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
 
@@ -71,7 +72,7 @@ export async function POST(
 
   const channel = body.channel;
 
-  const candidateWhere: any = {
+  const candidateWhere: Prisma.LeadCandidateWhereInput = {
     searchRunId: id,
     tenantId: auth.tenantId,
   };
@@ -94,7 +95,7 @@ export async function POST(
   for (const candidate of candidates) {
     let isEligible = false;
 
-    const hasSuppression = candidate.suppressions.some((s: any) => s.channel === 'all' || s.channel === channel);
+    const hasSuppression = candidate.suppressions.some((s) => s.channel === 'all' || s.channel === channel);
     if (hasSuppression) {
       suppressedCount++;
       continue;

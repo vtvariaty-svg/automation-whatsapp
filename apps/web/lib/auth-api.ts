@@ -36,7 +36,10 @@ export const getAuthUser = async (req: Request): Promise<AuthUser | null> => {
       select: { sessionVersion: true }
     });
     
-    if (!dbUser || dbUser.sessionVersion !== decoded.sessionVersion) return null;
+    // JWTs issued before sessionVersion was introduced don't carry the field (undefined).
+    // Treat those as version 1 (the default) so existing sessions are not invalidated.
+    const tokenVersion = decoded.sessionVersion ?? 1;
+    if (!dbUser || dbUser.sessionVersion !== tokenVersion) return null;
 
     return { userId: decoded.userId, tenantId: decoded.tenantId, role: decoded.role || 'user' };
   } catch {

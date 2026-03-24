@@ -1,20 +1,22 @@
 import { NextResponse } from 'next/server';
 import { updateAutomation, deleteAutomation } from '@/src/services/automationService';
+import { getAuthTenant } from '@/lib/getAuthTenant';
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+
+  const auth = await getAuthTenant(request);
+  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   try {
     const body = await request.json();
-    const { tenantId, ...data } = body;
+    // Ignore any tenantId from body — always use the authenticated tenant
+    const { tenantId: _ignored, ...data } = body;
 
-    if (!tenantId) {
-      return NextResponse.json({ error: 'tenantId is required' }, { status: 400 });
-    }
-
-    const updated = await updateAutomation(tenantId, id, data);
+    const updated = await updateAutomation(auth.tenantId, id, data);
     return NextResponse.json(updated);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -26,15 +28,12 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+
+  const auth = await getAuthTenant(request);
+  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   try {
-    const { searchParams } = new URL(request.url);
-    const tenantId = searchParams.get('tenantId');
-
-    if (!tenantId) {
-      return NextResponse.json({ error: 'tenantId is required' }, { status: 400 });
-    }
-
-    await deleteAutomation(tenantId, id);
+    await deleteAutomation(auth.tenantId, id);
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

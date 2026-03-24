@@ -91,12 +91,21 @@ function ProdutosTab() {
   const emptyForm = { name: "", description: "", category: "", price: "", stock: "" };
   const [form, setForm] = useState(emptyForm);
 
+  const [loadError, setLoadError] = useState("");
+
   const loadProducts = async () => {
     try {
       const res = await authFetch("/api/products");
-      if (res.ok) setProducts(await res.json());
-    } catch {}
-    finally { setLoading(false); }
+      if (res.ok) {
+        setProducts(await res.json());
+        setLoadError("");
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setLoadError(err.error || `Erro ao carregar produtos (${res.status})`);
+      }
+    } catch {
+      setLoadError("Erro de conexão ao carregar produtos.");
+    } finally { setLoading(false); }
   };
 
   useEffect(() => { loadProducts(); }, []);
@@ -129,10 +138,13 @@ function ProdutosTab() {
       stock: form.stock ? parseInt(form.stock) : null,
     };
     try {
-      if (editingProduct) {
-        await authFetch(`/api/products/${editingProduct.id}`, { method: "PATCH", body: JSON.stringify(payload) });
-      } else {
-        await authFetch("/api/products", { method: "POST", body: JSON.stringify(payload) });
+      const res = editingProduct
+        ? await authFetch(`/api/products/${editingProduct.id}`, { method: "PATCH", body: JSON.stringify(payload) })
+        : await authFetch("/api/products", { method: "POST", body: JSON.stringify(payload) });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || `Erro ao salvar produto (${res.status})`);
+        return;
       }
       setShowModal(false);
       loadProducts();
@@ -143,14 +155,24 @@ function ProdutosTab() {
   const handleDelete = async (id: string, name: string) => {
     if (!confirm(`Remover o produto "${name}"?`)) return;
     try {
-      await authFetch(`/api/products/${id}`, { method: "DELETE" });
+      const res = await authFetch(`/api/products/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || `Erro ao remover produto (${res.status})`);
+        return;
+      }
       loadProducts();
     } catch { alert("Erro ao remover produto"); }
   };
 
   const handleToggleActive = async (p: Product) => {
     try {
-      await authFetch(`/api/products/${p.id}`, { method: "PATCH", body: JSON.stringify({ active: !p.active }) });
+      const res = await authFetch(`/api/products/${p.id}`, { method: "PATCH", body: JSON.stringify({ active: !p.active }) });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || `Erro ao atualizar produto (${res.status})`);
+        return;
+      }
       setProducts(prev => prev.map(x => x.id === p.id ? { ...x, active: !p.active } : x));
     } catch { alert("Erro ao atualizar produto"); }
   };
@@ -170,6 +192,11 @@ function ProdutosTab() {
 
   return (
     <div className="space-y-4">
+      {loadError && (
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl">
+          {loadError}
+        </div>
+      )}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <p className="text-sm text-gray-500">
           {products.length} produto{products.length !== 1 ? "s" : ""}
@@ -432,9 +459,10 @@ function AutomacoesTab({
   const loadRules = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/automations?tenantId=${tenantId}`);
+      const res = await authFetch(`/api/automations`);
       if (res.ok) setRules(await res.json());
-    } catch {}
+      else showToast(`Erro ao carregar automações (${res.status})`);
+    } catch { showToast("Erro de conexão ao carregar automações."); }
     finally { setLoading(false); }
   };
 
@@ -454,10 +482,9 @@ function AutomacoesTab({
     try {
       const url = editingRule ? `/api/automations/${editingRule.id}` : `/api/automations`;
       const method = editingRule ? "PATCH" : "POST";
-      const res = await fetch(url, {
+      const res = await authFetch(url, {
         method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tenantId, ...formData, active: editingRule ? editingRule.active : true }),
+        body: JSON.stringify({ ...formData, active: editingRule ? editingRule.active : true }),
       });
       if (res.ok) {
         setIsModalOpen(false);
@@ -475,20 +502,21 @@ function AutomacoesTab({
   const handleDelete = async (id: string) => {
     if (!confirm("Remover esta automação?")) return;
     try {
-      await fetch(`/api/automations/${id}?tenantId=${tenantId}`, { method: "DELETE" });
-      loadRules();
-    } catch {}
+      const res = await authFetch(`/api/automations/${id}`, { method: "DELETE" });
+      if (res.ok) loadRules();
+      else showToast("Erro ao remover automação.");
+    } catch { showToast("Erro ao remover automação."); }
   };
 
   const toggleActive = async (rule: AutomationRule) => {
     try {
-      const res = await fetch(`/api/automations/${rule.id}`, {
+      const res = await authFetch(`/api/automations/${rule.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tenantId, active: !rule.active }),
+        body: JSON.stringify({ active: !rule.active }),
       });
       if (res.ok) { showToast(rule.active ? "Desativada" : "Ativada"); loadRules(); }
-    } catch {}
+      else showToast("Erro ao alterar status da automação.");
+    } catch { showToast("Erro ao alterar status da automação."); }
   };
 
   const openEditModal = (rule: AutomationRule) => {

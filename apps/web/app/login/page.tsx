@@ -18,8 +18,10 @@ export default function LoginPage() {
     setError("");
     try {
       await login({ email, password });
-    } catch (err) {
-      setError("Email ou senha inválidos. Tente novamente.");
+    } catch (err: any) {
+      // Use the message returned by the backend when available; fall back to generic only for unexpected errors
+      const msg = err?.message;
+      setError(msg && !msg.startsWith('API Error:') ? msg : "Email ou senha inválidos. Tente novamente.");
     }
   };
 

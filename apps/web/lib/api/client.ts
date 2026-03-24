@@ -16,7 +16,12 @@ export async function apiClient(endpoint: string, options: RequestInit = {}) {
   });
 
   if (!response.ok) {
-    throw new Error(`API Error: ${response.statusText}`);
+    let message = response.statusText;
+    try {
+      const errBody = await response.json();
+      if (errBody?.error) message = errBody.error;
+    } catch {}
+    throw new Error(message);
   }
 
   return response.json();

@@ -21,6 +21,10 @@ import crypto from 'crypto';
 import { sendEmail } from '../email/client';
 import { getVerificationEmailHtml } from '../email/templates/verificationTemplate';
 
+// Set REQUIRE_EMAIL_VERIFICATION=false to disable email verification temporarily.
+// Defaults to true (verification required) when the variable is absent or any value other than 'false'.
+const requireEmailVerification = process.env.REQUIRE_EMAIL_VERIFICATION !== 'false';
+
 export const registerUser = async (name: string, email: string, passwordPlain: string, role: string = 'user') => {
   const existingUser = await prisma.user.findUnique({ where: { email } });
   if (existingUser) throw new Error('User already exists');
@@ -38,36 +42,49 @@ export const registerUser = async (name: string, email: string, passwordPlain: s
       email,
       passwordHash,
       tenantId: tenant.id,
-      role
+      role,
+      // When verification is disabled, mark email as verified immediately
+      ...(!requireEmailVerification && { emailVerifiedAt: new Date() }),
     }
   });
 
-  // Criar token de verificação
-  const unhashedToken = crypto.randomBytes(32).toString('hex');
-  const tokenHash = crypto.createHash('sha256').update(unhashedToken).digest('hex');
-  
-  await prisma.verificationToken.create({
-    data: {
-      identifier: email,
-      tokenHash,
-      type: 'EMAIL_VERIFICATION',
-      expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24) // 24 hours
-    }
-  });
+  if (requireEmailVerification) {
+    // Criar token de verificação e enviar e-mail
+    const unhashedToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(unhashedToken).digest('hex');
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-  const verifyLink = `${baseUrl}/verify-email?token=${unhashedToken}`;
+    await prisma.verificationToken.create({
+      data: {
+        identifier: email,
+        tokenHash,
+        type: 'EMAIL_VERIFICATION',
+        expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24) // 24 hours
+      }
+    });
 
-  await sendEmail({
-    to: email,
-    subject: 'Verifique seu e-mail para ativar sua conta',
-    html: getVerificationEmailHtml(verifyLink, name)
-  });
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const verifyLink = `${baseUrl}/verify-email?token=${unhashedToken}`;
 
-  return { 
-    message: 'Conta criada. Verifique seu email para ativá-la.', 
-    requiresVerification: true,
-    user: { id: user.id, email: user.email, tenantId: user.tenantId, role: user.role }
+    await sendEmail({
+      to: email,
+      subject: 'Verifique seu e-mail para ativar sua conta',
+      html: getVerificationEmailHtml(verifyLink, name)
+    });
+
+    return {
+      message: 'Conta criada. Verifique seu email para ativá-la.',
+      requiresVerification: true,
+      user: { id: user.id, email: user.email, tenantId: user.tenantId, role: user.role }
+    };
+  }
+
+  // Verificação desabilitada — retorna token JWT para login imediato
+  const token = generateToken(user.id, user.tenantId, user.role);
+  return {
+    message: 'Conta criada com sucesso.',
+    requiresVerification: false,
+    user: { id: user.id, email: user.email, tenantId: user.tenantId, role: user.role },
+    token,
   };
 };
 
@@ -88,8 +105,8 @@ export const loginUser = async (email: string, passwordPlain: string, meta?: { i
   if (!isValid) throw new Error('Invalid credentials');
 
 
-  // Bloquear login se o e-mail não estiver verificado e o role não for superadmin
-  if (!user.emailVerifiedAt && user.role !== 'superadmin') {
+  // Bloquear login por e-mail não verificado apenas quando a verificação está habilitada
+  if (requireEmailVerification && !user.emailVerifiedAt && user.role !== 'superadmin') {
     throw new Error('Email não verificado. Verifique seu email antes de fazer login.');
   }
 

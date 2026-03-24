@@ -84,9 +84,21 @@ export default function InboxPage() {
 
   // Nova conversa modal
   const [showNewConvModal, setShowNewConvModal] = useState(false);
-  const [newConvForm, setNewConvForm] = useState({ phone: "", contactName: "", channel: "whatsapp", firstMessage: "" });
+  const [newConvForm, setNewConvForm] = useState({ phone: "", contactName: "", channel: "whatsapp" });
   const [startingConv, setStartingConv] = useState(false);
   const [newConvError, setNewConvError] = useState<string | null>(null);
+
+  // Approved custom templates (for cold WA outbound)
+  type ApprovedTpl = { id: string; name: string; body: string; language: string; exampleVars: string[] };
+  const [approvedTemplates, setApprovedTemplates] = useState<ApprovedTpl[]>([]);
+  const [selectedNewTpl, setSelectedNewTpl] = useState<ApprovedTpl | null>(null);
+  const [newTplVars, setNewTplVars] = useState<string[]>([]);
+
+  // In-chat session gate state
+  const [requiresTemplate, setRequiresTemplate] = useState(false);
+  const [chatTplId, setChatTplId] = useState("");
+  const [chatTplVars, setChatTplVars] = useState<string[]>([]);
+  const [sendingTemplate, setSendingTemplate] = useState(false);
 
   // Flag to open phone from query param after conversations are loaded
   const pendingPhoneRef = useRef<string | null>(null);
@@ -177,10 +189,27 @@ export default function InboxPage() {
 
   // ── Nova conversa ───────────────────────────────────────────────────────────
 
+  const fetchApprovedTemplates = async () => {
+    try {
+      const res = await fetch("/api/whatsapp/templates/custom", { headers: authHeaders() });
+      if (!res.ok) return;
+      const all: ApprovedTpl[] = await res.json();
+      setApprovedTemplates(all.filter((t: any) => t.status === "APPROVED"));
+    } catch { /* non-fatal */ }
+  };
+
   const handleNewConversation = async (e: React.FormEvent) => {
     e.preventDefault();
     const phone = newConvForm.phone.trim();
     if (!phone) return;
+    const isWhatsApp = newConvForm.channel === "whatsapp";
+
+    // For WhatsApp cold outbound, a template must be selected
+    if (isWhatsApp && !selectedNewTpl) {
+      setNewConvError("Para iniciar uma conversa WhatsApp selecione um template aprovado.");
+      return;
+    }
+
     setStartingConv(true);
     setNewConvError(null);
     try {
@@ -198,22 +227,31 @@ export default function InboxPage() {
         throw new Error(err.error ?? "Falha ao criar conversa");
       }
 
-      // Send first message if provided
-      if (newConvForm.firstMessage.trim()) {
-        await fetch(`/api/conversations/${encodeURIComponent(phone)}/send`, {
+      // WhatsApp cold outbound: send via approved template
+      if (isWhatsApp && selectedNewTpl) {
+        const sendRes = await fetch("/api/whatsapp/templates/send", {
           method: "POST",
           headers: authHeaders(),
-          body: JSON.stringify({ tenantId, message: newConvForm.firstMessage.trim() }),
+          body: JSON.stringify({
+            to: phone,
+            templateName: selectedNewTpl.name,
+            language: selectedNewTpl.language,
+            variables: newTplVars.filter(Boolean),
+          }),
         });
+        if (!sendRes.ok) {
+          const err = await sendRes.json();
+          throw new Error(err.error ?? "Falha ao enviar template");
+        }
       }
 
       // Refresh list and open the conversation
       setShowNewConvModal(false);
-      setNewConvForm({ phone: "", contactName: "", channel: "whatsapp", firstMessage: "" });
+      setNewConvForm({ phone: "", contactName: "", channel: "whatsapp" });
+      setSelectedNewTpl(null);
+      setNewTplVars([]);
 
-      const listRes = await fetch(`/api/conversations?tenantId=${tenantId}`, {
-        headers: authHeaders(),
-      });
+      const listRes = await fetch(`/api/conversations?tenantId=${tenantId}`, { headers: authHeaders() });
       if (listRes.ok) {
         const refreshed: Conversation[] = await listRes.json();
         setConversations(refreshed);
@@ -225,6 +263,40 @@ export default function InboxPage() {
       setNewConvError(err instanceof Error ? err.message : "Erro ao iniciar conversa");
     } finally {
       setStartingConv(false);
+    }
+  };
+
+  // ── In-chat template send for cold/closed sessions ───────────────────────────
+
+  const handleSendChatTemplate = async () => {
+    if (!selectedPhone || !chatTplId) return;
+    const tpl = approvedTemplates.find((t) => t.id === chatTplId);
+    if (!tpl) return;
+    setSendingTemplate(true);
+    try {
+      const res = await fetch("/api/whatsapp/templates/send", {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({
+          to: selectedPhone,
+          templateName: tpl.name,
+          language: tpl.language,
+          variables: chatTplVars.filter(Boolean),
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error ?? "Falha ao enviar template");
+      }
+      setRequiresTemplate(false);
+      setChatTplId("");
+      setChatTplVars([]);
+      loadMessages(selectedPhone, currentStatus);
+      showFeedback("success", "Template enviado com sucesso");
+    } catch (err: unknown) {
+      showFeedback("error", err instanceof Error ? err.message : "Erro ao enviar template");
+    } finally {
+      setSendingTemplate(false);
     }
   };
 
@@ -338,11 +410,21 @@ export default function InboxPage() {
         body: JSON.stringify({ tenantId, message: replyText }),
       });
       if (res.ok) {
+        setRequiresTemplate(false);
         setReplyText("");
         loadMessages(selectedPhone, currentStatus);
         showFeedback("success", "Mensagem enviada");
       } else {
-        showFeedback("error", "Falha ao enviar mensagem");
+        const data = await res.json();
+        if (data.requiresTemplate) {
+          // Session is closed — require approved template
+          setRequiresTemplate(true);
+          await fetchApprovedTemplates();
+          setChatTplId("");
+          setChatTplVars([]);
+        } else {
+          showFeedback("error", data.error ?? "Falha ao enviar mensagem");
+        }
       }
     } catch (err) {
       console.error(err);
@@ -821,6 +903,79 @@ export default function InboxPage() {
 
               {/* Input area */}
               {currentStatus !== "closed" ? (
+                requiresTemplate ? (
+                  <div className="p-4 border-t border-amber-100 bg-amber-50 space-y-3 shrink-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-amber-500 text-lg">⚠️</span>
+                      <p className="text-sm font-semibold text-amber-700">
+                        Esta conversa requer um template aprovado para iniciar.
+                      </p>
+                    </div>
+                    <p className="text-xs text-amber-600">
+                      A janela de atendimento do WhatsApp está encerrada. Use um template aprovado para retomar o contato.
+                    </p>
+                    {approvedTemplates.length === 0 ? (
+                      <div className="bg-white border border-amber-200 rounded-xl p-3 text-xs text-gray-600">
+                        Não há template aprovado disponível.{" "}
+                        <a href="/dashboard/templates" className="text-[#4f46e5] hover:underline font-semibold">Gerenciar templates →</a>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <select
+                          value={chatTplId}
+                          onChange={(e) => {
+                            setChatTplId(e.target.value);
+                            const tpl = approvedTemplates.find((t) => t.id === e.target.value);
+                            setChatTplVars(tpl ? tpl.exampleVars.map(() => "") : []);
+                          }}
+                          className="w-full px-3 py-2 bg-white border border-amber-200 rounded-xl text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-amber-300"
+                        >
+                          <option value="">Selecionar template...</option>
+                          {approvedTemplates.map((t) => (
+                            <option key={t.id} value={t.id}>{t.name}</option>
+                          ))}
+                        </select>
+                        {chatTplId && (() => {
+                          const tpl = approvedTemplates.find((t) => t.id === chatTplId);
+                          const matches = tpl?.body.match(/\{\{\d+\}\}/g) || [];
+                          return matches.length > 0 ? (
+                            <div className="space-y-1">
+                              {matches.map((ph, i) => (
+                                <input
+                                  key={i}
+                                  type="text"
+                                  placeholder={`Variável ${i + 1} (${ph})`}
+                                  value={chatTplVars[i] || ""}
+                                  onChange={(e) => {
+                                    const v = [...chatTplVars];
+                                    v[i] = e.target.value;
+                                    setChatTplVars(v);
+                                  }}
+                                  className="w-full px-3 py-2 bg-white border border-amber-200 rounded-xl text-sm text-gray-800 focus:outline-none"
+                                />
+                              ))}
+                            </div>
+                          ) : null;
+                        })()}
+                        <div className="flex gap-2">
+                          <button
+                            onClick={handleSendChatTemplate}
+                            disabled={!chatTplId || sendingTemplate}
+                            className="flex-1 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white rounded-xl text-sm font-semibold transition-all"
+                          >
+                            {sendingTemplate ? "Enviando..." : "📱 Enviar template"}
+                          </button>
+                          <button
+                            onClick={() => setRequiresTemplate(false)}
+                            className="px-4 py-2 border border-gray-200 text-gray-500 rounded-xl text-sm hover:bg-gray-50"
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
                 <form
                   onSubmit={handleSendMessage}
                   className="p-4 border-t border-gray-100 bg-white flex items-center gap-3 shrink-0"
@@ -842,17 +997,13 @@ export default function InboxPage() {
                       <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block"></span>
                     ) : (
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
-                        />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                       </svg>
                     )}
                     <span>Enviar</span>
                   </button>
                 </form>
+                )
               ) : (
                 <div className="p-5 border-t border-gray-100 bg-gray-50 text-center shrink-0">
                   <div className="flex items-center justify-center gap-2 text-sm text-gray-500 font-medium">
@@ -921,11 +1072,11 @@ export default function InboxPage() {
       {/* ── Nova conversa modal ──────────────────────────────────────────────── */}
       {showNewConvModal && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
               <h3 className="font-bold text-gray-900">Nova conversa</h3>
               <button
-                onClick={() => setShowNewConvModal(false)}
+                onClick={() => { setShowNewConvModal(false); setSelectedNewTpl(null); setNewTplVars([]); }}
                 className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 transition-colors"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -933,7 +1084,10 @@ export default function InboxPage() {
                 </svg>
               </button>
             </div>
-            <form onSubmit={handleNewConversation} className="p-6 space-y-4">
+            <form
+              onSubmit={handleNewConversation}
+              className="p-6 space-y-4"
+            >
               <div>
                 <label className="block text-xs font-semibold text-gray-500 mb-1">
                   Telefone <span className="text-red-400">*</span>
@@ -961,7 +1115,12 @@ export default function InboxPage() {
                 <label className="block text-xs font-semibold text-gray-500 mb-1">Canal</label>
                 <select
                   value={newConvForm.channel}
-                  onChange={(e) => setNewConvForm((f) => ({ ...f, channel: e.target.value }))}
+                  onChange={(e) => {
+                    setNewConvForm((f) => ({ ...f, channel: e.target.value }));
+                    if (e.target.value === "whatsapp") fetchApprovedTemplates();
+                    setSelectedNewTpl(null);
+                    setNewTplVars([]);
+                  }}
                   className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20"
                 >
                   <option value="whatsapp">WhatsApp</option>
@@ -969,21 +1128,67 @@ export default function InboxPage() {
                   <option value="facebook">Facebook</option>
                 </select>
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1">
-                  Primeira mensagem (opcional)
-                </label>
-                <textarea
-                  rows={3}
-                  value={newConvForm.firstMessage}
-                  onChange={(e) => setNewConvForm((f) => ({ ...f, firstMessage: e.target.value }))}
-                  placeholder="Escreva a primeira mensagem para enviar imediatamente..."
-                  className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20 focus:border-[#4f46e5]/40 resize-none"
-                />
-                <p className="text-[10px] text-gray-400 mt-1">
-                  Deixe em branco para apenas abrir a conversa sem enviar mensagem.
-                </p>
-              </div>
+
+              {/* WhatsApp: require approved template for cold outbound */}
+              {newConvForm.channel === "whatsapp" && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3">
+                  <p className="text-xs font-semibold text-amber-700">
+                    📱 Para iniciar uma conversa WhatsApp com um contato que ainda não interagiu, use um template aprovado.
+                  </p>
+                  {approvedTemplates.length === 0 ? (
+                    <div className="text-xs text-gray-600">
+                      Nenhum template aprovado disponível.{" "}
+                      <a href="/dashboard/templates" className="text-[#4f46e5] hover:underline font-semibold" onClick={() => setShowNewConvModal(false)}>
+                        Criar/ativar templates →
+                      </a>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <select
+                        value={selectedNewTpl?.id || ""}
+                        onChange={(e) => {
+                          const tpl = approvedTemplates.find((t) => t.id === e.target.value) || null;
+                          setSelectedNewTpl(tpl);
+                          setNewTplVars(tpl ? tpl.exampleVars.map(() => "") : []);
+                        }}
+                        className="w-full px-3 py-2 bg-white border border-amber-200 rounded-xl text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-amber-300"
+                      >
+                        <option value="">Selecionar template aprovado...</option>
+                        {approvedTemplates.map((t) => (
+                          <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
+                      </select>
+                      {selectedNewTpl && (() => {
+                        const matches = selectedNewTpl.body.match(/\{\{\d+\}\}/g) || [];
+                        return matches.length > 0 ? (
+                          <div className="space-y-1">
+                            {matches.map((ph, i) => (
+                              <input
+                                key={i}
+                                type="text"
+                                placeholder={`Variável ${i + 1} (${ph})`}
+                                value={newTplVars[i] || ""}
+                                onChange={(e) => {
+                                  const v = [...newTplVars];
+                                  v[i] = e.target.value;
+                                  setNewTplVars(v);
+                                }}
+                                className="w-full px-3 py-2 bg-white border border-amber-200 rounded-xl text-sm text-gray-800 focus:outline-none"
+                              />
+                            ))}
+                          </div>
+                        ) : null;
+                      })()}
+                      {selectedNewTpl && (
+                        <p className="text-[10px] text-gray-500 bg-white rounded-lg px-2 py-1.5 border border-amber-100 line-clamp-2">
+                          {selectedNewTpl.body}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {newConvError && (
                 <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
                   {newConvError}
@@ -992,17 +1197,17 @@ export default function InboxPage() {
               <div className="flex gap-3 pt-1">
                 <button
                   type="submit"
-                  disabled={startingConv || !newConvForm.phone.trim()}
+                  disabled={startingConv || !newConvForm.phone.trim() || (newConvForm.channel === "whatsapp" && !selectedNewTpl)}
                   className="flex-1 py-2.5 bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] text-white rounded-xl text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   {startingConv ? (
                     <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" />
                   ) : null}
-                  {startingConv ? "Iniciando..." : newConvForm.firstMessage.trim() ? "Iniciar e enviar" : "Iniciar conversa"}
+                  {startingConv ? "Iniciando..." : "Iniciar conversa"}
                 </button>
                 <button
                   type="button"
-                  onClick={() => setShowNewConvModal(false)}
+                  onClick={() => { setShowNewConvModal(false); setSelectedNewTpl(null); setNewTplVars([]); }}
                   className="px-4 py-2.5 border border-gray-200 text-gray-600 rounded-xl text-sm font-semibold hover:bg-gray-50"
                 >
                   Cancelar

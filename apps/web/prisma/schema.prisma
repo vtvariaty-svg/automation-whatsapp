@@ -1301,7 +1301,7 @@ model TemplateBroadcastRecipient {
 // ─── TD2 Custom Templates (tenant-managed, submitted to Meta for approval) ────
 
 model CustomTemplate {
-  id             String   @id @default(uuid())
+  id             String    @id @default(uuid())
   tenantId       String
   name           String   // snake_case, unique per tenant
   category       String   @default("UTILITY") // UTILITY | MARKETING | AUTHENTICATION
@@ -1313,6 +1313,7 @@ model CustomTemplate {
   metaTemplateId String?  // ID returned by Meta after submission
   status         String   @default("DRAFT") // DRAFT | PENDING | APPROVED | REJECTED
   rejectedReason String?
+  lastSyncAt     DateTime? // last successful sync with Meta provider
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -1322,6 +1323,7 @@ model CustomTemplate {
   @@index([tenantId, status])
   @@map("custom_templates")
 }
+
 
 // ─── Fiscal Integration Records ───────────────────────────────────────────────
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 
@@ -80,15 +80,16 @@ function formatDate(iso: string): string {
 
 function statusBadge(status: string): { label: string; color: string } {
   switch (status) {
-    case 'queued':    return { label: 'Na fila',         color: 'bg-blue-100 text-blue-700' };
-    case 'completed': return { label: 'Concluída',       color: 'bg-green-100 text-green-700' };
-    case 'failed':    return { label: 'Falhou',          color: 'bg-red-100 text-red-600' };
-    case 'approved':  return { label: 'Aprovado',        color: 'bg-green-100 text-green-700' };
-    case 'rejected':  return { label: 'Rejeitado',       color: 'bg-red-100 text-red-600' };
-    case 'archived':  return { label: 'Arquivado',       color: 'bg-gray-100 text-gray-500' };
-    case 'success':   return { label: 'Sucesso',         color: 'bg-green-100 text-green-700' };
-    case 'pending':   return { label: 'Pendente',        color: 'bg-yellow-100 text-yellow-700' };
-    default:          return { label: status,            color: 'bg-gray-100 text-gray-600' };
+    case 'queued':         return { label: 'Na fila',         color: 'bg-blue-100 text-blue-700' };
+    case 'completed':      return { label: 'Concluída',       color: 'bg-green-100 text-green-700' };
+    case 'failed':         return { label: 'Falhou',          color: 'bg-red-100 text-red-600' };
+    case 'approved':       return { label: 'Aprovado',        color: 'bg-green-100 text-green-700' };
+    case 'rejected':       return { label: 'Rejeitado',       color: 'bg-red-100 text-red-600' };
+    case 'archived':       return { label: 'Arquivado',       color: 'bg-gray-100 text-gray-500' };
+    case 'success':        return { label: 'Sucesso',         color: 'bg-green-100 text-green-700' };
+    case 'pending':        return { label: 'Pendente',        color: 'bg-yellow-100 text-yellow-700' };
+    case 'pending_review': return { label: 'Em revisão',      color: 'bg-yellow-100 text-yellow-700' };
+    default:               return { label: status,            color: 'bg-gray-100 text-gray-600' };
   }
 }
 
@@ -119,6 +120,9 @@ const EMPTY_CANDIDATE = {
   reviewsCount: '',
 };
 
+type StatusFilter = 'all' | 'pending_review' | 'approved' | 'rejected' | 'archived';
+type VerdictFilter = 'todos' | 'compensa' | 'revisar' | 'nao_compensa';
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SearchRunDetailPage() {
@@ -136,8 +140,13 @@ export default function SearchRunDetailPage() {
   const [candidateSubmitting, setCandidateSubmitting] = useState(false);
   const [candidateError, setCandidateError] = useState<string | null>(null);
 
-  // Per-candidate scoring state: candidateId → loading boolean
-  const [scoringIds, setScoringIds] = useState<Record<string, boolean>>({});
+  // Per-candidate action states
+  const [scoringIds, setScoringIds]   = useState<Record<string, boolean>>({});
+  const [statusIds, setStatusIds]     = useState<Record<string, boolean>>({});
+
+  // Filters
+  const [statusFilter, setStatusFilter]   = useState<StatusFilter>('all');
+  const [verdictFilter, setVerdictFilter] = useState<VerdictFilter>('todos');
 
   // ── Fetch detail ─────────────────────────────────────────────────────────
 
@@ -235,6 +244,81 @@ export default function SearchRunDetailPage() {
       setScoringIds(prev => ({ ...prev, [candidateId]: false }));
     }
   }
+
+  // ── Status action ─────────────────────────────────────────────────────────
+
+  async function handleStatus(candidateId: string, status: string) {
+    setStatusIds(prev => ({ ...prev, [candidateId]: true }));
+    try {
+      const token = getAuthToken();
+      await fetch(`/api/lead-intelligence/candidates/${candidateId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status }),
+      });
+      await loadRun();
+    } finally {
+      setStatusIds(prev => ({ ...prev, [candidateId]: false }));
+    }
+  }
+
+  // ── Export helpers ────────────────────────────────────────────────────────
+
+  function handleExport(format: 'csv' | 'json') {
+    const token = getAuthToken();
+    const url = `/api/lead-intelligence/search-runs/${id}/export?format=${format}`;
+
+    if (format === 'csv') {
+      // Trigger download via hidden anchor
+      fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+        .then(res => res.blob())
+        .then(blob => {
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = `leads-aprovados.csv`;
+          link.click();
+          URL.revokeObjectURL(link.href);
+        });
+    } else {
+      // JSON: open in new tab (browser will download or display)
+      fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+        .then(res => res.blob())
+        .then(blob => {
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = `leads-aprovados.json`;
+          link.click();
+          URL.revokeObjectURL(link.href);
+        });
+    }
+  }
+
+  // ── Filtered candidates ───────────────────────────────────────────────────
+
+  const filteredCandidates = useMemo(() => {
+    if (!run) return [];
+    return run.candidates.filter(c => {
+      if (statusFilter !== 'all' && c.status !== statusFilter) return false;
+      if (verdictFilter !== 'todos') {
+        if (!c.score || c.score.verdict !== verdictFilter) return false;
+      }
+      return true;
+    });
+  }, [run, statusFilter, verdictFilter]);
+
+  // ── Summary counts ────────────────────────────────────────────────────────
+
+  const counts = useMemo(() => {
+    if (!run) return { total: 0, approved: 0, rejected: 0, archived: 0, pending: 0 };
+    const cs = run.candidates;
+    return {
+      total:    cs.length,
+      approved: cs.filter(c => c.status === 'approved').length,
+      rejected: cs.filter(c => c.status === 'rejected').length,
+      archived: cs.filter(c => c.status === 'archived').length,
+      pending:  cs.filter(c => c.status === 'pending_review').length,
+    };
+  }, [run]);
 
   // ── States ─────────────────────────────────────────────────────────────
 
@@ -352,17 +436,101 @@ export default function SearchRunDetailPage() {
       </div>
 
       {/* ── Seção 2: Candidatos ─────────────────────────────────────────────── */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
+      <div className="space-y-4">
+
+        {/* Section header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <h2 className="text-sm font-bold text-gray-900">🏢 Candidatos</h2>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-500">{run.candidates.length} encontrado{run.candidates.length !== 1 ? 's' : ''}</span>
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Export buttons */}
+            <button
+              onClick={() => handleExport('csv')}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl text-xs font-bold transition-all border border-emerald-200"
+            >
+              ⬇ CSV
+            </button>
+            <button
+              onClick={() => handleExport('json')}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl text-xs font-bold transition-all border border-emerald-200"
+            >
+              ⬇ JSON
+            </button>
             <button
               onClick={() => { setCandidateFormOpen(o => !o); setCandidateError(null); }}
               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all"
             >
               {candidateFormOpen ? '✕ Cancelar' : '+ Adicionar candidato'}
             </button>
+          </div>
+        </div>
+
+        {/* Summary cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          {[
+            { label: 'Total de leads',  value: counts.total,    color: 'text-gray-900' },
+            { label: 'Aprovados',       value: counts.approved,  color: 'text-green-700' },
+            { label: 'Rejeitados',      value: counts.rejected,  color: 'text-red-600' },
+            { label: 'Arquivados',      value: counts.archived,  color: 'text-gray-500' },
+            { label: 'Pendentes',       value: counts.pending,   color: 'text-amber-600' },
+          ].map(item => (
+            <div key={item.label} className="bg-white rounded-2xl border border-gray-200 p-4 text-center">
+              <p className={`text-2xl font-black ${item.color}`}>{item.value}</p>
+              <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mt-0.5">{item.label}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-wrap gap-2 items-center">
+          {/* Status filter */}
+          <div className="flex items-center gap-1 flex-wrap">
+            {(
+              [
+                ['all',            'Todos'],
+                ['pending_review', 'Em revisão'],
+                ['approved',       'Aprovados'],
+                ['rejected',       'Rejeitados'],
+                ['archived',       'Arquivados'],
+              ] as [StatusFilter, string][]
+            ).map(([val, lbl]) => (
+              <button
+                key={val}
+                onClick={() => setStatusFilter(val)}
+                className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ${
+                  statusFilter === val
+                    ? 'bg-indigo-600 text-white border-indigo-600'
+                    : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300'
+                }`}
+              >
+                {lbl}
+              </button>
+            ))}
+          </div>
+
+          <div className="w-px h-5 bg-gray-200 hidden sm:block" />
+
+          {/* Verdict filter */}
+          <div className="flex items-center gap-1 flex-wrap">
+            {(
+              [
+                ['todos',         'Todos'],
+                ['compensa',      '✅ Compensa'],
+                ['revisar',       '🟡 Revisar'],
+                ['nao_compensa',  '❌ Não compensa'],
+              ] as [VerdictFilter, string][]
+            ).map(([val, lbl]) => (
+              <button
+                key={val}
+                onClick={() => setVerdictFilter(val)}
+                className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ${
+                  verdictFilter === val
+                    ? 'bg-indigo-600 text-white border-indigo-600'
+                    : 'bg-white text-gray-600 border-gray-200 hover:border-indigo-300'
+                }`}
+              >
+                {lbl}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -384,185 +552,99 @@ export default function SearchRunDetailPage() {
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {/* Row 1 */}
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">
                   Razão Social <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
-                  value={candidateForm.companyName}
-                  onChange={e => setCandidateField('companyName', e.target.value)}
-                  placeholder="Nome empresarial"
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                />
+                <input type="text" value={candidateForm.companyName} onChange={e => setCandidateField('companyName', e.target.value)} placeholder="Nome empresarial" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300" />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">Nome Fantasia</label>
-                <input
-                  type="text"
-                  value={candidateForm.tradeName}
-                  onChange={e => setCandidateField('tradeName', e.target.value)}
-                  placeholder="Nome fantasia"
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                />
+                <input type="text" value={candidateForm.tradeName} onChange={e => setCandidateField('tradeName', e.target.value)} placeholder="Nome fantasia" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300" />
               </div>
-
-              {/* Row 2 */}
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">CNPJ</label>
-                <input
-                  type="text"
-                  value={candidateForm.cnpj}
-                  onChange={e => setCandidateField('cnpj', e.target.value)}
-                  placeholder="00.000.000/0000-00"
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                />
+                <input type="text" value={candidateForm.cnpj} onChange={e => setCandidateField('cnpj', e.target.value)} placeholder="00.000.000/0000-00" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300" />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">Categoria</label>
-                <input
-                  type="text"
-                  value={candidateForm.category}
-                  onChange={e => setCandidateField('category', e.target.value)}
-                  placeholder="Ex: Clínica de Estética"
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                />
+                <input type="text" value={candidateForm.category} onChange={e => setCandidateField('category', e.target.value)} placeholder="Ex: Clínica de Estética" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300" />
               </div>
-
-              {/* Row 3 */}
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">Site</label>
-                <input
-                  type="url"
-                  value={candidateForm.website}
-                  onChange={e => setCandidateField('website', e.target.value)}
-                  placeholder="https://..."
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                />
+                <input type="url" value={candidateForm.website} onChange={e => setCandidateField('website', e.target.value)} placeholder="https://..." className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300" />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">E-mail</label>
-                <input
-                  type="email"
-                  value={candidateForm.email}
-                  onChange={e => setCandidateField('email', e.target.value)}
-                  placeholder="contato@empresa.com.br"
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                />
+                <input type="email" value={candidateForm.email} onChange={e => setCandidateField('email', e.target.value)} placeholder="contato@empresa.com.br" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300" />
               </div>
-
-              {/* Row 4 */}
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">Telefone</label>
-                <input
-                  type="tel"
-                  value={candidateForm.phone}
-                  onChange={e => setCandidateField('phone', e.target.value)}
-                  placeholder="(11) 3000-0000"
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                />
+                <input type="tel" value={candidateForm.phone} onChange={e => setCandidateField('phone', e.target.value)} placeholder="(11) 3000-0000" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300" />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">Celular</label>
-                <input
-                  type="tel"
-                  value={candidateForm.mobilePhone}
-                  onChange={e => setCandidateField('mobilePhone', e.target.value)}
-                  placeholder="(11) 9 9000-0000"
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                />
+                <input type="tel" value={candidateForm.mobilePhone} onChange={e => setCandidateField('mobilePhone', e.target.value)} placeholder="(11) 9 9000-0000" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300" />
               </div>
-
-              {/* Row 5 */}
               <div className="sm:col-span-2">
                 <label className="block text-xs font-semibold text-gray-700 mb-1">Endereço</label>
-                <input
-                  type="text"
-                  value={candidateForm.address}
-                  onChange={e => setCandidateField('address', e.target.value)}
-                  placeholder="Rua, número, bairro"
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                />
+                <input type="text" value={candidateForm.address} onChange={e => setCandidateField('address', e.target.value)} placeholder="Rua, número, bairro" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300" />
               </div>
-
-              {/* Row 6 */}
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">Cidade</label>
-                <input
-                  type="text"
-                  value={candidateForm.city}
-                  onChange={e => setCandidateField('city', e.target.value)}
-                  placeholder="São Paulo"
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                />
+                <input type="text" value={candidateForm.city} onChange={e => setCandidateField('city', e.target.value)} placeholder="São Paulo" className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300" />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">Estado (UF)</label>
-                <input
-                  type="text"
-                  value={candidateForm.state}
-                  onChange={e => setCandidateField('state', e.target.value)}
-                  placeholder="SP"
-                  maxLength={2}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                />
+                <input type="text" value={candidateForm.state} onChange={e => setCandidateField('state', e.target.value)} placeholder="SP" maxLength={2} className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300" />
               </div>
-
-              {/* Row 7 */}
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">Rating (0–5)</label>
-                <input
-                  type="number"
-                  value={candidateForm.rating}
-                  onChange={e => setCandidateField('rating', e.target.value)}
-                  placeholder="Ex: 4.2"
-                  min={0}
-                  max={5}
-                  step={0.1}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                />
+                <input type="number" value={candidateForm.rating} onChange={e => setCandidateField('rating', e.target.value)} placeholder="Ex: 4.2" min={0} max={5} step={0.1} className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300" />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">Qtd. de reviews</label>
-                <input
-                  type="number"
-                  value={candidateForm.reviewsCount}
-                  onChange={e => setCandidateField('reviewsCount', e.target.value)}
-                  placeholder="Ex: 87"
-                  min={0}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                />
+                <input type="number" value={candidateForm.reviewsCount} onChange={e => setCandidateField('reviewsCount', e.target.value)} placeholder="Ex: 87" min={0} className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300" />
               </div>
             </div>
 
             <div className="flex justify-end pt-1 border-t border-gray-100">
-              <button
-                type="submit"
-                disabled={candidateSubmitting}
-                className="inline-flex items-center gap-2 px-5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-xl text-xs font-bold transition-all"
-              >
+              <button type="submit" disabled={candidateSubmitting} className="inline-flex items-center gap-2 px-5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-xl text-xs font-bold transition-all">
                 {candidateSubmitting ? '⏳ Salvando...' : '💾 Salvar candidato'}
               </button>
             </div>
           </form>
         )}
 
-        {run.candidates.length === 0 ? (
+        {/* Candidate list */}
+        {filteredCandidates.length === 0 ? (
           <div className="border-2 border-dashed border-gray-200 rounded-2xl py-14 flex flex-col items-center justify-center text-center">
             <span className="text-3xl mb-2">🏢</span>
-            <p className="text-sm font-semibold text-gray-400">Nenhum candidato ainda</p>
-            <p className="text-xs text-gray-400 mt-1 max-w-xs">
-              Clique em <strong>+ Adicionar candidato</strong> para incluir empresas manualmente.
+            <p className="text-sm font-semibold text-gray-400">
+              {run.candidates.length === 0 ? 'Nenhum candidato ainda' : 'Nenhum candidato para este filtro'}
             </p>
+            {run.candidates.length === 0 && (
+              <p className="text-xs text-gray-400 mt-1 max-w-xs">
+                Clique em <strong>+ Adicionar candidato</strong> para incluir empresas manualmente.
+              </p>
+            )}
           </div>
         ) : (
           <div className="space-y-3">
-            {run.candidates.map(c => {
+            {filteredCandidates.map(c => {
               const cs = statusBadge(c.status);
               const candidateLocation = [c.city, c.state].filter(Boolean).join(', ');
               const isScoring = scoringIds[c.id] === true;
+              const isUpdatingStatus = statusIds[c.id] === true;
               const reasons = c.score?.reasons as string[] | null | undefined;
+
+              const statusActions: { label: string; value: string; color: string }[] = [
+                { label: '✅ Aprovar',          value: 'approved',       color: 'bg-green-50 hover:bg-green-100 text-green-700 border-green-200' },
+                { label: '❌ Rejeitar',          value: 'rejected',       color: 'bg-red-50 hover:bg-red-100 text-red-700 border-red-200' },
+                { label: '📦 Arquivar',          value: 'archived',       color: 'bg-gray-50 hover:bg-gray-100 text-gray-600 border-gray-200' },
+                { label: '🔄 Voltar p/ revisão', value: 'pending_review', color: 'bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200' },
+              ].filter(a => a.value !== c.status);
+
               return (
                 <div key={c.id} className="bg-white rounded-2xl border border-gray-200 p-5 space-y-3">
                   <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
@@ -588,7 +670,7 @@ export default function SearchRunDetailPage() {
 
                       <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
                         {candidateLocation && <span>📍 {candidateLocation}</span>}
-                        {c.category  && <span>🏷️ {c.category}</span>}
+                        {c.category    && <span>🏷️ {c.category}</span>}
                         {c.rating != null && <span>⭐ {c.rating.toFixed(1)}{c.reviewsCount != null ? ` (${c.reviewsCount} reviews)` : ''}</span>}
                       </div>
 
@@ -598,13 +680,13 @@ export default function SearchRunDetailPage() {
                             🌐 {c.website}
                           </a>
                         )}
-                        {c.email    && <span>✉️ {c.email}</span>}
-                        {c.phone    && <span>📞 {c.phone}</span>}
+                        {c.email       && <span>✉️ {c.email}</span>}
+                        {c.phone       && <span>📞 {c.phone}</span>}
                         {c.mobilePhone && <span>📱 {c.mobilePhone}</span>}
                       </div>
                     </div>
 
-                    {/* Score panel + action */}
+                    {/* Score panel + score action */}
                     <div className="flex flex-col items-end gap-2 shrink-0">
                       {c.score ? (
                         <div className="flex flex-col items-center bg-gray-50 rounded-xl px-4 py-3 min-w-[90px]">
@@ -615,12 +697,30 @@ export default function SearchRunDetailPage() {
                       ) : null}
                       <button
                         onClick={() => handleScore(c.id)}
-                        disabled={isScoring}
+                        disabled={isScoring || isUpdatingStatus}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 disabled:opacity-60 text-indigo-700 rounded-xl text-xs font-bold transition-all border border-indigo-200"
                       >
                         {isScoring ? '⏳ Calculando...' : '🧮 Calcular score'}
                       </button>
                     </div>
+                  </div>
+
+                  {/* Review action buttons */}
+                  <div className="flex flex-wrap gap-2 pt-1 border-t border-gray-100">
+                    {isUpdatingStatus ? (
+                      <span className="text-xs text-gray-400 py-1">⏳ Atualizando status...</span>
+                    ) : (
+                      statusActions.map(action => (
+                        <button
+                          key={action.value}
+                          onClick={() => handleStatus(c.id, action.value)}
+                          disabled={isScoring}
+                          className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border disabled:opacity-50 ${action.color}`}
+                        >
+                          {action.label}
+                        </button>
+                      ))
+                    )}
                   </div>
 
                   {/* Score breakdown */}
@@ -629,11 +729,11 @@ export default function SearchRunDetailPage() {
                       <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Detalhamento do score</p>
                       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                         {[
-                          ['ICP Fit',           c.score.icpFitScore,              35],
-                          ['Pot. Comercial',    c.score.commercialPotentialScore,  25],
-                          ['Maturidade Digital', c.score.digitalMaturityScore,     20],
-                          ['Abordabilidade',    c.score.approachabilityScore,      10],
-                          ['Confiança',         c.score.confidenceScore,           10],
+                          ['ICP Fit',             c.score.icpFitScore,              35],
+                          ['Pot. Comercial',       c.score.commercialPotentialScore,  25],
+                          ['Mat. Digital',         c.score.digitalMaturityScore,      20],
+                          ['Abordabilidade',       c.score.approachabilityScore,      10],
+                          ['Confiança',            c.score.confidenceScore,           10],
                         ].map(([label, value, max]) => (
                           <div key={String(label)} className="bg-gray-50 rounded-xl p-2 text-center">
                             <p className="text-[9px] font-semibold text-gray-500 leading-tight">{label}</p>
@@ -643,7 +743,6 @@ export default function SearchRunDetailPage() {
                         ))}
                       </div>
 
-                      {/* Reasons */}
                       {reasons && reasons.length > 0 && (
                         <div className="mt-2">
                           <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide mb-1">Justificativas</p>

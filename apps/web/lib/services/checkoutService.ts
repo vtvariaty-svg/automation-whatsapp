@@ -68,24 +68,18 @@ export async function generateCheckoutUrl(
     where: { tenantId },
   }).catch(() => null);
 
-  if (payConfig?.asaasApiKey) {
-    // Resolve customer info
-    const contact = await prisma.contact.findFirst({
-      where: { id: contactId, tenantId },
-      select: { name: true, phone: true },
-    });
-
+  if (payConfig?.enabled && payConfig.apiKey && payConfig.provider === 'asaas') {
     const asaasBase =
-      payConfig.asaasEnvironment === 'production'
+      payConfig.environment === 'production'
         ? 'https://api.asaas.com/v3'
         : 'https://sandbox.asaas.com/api/v3';
 
-    // Create payment link (cobrança) via Asaas
+    // Create payment link via Asaas
     const res = await fetch(`${asaasBase}/paymentLinks`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        access_token: payConfig.asaasApiKey,
+        access_token: payConfig.apiKey,
       },
       body: JSON.stringify({
         name: product.name,

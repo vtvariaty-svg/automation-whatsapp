@@ -1297,6 +1297,32 @@ export default function SearchRunDetailPage() {
           </div>
         </div>
 
+        {/* Selection helpers */}
+        {filteredCandidates.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5 text-xs">
+            <span className="text-gray-500 font-semibold">Selecionar:</span>
+            <button onClick={() => selectByPredicate(() => true)} className="px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-semibold transition-all">Todos os filtrados</button>
+            <button onClick={() => selectByPredicate(c => c.status === 'approved')} className="px-2.5 py-1 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg font-semibold transition-all border border-green-200">Aprovados</button>
+            <button onClick={() => selectByPredicate(c => !!(c.mobilePhone || c.phone))} className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg font-semibold transition-all border border-blue-200">Com telefone</button>
+            <button onClick={() => selectByPredicate(c => waEligibility(c) === 'ready')} className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg font-semibold transition-all border border-emerald-200">Prontos p/ WhatsApp</button>
+            {selectedIds.size > 0 && <button onClick={clearSelection} className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg font-semibold transition-all border border-red-200">Limpar seleção ({selectedIds.size})</button>}
+          </div>
+        )}
+
+        {/* Sticky Bulk Action Bar */}
+        {selectedIds.size > 0 && (
+          <div className="sticky top-16 z-30 bg-indigo-700 text-white rounded-2xl px-5 py-3 flex flex-wrap items-center gap-3 shadow-lg shadow-indigo-500/30">
+            <span className="font-bold text-sm">{selectedIds.size} selecionado(s)</span>
+            <div className="flex flex-wrap gap-2 ml-auto">
+              <button onClick={() => handleDownloadPhones('txt')} className="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-xl text-xs font-bold transition-all">📥 Baixar números (.txt)</button>
+              <button onClick={() => handleDownloadPhones('csv')} className="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-xl text-xs font-bold transition-all">📥 Baixar números (.csv)</button>
+              <button onClick={() => handleExportSelected('csv')} className="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-xl text-xs font-bold transition-all">⬇ Exportar leads (.csv)</button>
+              <button onClick={() => { setWaBatchMessage(''); setWaBatchResult(null); setWaBatchOpen(true); }} className="px-3 py-1.5 bg-green-400 hover:bg-green-300 text-green-900 rounded-xl text-xs font-bold transition-all">📱 Enviar lote WhatsApp</button>
+              <button onClick={clearSelection} className="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-semibold transition-all">✕ Limpar</button>
+            </div>
+          </div>
+        )}
+
         {/* Manual candidate creation form */}
         {candidateFormOpen && (
           <form
@@ -1410,7 +1436,18 @@ export default function SearchRunDetailPage() {
 
               return (
                 <div key={c.id} className="bg-white rounded-2xl border border-gray-200 p-5 space-y-3">
-                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                  <div className="flex gap-3">
+                    {/* Checkbox column */}
+                    <div className="pt-0.5 shrink-0">
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 rounded border-gray-300 accent-indigo-600 cursor-pointer"
+                        checked={selectedIds.has(c.id)}
+                        onChange={() => toggleSelect(c.id)}
+                      />
+                    </div>
+
+                    <div className="flex-1 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                     {/* Info principal */}
                     <div className="space-y-1 flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -1426,6 +1463,16 @@ export default function SearchRunDetailPage() {
                           return (
                             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${v.color}`}>
                               {v.label}
+                            </span>
+                          );
+                        })()}
+                        {/* WA Eligibility Badge */}
+                        {(() => {
+                          const el = waEligibility(c);
+                          const badge = WA_ELIGIBILITY_BADGE[el];
+                          return (
+                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${badge.color}`}>
+                              {badge.label}
                             </span>
                           );
                         })()}
@@ -1474,6 +1521,7 @@ export default function SearchRunDetailPage() {
                       >
                         {enrichingIds[c.id] ? '⏳ Buscando...' : '🌐 Enriquecer lead'}
                       </button>
+                    </div>
                     </div>
                   </div>
 

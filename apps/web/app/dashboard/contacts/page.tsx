@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -191,7 +192,19 @@ function AnalyticsCards({ analytics }: { analytics: Analytics | null }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
+// ─── Auth helper ──────────────────────────────────────────────────────────────
+
+function authHeaders(): Record<string, string> {
+  const token =
+    typeof window !== 'undefined'
+      ? (localStorage.getItem('auth_token') ?? localStorage.getItem('token') ?? '')
+      : '';
+  return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
+}
+
 export default function ContactsPage() {
+  const router = useRouter();
+
   // List state
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [total, setTotal] = useState(0);
@@ -237,6 +250,15 @@ export default function ContactsPage() {
   // Tag editor
   const [tagInput, setTagInput] = useState('');
   const [savingTags, setSavingTags] = useState(false);
+
+  // Add contact modal
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addForm, setAddForm] = useState({ name: '', phone: '', email: '', status: 'new_lead', channel: 'whatsapp' });
+  const [addingContact, setAddingContact] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
+
+  // Start conversation
+  const [startingConvId, setStartingConvId] = useState<string | null>(null);
 
   // ── Fetch contacts ──────────────────────────────────────────────────────────
 
@@ -447,6 +469,59 @@ export default function ContactsPage() {
     }
   }
 
+  // ── Add contact ─────────────────────────────────────────────────────────────
+
+  async function handleAddContact(e: React.FormEvent) {
+    e.preventDefault();
+    if (!addForm.phone.trim()) return;
+    setAddingContact(true);
+    setAddError(null);
+    try {
+      const res = await fetch('/api/contacts', {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({ ...addForm, source: 'manual' }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error ?? 'Falha ao criar contato');
+      }
+      const contact = await res.json();
+      setShowAddModal(false);
+      setAddForm({ name: '', phone: '', email: '', status: 'new_lead', channel: 'whatsapp' });
+      await fetchContacts();
+      openDetail(contact.id);
+    } catch (err: unknown) {
+      setAddError(err instanceof Error ? err.message : 'Erro ao criar contato');
+    } finally {
+      setAddingContact(false);
+    }
+  }
+
+  // ── Start conversation ───────────────────────────────────────────────────────
+
+  async function handleStartConversation(contactId: string, e?: React.MouseEvent) {
+    e?.stopPropagation();
+    setStartingConvId(contactId);
+    try {
+      const res = await fetch(`/api/contacts/${contactId}/start-conversation`, {
+        method: 'POST',
+        headers: authHeaders(),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.error ?? 'Erro ao iniciar conversa');
+        return;
+      }
+      const data = await res.json();
+      router.push(`/dashboard/conversations?phone=${encodeURIComponent(data.phone)}`);
+    } catch {
+      alert('Erro ao iniciar conversa');
+    } finally {
+      setStartingConvId(null);
+    }
+  }
+
   const hasFilters = search || filterSource || filterStatus || filterChannel || filterTag;
 
   // ── Render ──────────────────────────────────────────────────────────────────
@@ -465,6 +540,15 @@ export default function ContactsPage() {
               {loading ? 'Carregando...' : `${total.toLocaleString('pt-BR')} contato${total !== 1 ? 's' : ''}`}
             </p>
           </div>
+          <button
+            onClick={() => { setAddError(null); setShowAddModal(true); }}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] text-white rounded-xl text-sm font-semibold hover:shadow-lg hover:shadow-indigo-200/50 transition-all"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Adicionar contato
+          </button>
         </div>
 
         {/* Analytics */}
@@ -571,9 +655,26 @@ export default function ContactsPage() {
                     </td>
                     <td className="px-4 py-3 text-xs text-gray-400 hidden lg:table-cell">{timeAgo(c.lastInteractionAt)}</td>
                     <td className="px-4 py-3">
-                      <svg className="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
+                      <div className="flex items-center gap-2 justify-end">
+                        <button
+                          onClick={(e) => handleStartConversation(c.id, e)}
+                          disabled={startingConvId === c.id}
+                          title="Abrir conversa"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-semibold rounded-lg bg-indigo-50 text-[#4f46e5] border border-indigo-100 hover:bg-indigo-100 transition-colors disabled:opacity-50 whitespace-nowrap"
+                        >
+                          {startingConvId === c.id ? (
+                            <span className="w-3 h-3 border border-[#4f46e5]/40 border-t-[#4f46e5] rounded-full animate-spin inline-block" />
+                          ) : (
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                            </svg>
+                          )}
+                          Conversar
+                        </button>
+                        <svg className="w-4 h-4 text-gray-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -719,10 +820,26 @@ export default function ContactsPage() {
                           </div>
                         )}
 
-                        <button onClick={startEdit}
-                          className="w-full py-2 border border-gray-200 text-gray-600 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors">
-                          ✏️ Editar contato
-                        </button>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleStartConversation(detail.id)}
+                            disabled={startingConvId === detail.id}
+                            className="flex-1 py-2 bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] text-white rounded-xl text-sm font-semibold hover:shadow-md transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                          >
+                            {startingConvId === detail.id ? (
+                              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" />
+                            ) : (
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                              </svg>
+                            )}
+                            Conversar
+                          </button>
+                          <button onClick={startEdit}
+                            className="flex-1 py-2 border border-gray-200 text-gray-600 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors">
+                            ✏️ Editar
+                          </button>
+                        </div>
                       </>
                     )}
 
@@ -938,6 +1055,110 @@ export default function ContactsPage() {
               </div>
             </>
           )}
+        </div>
+      )}
+
+      {/* ── Add contact modal ─────────────────────────────────────────────── */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <h3 className="font-bold text-gray-900">Adicionar contato</h3>
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <form onSubmit={handleAddContact} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">
+                  Telefone <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="tel"
+                  value={addForm.phone}
+                  onChange={(e) => setAddForm((f) => ({ ...f, phone: e.target.value }))}
+                  placeholder="Ex: 5511999990000"
+                  required
+                  className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20 focus:border-[#4f46e5]/40"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Nome</label>
+                <input
+                  type="text"
+                  value={addForm.name}
+                  onChange={(e) => setAddForm((f) => ({ ...f, name: e.target.value }))}
+                  placeholder="Nome do contato"
+                  className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20 focus:border-[#4f46e5]/40"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">E-mail</label>
+                <input
+                  type="email"
+                  value={addForm.email}
+                  onChange={(e) => setAddForm((f) => ({ ...f, email: e.target.value }))}
+                  placeholder="email@exemplo.com"
+                  className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20 focus:border-[#4f46e5]/40"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1">Status</label>
+                  <select
+                    value={addForm.status}
+                    onChange={(e) => setAddForm((f) => ({ ...f, status: e.target.value }))}
+                    className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20"
+                  >
+                    {Object.entries(STATUS_LABELS).map(([v, l]) => (
+                      <option key={v} value={v}>{l}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1">Canal</label>
+                  <select
+                    value={addForm.channel}
+                    onChange={(e) => setAddForm((f) => ({ ...f, channel: e.target.value }))}
+                    className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20"
+                  >
+                    <option value="whatsapp">WhatsApp</option>
+                    <option value="instagram">Instagram</option>
+                    <option value="facebook">Facebook</option>
+                  </select>
+                </div>
+              </div>
+              {addError && (
+                <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
+                  {addError}
+                </p>
+              )}
+              <div className="flex gap-3 pt-1">
+                <button
+                  type="submit"
+                  disabled={addingContact || !addForm.phone.trim()}
+                  className="flex-1 py-2.5 bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] text-white rounded-xl text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {addingContact ? (
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" />
+                  ) : null}
+                  {addingContact ? 'Salvando...' : 'Adicionar contato'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="px-4 py-2.5 border border-gray-200 text-gray-600 rounded-xl text-sm font-semibold hover:bg-gray-50"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

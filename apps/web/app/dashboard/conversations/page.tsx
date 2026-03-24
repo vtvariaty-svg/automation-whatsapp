@@ -82,6 +82,15 @@ export default function InboxPage() {
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Nova conversa modal
+  const [showNewConvModal, setShowNewConvModal] = useState(false);
+  const [newConvForm, setNewConvForm] = useState({ phone: "", contactName: "", channel: "whatsapp", firstMessage: "" });
+  const [startingConv, setStartingConv] = useState(false);
+  const [newConvError, setNewConvError] = useState<string | null>(null);
+
+  // Flag to open phone from query param after conversations are loaded
+  const pendingPhoneRef = useRef<string | null>(null);
+
   // Order states
   const [linkedOrders, setLinkedOrders] = useState<LinkedOrder[]>([]);
   const [showOrderDialog, setShowOrderDialog] = useState(false);
@@ -113,8 +122,21 @@ export default function InboxPage() {
         headers: authHeaders(),
       });
       if (res.ok) {
-        const data = await res.json();
+        const data: Conversation[] = await res.json();
         setConversations(data);
+
+        // If we have a pending phone from query param, open it now
+        const pending = pendingPhoneRef.current;
+        if (pending) {
+          pendingPhoneRef.current = null;
+          const match = data.find((c) => c.phone_number === pending);
+          if (match) {
+            loadMessages(match.phone_number, match.status);
+          } else {
+            // Conversation not in list yet — try to start/create it
+            openOrCreateConversation(pending, data);
+          }
+        }
       }
     } catch (err) {
       console.error(err);
@@ -122,6 +144,104 @@ export default function InboxPage() {
       setLoadingList(false);
     }
   };
+
+  const openOrCreateConversation = async (phone: string, currentList: Conversation[]) => {
+    // Check list first (may have just loaded)
+    const match = currentList.find((c) => c.phone_number === phone);
+    if (match) {
+      loadMessages(match.phone_number, match.status);
+      return;
+    }
+    try {
+      const res = await fetch("/api/conversations/start", {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({ phone }),
+      });
+      if (res.ok) {
+        // Reload list so the new conversation appears, then open it
+        const listRes = await fetch(`/api/conversations?tenantId=${tenantId}`, {
+          headers: authHeaders(),
+        });
+        if (listRes.ok) {
+          const refreshed: Conversation[] = await listRes.json();
+          setConversations(refreshed);
+          const found = refreshed.find((c) => c.phone_number === phone);
+          if (found) loadMessages(found.phone_number, found.status);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // ── Nova conversa ───────────────────────────────────────────────────────────
+
+  const handleNewConversation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const phone = newConvForm.phone.trim();
+    if (!phone) return;
+    setStartingConv(true);
+    setNewConvError(null);
+    try {
+      const startRes = await fetch("/api/conversations/start", {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({
+          phone,
+          channel: newConvForm.channel,
+          ...(newConvForm.contactName ? { contactName: newConvForm.contactName } : {}),
+        }),
+      });
+      if (!startRes.ok) {
+        const err = await startRes.json();
+        throw new Error(err.error ?? "Falha ao criar conversa");
+      }
+
+      // Send first message if provided
+      if (newConvForm.firstMessage.trim()) {
+        await fetch(`/api/conversations/${encodeURIComponent(phone)}/send`, {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify({ tenantId, message: newConvForm.firstMessage.trim() }),
+        });
+      }
+
+      // Refresh list and open the conversation
+      setShowNewConvModal(false);
+      setNewConvForm({ phone: "", contactName: "", channel: "whatsapp", firstMessage: "" });
+
+      const listRes = await fetch(`/api/conversations?tenantId=${tenantId}`, {
+        headers: authHeaders(),
+      });
+      if (listRes.ok) {
+        const refreshed: Conversation[] = await listRes.json();
+        setConversations(refreshed);
+        const found = refreshed.find((c) => c.phone_number === phone);
+        if (found) loadMessages(found.phone_number, found.status);
+      }
+      showFeedback("success", "Conversa iniciada");
+    } catch (err: unknown) {
+      setNewConvError(err instanceof Error ? err.message : "Erro ao iniciar conversa");
+    } finally {
+      setStartingConv(false);
+    }
+  };
+
+  // Detect ?phone query param on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const phone = params.get("phone");
+      if (phone) {
+        pendingPhoneRef.current = phone;
+        // Clean the URL without reload
+        const url = new URL(window.location.href);
+        url.searchParams.delete("phone");
+        window.history.replaceState({}, "", url.toString());
+      }
+    }
+  }, []);
 
   useEffect(() => {
     if (tenantId) {
@@ -272,12 +392,23 @@ export default function InboxPage() {
             )}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="relative flex h-2.5 w-2.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
-          </span>
-          <span className="text-xs font-medium text-gray-500">Atualização automática</span>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => { setNewConvError(null); setShowNewConvModal(true); }}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] text-white rounded-xl text-sm font-semibold hover:shadow-lg hover:shadow-indigo-200/50 transition-all"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Nova conversa
+          </button>
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+            </span>
+            <span className="text-xs font-medium text-gray-500">Atualização automática</span>
+          </div>
         </div>
       </div>
 
@@ -365,16 +496,27 @@ export default function InboxPage() {
                 <p className="text-sm">Carregando...</p>
               </div>
             ) : filteredConversations.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+              <div className="flex flex-col items-center justify-center py-12 text-gray-400 px-4">
                 <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center mb-3">
                   <span className="text-2xl">💬</span>
                 </div>
                 <p className="text-sm font-medium text-gray-500">Nenhuma conversa</p>
-                <p className="text-xs text-gray-400 mt-1 text-center px-4">
+                <p className="text-xs text-gray-400 mt-1 text-center">
                   {searchTerm || channelFilter !== "all"
                     ? "Nenhum resultado para os filtros"
-                    : "As conversas aparecerão quando clientes enviarem mensagens"}
+                    : "Inicie uma conversa manualmente ou aguarde mensagens."}
                 </p>
+                {!searchTerm && channelFilter === "all" && (
+                  <button
+                    onClick={() => { setNewConvError(null); setShowNewConvModal(true); }}
+                    className="mt-4 inline-flex items-center gap-1.5 px-3 py-2 bg-indigo-50 text-[#4f46e5] border border-indigo-100 rounded-xl text-xs font-semibold hover:bg-indigo-100 transition-colors"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Nova conversa
+                  </button>
+                )}
               </div>
             ) : (
               filteredConversations.map((conv) => {
@@ -774,6 +916,101 @@ export default function InboxPage() {
             conversations.find((c) => c.phone_number === selectedPhone)?.convId
           }
         />
+      )}
+
+      {/* ── Nova conversa modal ──────────────────────────────────────────────── */}
+      {showNewConvModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <h3 className="font-bold text-gray-900">Nova conversa</h3>
+              <button
+                onClick={() => setShowNewConvModal(false)}
+                className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <form onSubmit={handleNewConversation} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">
+                  Telefone <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="tel"
+                  value={newConvForm.phone}
+                  onChange={(e) => setNewConvForm((f) => ({ ...f, phone: e.target.value }))}
+                  placeholder="Ex: 5511999990000"
+                  required
+                  className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20 focus:border-[#4f46e5]/40"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Nome do contato (opcional)</label>
+                <input
+                  type="text"
+                  value={newConvForm.contactName}
+                  onChange={(e) => setNewConvForm((f) => ({ ...f, contactName: e.target.value }))}
+                  placeholder="Nome para identificação"
+                  className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20 focus:border-[#4f46e5]/40"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Canal</label>
+                <select
+                  value={newConvForm.channel}
+                  onChange={(e) => setNewConvForm((f) => ({ ...f, channel: e.target.value }))}
+                  className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20"
+                >
+                  <option value="whatsapp">WhatsApp</option>
+                  <option value="instagram">Instagram</option>
+                  <option value="facebook">Facebook</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">
+                  Primeira mensagem (opcional)
+                </label>
+                <textarea
+                  rows={3}
+                  value={newConvForm.firstMessage}
+                  onChange={(e) => setNewConvForm((f) => ({ ...f, firstMessage: e.target.value }))}
+                  placeholder="Escreva a primeira mensagem para enviar imediatamente..."
+                  className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20 focus:border-[#4f46e5]/40 resize-none"
+                />
+                <p className="text-[10px] text-gray-400 mt-1">
+                  Deixe em branco para apenas abrir a conversa sem enviar mensagem.
+                </p>
+              </div>
+              {newConvError && (
+                <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
+                  {newConvError}
+                </p>
+              )}
+              <div className="flex gap-3 pt-1">
+                <button
+                  type="submit"
+                  disabled={startingConv || !newConvForm.phone.trim()}
+                  className="flex-1 py-2.5 bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] text-white rounded-xl text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {startingConv ? (
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" />
+                  ) : null}
+                  {startingConv ? "Iniciando..." : newConvForm.firstMessage.trim() ? "Iniciar e enviar" : "Iniciar conversa"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowNewConvModal(false)}
+                  className="px-4 py-2.5 border border-gray-200 text-gray-600 rounded-xl text-sm font-semibold hover:bg-gray-50"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -229,6 +229,15 @@ function IntegrationsContent() {
     finally { setDisconnecting(null); }
   };
 
+  const handleConnectInstagram = async () => {
+    try {
+      const res = await fetch("/api/integrations/instagram/connect", { headers: authHeaders() });
+      if (res.status === 401) { setMessage("❌ Sessão expirada. Faça login novamente."); return; }
+      const data = await res.json();
+      if (data.url) { window.location.href = data.url; } else { setMessage("❌ " + (data.error || "Erro ao iniciar conexão")); }
+    } catch (err: any) { setMessage("❌ Erro: " + err.message); }
+  };
+
   const handleManualSave = async () => {
     if (!waStatus?.connected && !manualToken) { setMessage("❌ Token é obrigatório."); return; }
     if (!manualWabaId && !manualPhoneId) { setMessage("❌ Insira WABA ID ou Phone Number ID."); return; }
@@ -469,9 +478,9 @@ function IntegrationsContent() {
                       <p className="text-sm text-gray-500 mb-4">
                         Responda DMs, automatize comentários e crie sequências de conversão. Requer conta Instagram Business vinculada a uma Página do Facebook.
                       </p>
-                      <a href="/api/integrations/instagram/connect" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm text-white transition-all hover:shadow-lg" style={{ background: "linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)" }}>
+                      <button onClick={handleConnectInstagram} className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm text-white transition-all hover:shadow-lg" style={{ background: "linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)" }}>
                         Conectar Instagram
-                      </a>
+                      </button>
                       <p className="text-xs text-gray-400 mt-3">
                         Precisa de: Instagram Business + Página do Facebook vinculada.
                       </p>

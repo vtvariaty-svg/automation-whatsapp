@@ -36,6 +36,8 @@ const navItems: NavItem[] = [
   { href: "/dashboard/services", label: "Serviços", icon: "✂️", section: null, minPlan: "standard" },
   { href: "/dashboard/professionals", label: "Profissionais", icon: "👤", section: null, minPlan: "standard" },
 
+  { href: "/dashboard/avisos", label: "Avisos & Escalação", icon: "🔔", section: null },
+
   // ── Canais & IA ──
   { href: "/dashboard/integrations", label: "Canais", icon: "📡", section: "Canais & IA" },
   { href: "/dashboard/instagram-comments", label: "Comentários Instagram", icon: "💬", section: null, requiredFeature: "instagramComments", minPlan: "standard" },

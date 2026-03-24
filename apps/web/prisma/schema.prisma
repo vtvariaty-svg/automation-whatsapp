@@ -99,6 +99,8 @@ model Tenant {
   // PAY1 — transactional payments
   paymentConfig             TenantPaymentConfig?
   payments                  Payment[]
+  // HANDOFF1 — operator alert / escalation config
+  handoffConfig             HandoffConfig?
 }
 
 // ─── Contacts Module (Phase 1) ────────────────────────────────────────────────
@@ -233,6 +235,30 @@ model BusinessConfig {
   tenant                   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
+// HANDOFF1 — per-tenant operator alert / human escalation configuration
+model HandoffConfig {
+  id                        String   @id @default(uuid())
+  tenantId                  String   @unique
+  enabled                   Boolean  @default(false)
+  alertPhone                String?  // operator WhatsApp number for alerts (international format)
+  clientMessage             String?  @db.Text // message sent to client when handoff triggers
+  operatorMessage           String?  @db.Text // template for operator alert
+  cooldownMinutes           Int      @default(60) // min gap between alerts for the same conversation
+  maxAlertsPerConversation  Int      @default(3)  // hard cap on alerts per conversation
+  autoSetHuman              Boolean  @default(true)  // auto-set conversation.status = 'human'
+  triggerOnLowConfidence    Boolean  @default(true)  // trigger when AI response indicates uncertainty
+  triggerOnExplicitRequest  Boolean  @default(true)  // trigger when customer explicitly asks for human
+  triggerOnRepetition       Boolean  @default(false) // trigger after N repeated unanswered intents
+  triggerOnCheckoutError    Boolean  @default(false) // trigger when checkout generation fails
+  triggerOnNoProduct        Boolean  @default(false) // trigger when no matching product found
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("handoff_configs")
+}
+
 model Product {
   id                 String             @id @default(uuid())
   tenantId           String
@@ -248,12 +274,25 @@ model Product {
   // CAT1 — published in catalog (bot + checkout see only active=true)
   active             Boolean            @default(true)
   createdAt          DateTime           @default(now())
+  // COMM1 — commercial orchestrator fields
+  salesMode          String             @default("none") // none | dynamic_checkout | external_link
+  salesCtaText       String?            // CTA sent in offer message (ex: "Clique aqui para comprar")
+  salesShortText     String?            // short name/alias for AI disambiguation
+  externalSalesUrl   String?            // used when salesMode = external_link
+  aliases            String[]           @default([]) // explicit tenant-configured aliases for AI matching
+  salesPriority      Int                @default(0)  // higher = shown first when multiple products match
+  requiresHumanApproval Boolean         @default(false) // if true, orchestrator returns handoff_human
+  // COMM1 — optional link to a Service (1 Service → N Products: avulso, pacote, premium)
+  serviceId          String?
+  service            Service?           @relation(fields: [serviceId], references: [id], onDelete: SetNull)
   tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   salesEvents        SalesEvent[]
   salesOpportunities SalesOpportunity[]
+  orderItems         OrderItem[]        @relation("ProductOrderItems")
 
   @@index([tenantId])
   @@index([tenantId, active])
+  @@index([tenantId, serviceId])
 }
 
 model User {
@@ -312,6 +351,11 @@ model Conversation {
   createdAt     DateTime  @default(now())
   channel       String    @default("whatsapp") // M0
   contactId     String? // nullable FK → Contact (phase 1)
+  // COMM1 — commercial orchestrator state (JSON, TTL 24h, managed by commercialStateService)
+  commercialState       Json?
+  // HANDOFF1 — anti-spam counters for operator alerts
+  handoffAlertCount     Int       @default(0)
+  lastHandoffAlertAt    DateTime?
   tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   contact       Contact?  @relation(fields: [contactId], references: [id], onDelete: SetNull)
   messages      Message[]
@@ -423,15 +467,16 @@ model Order {
 }
 
 model OrderItem {
-  id         String  @id @default(uuid())
+  id         String   @id @default(uuid())
   orderId    String
   productId  String?
   name       String
-  quantity   Int     @default(1)
-  unitPrice  Float   @default(0.0)
-  totalPrice Float   @default(0.0)
+  quantity   Int      @default(1)
+  unitPrice  Float    @default(0.0)
+  totalPrice Float    @default(0.0)
 
-  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product? @relation("ProductOrderItems", fields: [productId], references: [id], onDelete: SetNull)
 
   @@index([orderId])
   @@map("order_items")
@@ -523,6 +568,9 @@ model AutomationRule {
   responseText String   @db.Text
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
+  // COMM1 — extended action (null = legacy text/template behavior)
+  actionType   String?  // send_checkout | send_external_link | handoff_human | send_offer
+  actionConfig Json?    // arbitrary config: { productId, message, phone, url, ... }
 
   tenant Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   logs   AutomationLog[]
@@ -562,6 +610,8 @@ model Service {
   tenant        Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   // AG5 — professionals assigned to this service
   professionals ProfessionalService[]
+  // COMM1 — products linked to this service (1 service → N commercial products)
+  products      Product[]
 
   @@index([tenantId])
 }

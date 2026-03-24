@@ -48,6 +48,8 @@ const PAGE_KNOWLEDGE: Record<string, string> = {
 
   '/dashboard/referral': 'Programa de indicações. Gere link/código de referência. Configure recompensa (desconto, crédito ou comissão). Acompanhe conversões.',
 
+  '/dashboard/avisos': 'Avisos & Escalação Humana. Configure quando o bot deve transferir o atendimento para um humano. Gatilhos: pedido explícito do cliente, IA sem resposta segura, intenção repetida, erro de checkout, produto não encontrado. Defina o número do WhatsApp do operador, mensagem para o cliente, cooldown entre alertas e limite máximo de avisos por conversa. "Pausar IA ao escalar" define a conversa como Atendimento Humano automaticamente.',
+
   '/dashboard/onboarding': 'Wizard inicial: 1) conectar canal, 2) escolher nicho, 3) revisar template, 4) personalizar IA, 5) publicar. Complete todos os passos para ativar o atendimento automático.',
 
   '/dashboard/admin/diagnostics': '[SUPERADMIN] Diagnóstico de tenant: status de todos os módulos. Ações: reiniciar webhook, enviar mensagem de teste, exportar dados.',

@@ -22,6 +22,8 @@ import { sendTemplateMessage } from "@/src/services/automationService";
 import { verifyAiLimits } from "@/src/services/billingService";
 import { handleAppointmentMessage } from "@/src/services/appointmentBookingService";
 import { resolveWhatsAppIdentity } from "@/lib/services/identityResolver";
+import { runCommercialOrchestrator } from "@/src/services/commercialOrchestratorService";
+import { detectExplicitRequest, detectAiLowConfidence, executeHandoff } from "@/src/services/handoffService";
 
 // Mascara todos os dígitos exceto os últimos 4 para logs seguros
 function maskPhone(phone: string): string {
@@ -204,11 +206,81 @@ export async function POST(req: Request) {
             return new Response('OK', { status: 200 });
           }
 
+          // ── Handoff: pedido explícito ANTES da automação ───────────────
+          if (detectExplicitRequest(textBody)) {
+            try {
+              const handoffResult = await executeHandoff({
+                tenantId: tenant.id,
+                customerPhone: from,
+                channel: 'whatsapp',
+                triggerReason: 'explicit_request',
+                lastMessage: textBody,
+                contactId: resolvedIdentityContext?.contactId,
+              });
+              if (handoffResult.triggered && handoffResult.conversationSetToHuman) {
+                // Conversa já transferida — parar processamento
+                return new Response('OK', { status: 200 });
+              }
+            } catch (hErr) {
+              console.error('[Webhook] Handoff explicit_request error:', hErr);
+            }
+          }
+
           // Verificar automação por palavra-chave
           const automation = await checkAutomationMatch(textBody, tenant.id);
           if (automation) {
             console.log(`[Webhook] Automação "${automation.name}" acionada para ${maskPhone(from)}`);
             const replyPhoneId = tenant.whatsappPhoneNumberId || tenant.whatsappPhoneId;
+
+            // COMM1 — extended actionType switch
+            if (automation.actionType) {
+              const actionCfg = (automation.actionConfig ?? {}) as Record<string, any>;
+              if (automation.actionType === 'handoff_human') {
+                try {
+                  await executeHandoff({
+                    tenantId: tenant.id,
+                    customerPhone: from,
+                    channel: 'whatsapp',
+                    triggerReason: 'explicit_request',
+                    lastMessage: textBody,
+                    contactId: resolvedIdentityContext?.contactId,
+                  });
+                } catch (hErr) {
+                  console.error('[Webhook] Handoff via automation error:', hErr);
+                }
+                return new Response('OK', { status: 200 });
+              }
+              if (automation.actionType === 'send_external_link' && actionCfg.url) {
+                const msg = actionCfg.message
+                  ? `${actionCfg.message}\n${actionCfg.url}`
+                  : actionCfg.url;
+                await sendWhatsAppMessage(from, msg, replyPhoneId, tenant.whatsappToken);
+                await saveAIMessage(from, msg, tenant.id, status, false);
+                return new Response('OK', { status: 200 });
+              }
+              if (automation.actionType === 'send_checkout' && actionCfg.productId) {
+                try {
+                  const { generateCheckoutUrl, buildCheckoutMessage } = await import('@/lib/services/checkoutService');
+                  const contactId = resolvedIdentityContext?.contactId;
+                  if (contactId) {
+                    const { checkoutUrl } = await generateCheckoutUrl(tenant.id, actionCfg.productId, contactId);
+                    const product = await prisma.product.findUnique({ where: { id: actionCfg.productId } });
+                    const msg = buildCheckoutMessage(
+                      product?.name ?? 'Produto',
+                      product?.price ?? 0,
+                      product?.currency ?? 'BRL',
+                      checkoutUrl,
+                      actionCfg.ctaText
+                    );
+                    await sendWhatsAppMessage(from, msg, replyPhoneId, tenant.whatsappToken);
+                    await saveAIMessage(from, msg, tenant.id, status, false);
+                    return new Response('OK', { status: 200 });
+                  }
+                } catch (checkoutErr) {
+                  console.error('[Webhook] Automation send_checkout error:', checkoutErr);
+                }
+              }
+            }
 
             if (automation.responseType === 'template') {
               // Enviar template via Meta Graph API
@@ -245,6 +317,41 @@ export async function POST(req: Request) {
             }
           } catch (apptErr) {
             console.error('[Webhook] Erro no fluxo de agendamentos (continuando para IA):', apptErr);
+          }
+
+          // ── COMM1: Commercial Orchestrator ────────────────────────────
+          try {
+            const orchDecision = await runCommercialOrchestrator(
+              tenant.id,
+              from,
+              textBody,
+              resolvedIdentityContext?.contactId,
+              'whatsapp'
+            );
+
+            if (orchDecision.action !== 'none' && orchDecision.message) {
+              const replyPhoneId = tenant.whatsappPhoneNumberId || tenant.whatsappPhoneId;
+              console.log(`[Webhook] Orchestrator: action=${orchDecision.action} reason=${orchDecision.reason}`);
+
+              if (orchDecision.action === 'handoff_human') {
+                // Delegate to handoff service
+                await executeHandoff({
+                  tenantId: tenant.id,
+                  customerPhone: from,
+                  channel: 'whatsapp',
+                  triggerReason: 'explicit_request',
+                  lastMessage: textBody,
+                  contactId: resolvedIdentityContext?.contactId,
+                });
+                return new Response('OK', { status: 200 });
+              }
+
+              await sendWhatsAppMessage(from, orchDecision.message, replyPhoneId, tenant.whatsappToken);
+              await saveAIMessage(from, orchDecision.message, tenant.id, status, false, 'whatsapp', resolvedIdentityContext);
+              return new Response('OK', { status: 200 });
+            }
+          } catch (orchErr) {
+            console.error('[Webhook] Commercial orchestrator error (falling through to AI):', orchErr);
           }
 
           // Verificar limites de IA
@@ -327,6 +434,18 @@ export async function POST(req: Request) {
             console.log(`[Webhook] Mensagem entregue para ${maskPhone(from)}`);
           } catch (sendErr: any) {
             console.error(`[Webhook] FALHA ao enviar para ${maskPhone(from)}:`, sendErr?.response?.data || sendErr?.message || sendErr);
+          }
+
+          // ── HANDOFF1: ai_low_confidence check (non-blocking) ───────────
+          if (detectAiLowConfidence(aiResponse)) {
+            executeHandoff({
+              tenantId: tenant.id,
+              customerPhone: from,
+              channel: 'whatsapp',
+              triggerReason: 'ai_low_confidence',
+              lastMessage: textBody,
+              contactId: resolvedIdentityContext?.contactId,
+            }).catch((hErr) => console.error('[Webhook] Handoff ai_low_confidence error:', hErr));
           }
         }
       }

@@ -171,14 +171,15 @@ function computeScore(input: ScoreInput): ScoreResult {
 
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } },
+  context: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await context.params;
   const auth = await getAuthTenant(request);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   // Find candidate within tenant scope and include its search run
   const candidate = await prisma.leadCandidate.findFirst({
-    where: { id: params.id, tenantId: auth.tenantId },
+    where: { id, tenantId: auth.tenantId },
     include: { searchRun: true },
   });
 

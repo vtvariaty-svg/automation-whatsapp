@@ -31,14 +31,15 @@ function str(v: unknown): string | null {
 
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } },
+  context: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await context.params;
   const auth = await getAuthTenant(request);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   // Enforce tenant ownership of the search run
   const run = await prisma.leadSearchRun.findFirst({
-    where: { id: params.id, tenantId: auth.tenantId },
+    where: { id, tenantId: auth.tenantId },
   });
   if (!run) {
     return NextResponse.json({ error: 'Busca não encontrada.' }, { status: 404 });
@@ -62,7 +63,7 @@ export async function POST(
   const candidate = await prisma.leadCandidate.create({
     data: {
       tenantId:     auth.tenantId,
-      searchRunId:  params.id,
+      searchRunId:  id,
       companyName,
       tradeName:    str(body.tradeName),
       cnpj:         str(body.cnpj),
@@ -83,7 +84,7 @@ export async function POST(
 
   // Update parent run's totalCandidates counter
   await prisma.leadSearchRun.update({
-    where: { id: params.id },
+    where: { id },
     data: { totalCandidates: { increment: 1 } },
   });
 

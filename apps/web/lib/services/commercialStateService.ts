@@ -5,6 +5,7 @@
  */
 
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 
 export interface CommercialState {
   lastIntent?: string;               // e.g. "buy_product", "price_inquiry"
@@ -98,6 +99,6 @@ export async function clearCommercialState(
 
   await prisma.conversation.update({
     where: { id: conv.id },
-    data: { commercialState: null },
+    data: { commercialState: Prisma.JsonNull },
   });
 }

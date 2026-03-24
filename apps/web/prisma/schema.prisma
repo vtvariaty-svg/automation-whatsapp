@@ -103,6 +103,11 @@ model Tenant {
   handoffConfig             HandoffConfig?
   // MOD1 — workspace module preferences (array of module IDs)
   pinnedModules             String[]                  @default([])
+  // LEAD1 — Prospecção IA
+  leadSearchRuns            LeadSearchRun[]
+  leadCandidates            LeadCandidate[]
+  leadScores                LeadScore[]
+  leadEnrichmentAttempts    LeadEnrichmentAttempt[]
 }
 
 // ─── Contacts Module (Phase 1) ────────────────────────────────────────────────
@@ -1483,4 +1488,112 @@ model FeatureFlag {
   @@unique([moduleId, scope])
   @@index([parentModuleId])
   @@map("feature_flags")
+}
+
+// ─── LEAD1 — Prospecção IA ────────────────────────────────────────────────────
+
+model LeadSearchRun {
+  id                      String   @id @default(uuid())
+  tenantId                String
+  niche                   String
+  city                    String?
+  state                   String?
+  radiusKm                Int?
+  maxResults              Int      @default(50)
+  minTicket               Float?
+  minRating               Float?
+  minReviews              Int?
+  requiresWebsite         Boolean  @default(false)
+  requiresCommercialPhone Boolean  @default(false)
+  localB2BOnly            Boolean  @default(false)
+  status                  String   @default("draft") // draft | queued | completed | failed
+  totalCandidates         Int      @default(0)
+  summary                 Json?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  tenant              Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  candidates          LeadCandidate[]
+  enrichmentAttempts  LeadEnrichmentAttempt[]
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, status])
+  @@map("lead_search_runs")
+}
+
+model LeadCandidate {
+  id           String  @id @default(uuid())
+  tenantId     String
+  searchRunId  String
+  companyName  String
+  tradeName    String?
+  placeId      String?
+  cnpj         String?
+  website      String?
+  email        String?
+  phone        String?
+  mobilePhone  String?
+  address      String?
+  city         String?
+  state        String?
+  category     String?
+  rating       Float?
+  reviewsCount Int?
+  source       String  @default("manual") // manual | google | import | unknown
+  status       String  @default("pending_review") // pending_review | approved | rejected | archived
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant             Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  searchRun          LeadSearchRun           @relation(fields: [searchRunId], references: [id], onDelete: Cascade)
+  score              LeadScore?
+  enrichmentAttempts LeadEnrichmentAttempt[]
+
+  @@index([tenantId, searchRunId])
+  @@index([tenantId, status])
+  @@map("lead_candidates")
+}
+
+model LeadScore {
+  id                       String   @id @default(uuid())
+  tenantId                 String
+  leadCandidateId          String   @unique
+  overallScore             Int
+  icpFitScore              Int      @default(0)
+  commercialPotentialScore Int      @default(0)
+  digitalMaturityScore     Int      @default(0)
+  approachabilityScore     Int      @default(0)
+  confidenceScore          Int      @default(0)
+  verdict                  String   // compensa | revisar | nao_compensa
+  reasons                  Json?
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  leadCandidate LeadCandidate @relation(fields: [leadCandidateId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, verdict])
+  @@map("lead_scores")
+}
+
+model LeadEnrichmentAttempt {
+  id                String    @id @default(uuid())
+  tenantId          String
+  searchRunId       String?
+  leadCandidateId   String?
+  provider          String
+  status            String    @default("pending") // pending | success | failed
+  requestedFields   String[]  @default([])
+  responseSummary   Json?
+  errorMessage      String?
+  attemptedAt       DateTime  @default(now())
+  completedAt       DateTime?
+
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  searchRun     LeadSearchRun? @relation(fields: [searchRunId], references: [id], onDelete: SetNull)
+  leadCandidate LeadCandidate? @relation(fields: [leadCandidateId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, attemptedAt])
+  @@index([tenantId, status])
+  @@map("lead_enrichment_attempts")
 }

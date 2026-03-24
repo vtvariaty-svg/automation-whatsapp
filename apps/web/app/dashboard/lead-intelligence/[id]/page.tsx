@@ -17,6 +17,15 @@ interface LeadScore {
   reasons?: string[] | null;
 }
 
+interface LeadFollowUpLog {
+  id: string;
+  type: string;
+  content: string;
+  metadata?: Record<string, unknown> | null;
+  userId?: string | null;
+  loggedAt: string;
+}
+
 interface LeadCandidate {
   id: string;
   companyName: string;
@@ -40,6 +49,13 @@ interface LeadCandidate {
   outreachBlockReason: string | null;
   lastReadinessCheckedAt: string | null;
   suppressions?: LeadSuppression[];
+  // Pipeline (LEAD3)
+  pipelineStage: string;
+  ownerUserId: string | null;
+  priority: string;
+  nextActionAt: string | null;
+  lastContactAt: string | null;
+  internalNotes: string | null;
 }
 
 interface LeadSuppression {
@@ -246,6 +262,25 @@ export default function SearchRunDetailPage() {
 
   // Enrichment state
   const [enrichingIds, setEnrichingIds] = useState<Record<string, boolean>>({});
+
+  // ── Pipeline state (LEAD3) ─────────────────────────────────────────────────
+  // Which candidate has the pipeline panel open
+  const [openPipelineIds, setOpenPipelineIds] = useState<Record<string, boolean>>({});
+  // Saving pipeline patch per candidate
+  const [pipelineSaving, setPipelineSaving] = useState<Record<string, boolean>>({});
+  // Local form state per candidate (staged edits before save)
+  const [pipelineDrafts, setPipelineDrafts] = useState<Record<string, {
+    pipelineStage: string;
+    priority: string;
+    ownerUserId: string;
+    nextActionAt: string;
+    internalNotes: string;
+  }>>({});
+  // Follow-up log state per candidate
+  const [followUpLogs, setFollowUpLogs] = useState<Record<string, LeadFollowUpLog[]>>({});
+  const [followUpLogsLoading, setFollowUpLogsLoading] = useState<Record<string, boolean>>({});
+  const [followUpNote, setFollowUpNote] = useState<Record<string, string>>({});
+  const [followUpSubmitting, setFollowUpSubmitting] = useState<Record<string, boolean>>({});
 
   async function handleEnrich(candidateId: string) {
     setEnrichingIds(prev => ({ ...prev, [candidateId]: true }));
@@ -462,6 +497,87 @@ export default function SearchRunDetailPage() {
       }
     } finally {
       setOutcomeLoadings(prev => ({ ...prev, [itemId]: false }));
+    }
+  }
+
+  // ── Pipeline actions (LEAD3) ─────────────────────────────────────────────
+
+  function openPipelinePanel(candidate: LeadCandidate) {
+    setOpenPipelineIds(prev => ({ ...prev, [candidate.id]: true }));
+    // Initialise draft from candidate's current values
+    setPipelineDrafts(prev => ({
+      ...prev,
+      [candidate.id]: {
+        pipelineStage: candidate.pipelineStage ?? 'new',
+        priority: candidate.priority ?? 'normal',
+        ownerUserId: candidate.ownerUserId ?? '',
+        nextActionAt: candidate.nextActionAt ? candidate.nextActionAt.substring(0, 16) : '',
+        internalNotes: candidate.internalNotes ?? '',
+      },
+    }));
+    // Load follow-up logs if not yet loaded
+    if (!followUpLogs[candidate.id]) {
+      loadFollowUpLogs(candidate.id);
+    }
+  }
+
+  async function loadFollowUpLogs(candidateId: string) {
+    setFollowUpLogsLoading(prev => ({ ...prev, [candidateId]: true }));
+    try {
+      const res = await fetch(`/api/lead-intelligence/candidates/${candidateId}/follow-up-log`, {
+        headers: { Authorization: `Bearer ${getAuthToken()}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setFollowUpLogs(prev => ({ ...prev, [candidateId]: data.logs ?? [] }));
+      }
+    } finally {
+      setFollowUpLogsLoading(prev => ({ ...prev, [candidateId]: false }));
+    }
+  }
+
+  async function handlePipelineSave(candidateId: string) {
+    const draft = pipelineDrafts[candidateId];
+    if (!draft) return;
+    setPipelineSaving(prev => ({ ...prev, [candidateId]: true }));
+    try {
+      const res = await fetch(`/api/lead-intelligence/candidates/${candidateId}/pipeline`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` },
+        body: JSON.stringify({
+          pipelineStage: draft.pipelineStage,
+          priority: draft.priority,
+          ownerUserId: draft.ownerUserId || null,
+          nextActionAt: draft.nextActionAt || null,
+          internalNotes: draft.internalNotes || null,
+        }),
+      });
+      if (res.ok) {
+        await loadRun();
+        await loadFollowUpLogs(candidateId);
+      }
+    } finally {
+      setPipelineSaving(prev => ({ ...prev, [candidateId]: false }));
+    }
+  }
+
+  async function handleFollowUpSubmit(candidateId: string, type: 'note' | 'manual_contact') {
+    const content = followUpNote[candidateId]?.trim();
+    if (!content) return;
+    setFollowUpSubmitting(prev => ({ ...prev, [candidateId]: true }));
+    try {
+      const res = await fetch(`/api/lead-intelligence/candidates/${candidateId}/follow-up-log`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` },
+        body: JSON.stringify({ type, content }),
+      });
+      if (res.ok) {
+        setFollowUpNote(prev => ({ ...prev, [candidateId]: '' }));
+        await loadFollowUpLogs(candidateId);
+        if (type === 'manual_contact') await loadRun();
+      }
+    } finally {
+      setFollowUpSubmitting(prev => ({ ...prev, [candidateId]: false }));
     }
   }
 
@@ -1366,6 +1482,204 @@ export default function SearchRunDetailPage() {
                       )}
                     </div>
                   )}
+
+                  {/* ── Pipeline (LEAD3) ───────────────────────────────────── */}
+                  <div className="border-t border-gray-100 pt-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Pipeline Comercial</p>
+                        {/* Stage pill */}
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          c.pipelineStage === 'won'        ? 'bg-emerald-100 text-emerald-700' :
+                          c.pipelineStage === 'lost'       ? 'bg-red-100 text-red-600' :
+                          c.pipelineStage === 'negotiating'? 'bg-purple-100 text-purple-700' :
+                          c.pipelineStage === 'proposal_sent'? 'bg-blue-100 text-blue-700' :
+                          c.pipelineStage === 'interested' ? 'bg-cyan-100 text-cyan-700' :
+                          c.pipelineStage === 'contacted'  ? 'bg-indigo-100 text-indigo-700' :
+                          'bg-gray-100 text-gray-500'
+                        }`}>
+                          {c.pipelineStage === 'new'          ? 'Novo' :
+                           c.pipelineStage === 'contacted'    ? 'Contactado' :
+                           c.pipelineStage === 'interested'   ? 'Interessado' :
+                           c.pipelineStage === 'proposal_sent'? 'Proposta Enviada' :
+                           c.pipelineStage === 'negotiating'  ? 'Negociando' :
+                           c.pipelineStage === 'won'          ? 'Ganho' :
+                           c.pipelineStage === 'lost'         ? 'Perdido' :
+                           c.pipelineStage}
+                        </span>
+                        {c.priority === 'high' && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-red-50 text-red-600 border border-red-100">
+                            🔴 Alta prioridade
+                          </span>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => {
+                          if (openPipelineIds[c.id]) {
+                            setOpenPipelineIds(prev => ({ ...prev, [c.id]: false }));
+                          } else {
+                            openPipelinePanel(c);
+                          }
+                        }}
+                        className="text-[10px] font-bold text-indigo-600 hover:underline"
+                      >
+                        {openPipelineIds[c.id] ? 'Fechar pipeline' : 'Gerenciar pipeline'}
+                      </button>
+                    </div>
+
+                    {c.lastContactAt && (
+                      <p className="text-[9px] text-gray-400 mt-1">
+                        Último contato: {formatDate(c.lastContactAt)}
+                      </p>
+                    )}
+                    {c.nextActionAt && (
+                      <p className="text-[9px] text-amber-600 font-semibold mt-0.5">
+                        Próxima ação: {formatDate(c.nextActionAt)}
+                      </p>
+                    )}
+
+                    {openPipelineIds[c.id] && pipelineDrafts[c.id] && (
+                      <div className="mt-3 bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-4">
+                        {/* Pipeline form */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Estágio</label>
+                            <select
+                              value={pipelineDrafts[c.id].pipelineStage}
+                              onChange={e => setPipelineDrafts(prev => ({ ...prev, [c.id]: { ...prev[c.id], pipelineStage: e.target.value } }))}
+                              className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                            >
+                              <option value="new">Novo</option>
+                              <option value="contacted">Contactado</option>
+                              <option value="interested">Interessado</option>
+                              <option value="proposal_sent">Proposta Enviada</option>
+                              <option value="negotiating">Negociando</option>
+                              <option value="won">Ganho</option>
+                              <option value="lost">Perdido</option>
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Prioridade</label>
+                            <select
+                              value={pipelineDrafts[c.id].priority}
+                              onChange={e => setPipelineDrafts(prev => ({ ...prev, [c.id]: { ...prev[c.id], priority: e.target.value } }))}
+                              className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                            >
+                              <option value="low">Baixa</option>
+                              <option value="normal">Normal</option>
+                              <option value="high">Alta</option>
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">
+                              Próxima ação (data/hora)
+                            </label>
+                            <input
+                              type="datetime-local"
+                              value={pipelineDrafts[c.id].nextActionAt}
+                              onChange={e => setPipelineDrafts(prev => ({ ...prev, [c.id]: { ...prev[c.id], nextActionAt: e.target.value } }))}
+                              className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">
+                              Responsável (User ID)
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="UUID do usuário"
+                              value={pipelineDrafts[c.id].ownerUserId}
+                              onChange={e => setPipelineDrafts(prev => ({ ...prev, [c.id]: { ...prev[c.id], ownerUserId: e.target.value } }))}
+                              className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                            />
+                          </div>
+
+                          <div className="sm:col-span-2">
+                            <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">
+                              Notas internas
+                            </label>
+                            <textarea
+                              rows={2}
+                              placeholder="Observações privadas sobre este lead..."
+                              value={pipelineDrafts[c.id].internalNotes}
+                              onChange={e => setPipelineDrafts(prev => ({ ...prev, [c.id]: { ...prev[c.id], internalNotes: e.target.value } }))}
+                              className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-none"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex justify-end border-t border-gray-100 pt-2">
+                          <button
+                            onClick={() => handlePipelineSave(c.id)}
+                            disabled={pipelineSaving[c.id]}
+                            className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-lg text-xs font-bold transition-all"
+                          >
+                            {pipelineSaving[c.id] ? '⏳ Salvando...' : '💾 Salvar pipeline'}
+                          </button>
+                        </div>
+
+                        {/* Follow-up actions */}
+                        <div className="border-t border-gray-100 pt-3 space-y-2">
+                          <p className="text-[10px] font-bold text-gray-600 uppercase">Registrar follow-up</p>
+                          <textarea
+                            rows={2}
+                            placeholder="Descreva o contato ou adicione uma nota..."
+                            value={followUpNote[c.id] ?? ''}
+                            onChange={e => setFollowUpNote(prev => ({ ...prev, [c.id]: e.target.value }))}
+                            className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-none"
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleFollowUpSubmit(c.id, 'manual_contact')}
+                              disabled={followUpSubmitting[c.id] || !followUpNote[c.id]?.trim()}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 disabled:opacity-50 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-bold transition-all"
+                            >
+                              {followUpSubmitting[c.id] ? '⏳' : '📞 Contato realizado'}
+                            </button>
+                            <button
+                              onClick={() => handleFollowUpSubmit(c.id, 'note')}
+                              disabled={followUpSubmitting[c.id] || !followUpNote[c.id]?.trim()}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-50 hover:bg-gray-100 disabled:opacity-50 text-gray-700 border border-gray-200 rounded-lg text-xs font-bold transition-all"
+                            >
+                              {followUpSubmitting[c.id] ? '⏳' : '📝 Salvar nota'}
+                            </button>
+                          </div>
+                          <p className="text-[9px] text-gray-400">
+                            "Contato realizado" registra o follow-up e atualiza a data do último contato automaticamente.
+                          </p>
+                        </div>
+
+                        {/* Follow-up history */}
+                        <div className="border-t border-gray-100 pt-3 space-y-1.5">
+                          <p className="text-[10px] font-bold text-gray-600 uppercase">Histórico de follow-ups</p>
+                          {followUpLogsLoading[c.id] ? (
+                            <p className="text-[10px] text-gray-400">Carregando...</p>
+                          ) : !followUpLogs[c.id] || followUpLogs[c.id].length === 0 ? (
+                            <p className="text-[10px] text-gray-400">Nenhum registro ainda.</p>
+                          ) : (
+                            <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
+                              {followUpLogs[c.id].map(log => (
+                                <div key={log.id} className="flex items-start gap-2 bg-white border border-gray-100 rounded-lg px-3 py-2">
+                                  <span className="shrink-0 text-[10px] mt-0.5">
+                                    {log.type === 'stage_change'    ? '🔄' :
+                                     log.type === 'manual_contact'  ? '📞' :
+                                     log.type === 'auto_event'      ? '⚡' : '📝'}
+                                  </span>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-[10px] text-gray-700 break-words">{log.content}</p>
+                                    <p className="text-[9px] text-gray-400 mt-0.5">{formatDate(log.loggedAt)}</p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               );
             })}

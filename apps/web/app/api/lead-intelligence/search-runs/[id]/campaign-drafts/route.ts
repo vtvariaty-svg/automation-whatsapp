@@ -82,15 +82,23 @@ export async function POST(
 
   const candidates = await prisma.leadCandidate.findMany({
     where: candidateWhere,
+    include: { suppressions: { where: { active: true } } }
   });
 
   const requestedCount = candidates.length;
   let eligibleCount = 0;
   let createdCount = 0;
   let skippedCount = 0;
+  let suppressedCount = 0;
 
   for (const candidate of candidates) {
     let isEligible = false;
+
+    const hasSuppression = candidate.suppressions.some((s: any) => s.channel === 'all' || s.channel === channel);
+    if (hasSuppression) {
+      suppressedCount++;
+      continue;
+    }
 
     if (channel === 'email') {
       isEligible = candidate.outreachStatus === 'ready_email' || candidate.outreachStatus === 'ready_multichannel';
@@ -158,6 +166,7 @@ export async function POST(
       eligible: eligibleCount,
       created: createdCount,
       skipped: skippedCount,
+      suppressed: suppressedCount,
     },
   });
 }

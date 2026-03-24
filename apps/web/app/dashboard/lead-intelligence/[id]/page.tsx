@@ -39,6 +39,16 @@ interface LeadCandidate {
   outreachStatus: string;
   outreachBlockReason: string | null;
   lastReadinessCheckedAt: string | null;
+  suppressions?: LeadSuppression[];
+}
+
+interface LeadSuppression {
+  id: string;
+  channel: string;
+  reason: string;
+  source: string;
+  active: boolean;
+  createdAt: string;
 }
 
 interface CampaignDraft {
@@ -60,6 +70,47 @@ interface CampaignDraft {
     mobilePhone: string | null;
     status: string;
   };
+}
+
+interface CampaignExecutionItem {
+  id: string;
+  channel: string;
+  status: string;
+  reason?: string | null;
+  providerMessageId?: string | null;
+  deliveredTo?: string | null;
+  processedAt: string;
+  leadCandidate?: { companyName: string };
+  draft?: { channel: string; subject?: string | null };
+  responseStatus?: string;
+  outcomeNotes?: string | null;
+  conversionValue?: number | null;
+  respondedAt?: string | null;
+  convertedAt?: string | null;
+  outcomeUpdatedAt?: string | null;
+}
+
+interface CampaignExecution {
+  id: string;
+  channel: string;
+  status: string;
+  requestedCount: number;
+  eligibleCount: number;
+  sentCount: number;
+  failedCount: number;
+  skippedCount: number;
+  batchSize: number;
+  createdAt: string;
+  startedAt?: string | null;
+  finishedAt?: string | null;
+  items?: CampaignExecutionItem[];
+}
+
+interface RunAnalytics {
+  overall: any;
+  rates: any;
+  byChannel: any;
+  recentExecutions: any[];
 }
 
 interface EnrichmentAttempt {
@@ -262,6 +313,71 @@ export default function SearchRunDetailPage() {
   const [draftsLoading, setDraftsLoading] = useState(false);
   const [draftSummary, setDraftSummary] = useState<any>(null);
 
+  const [suppressions, setSuppressions] = useState<Record<string, LeadSuppression[]>>({});
+  const [suppressionsLoading, setSuppressionsLoading] = useState<Record<string, boolean>>({});
+  const [showSuppHistory, setShowSuppHistory] = useState<Record<string, boolean>>({});
+
+  const loadSuppressions = useCallback(async (candidateId: string) => {
+    setSuppressionsLoading(prev => ({ ...prev, [candidateId]: true }));
+    try {
+      const res = await fetch(`/api/lead-intelligence/candidates/${candidateId}/suppression`, {
+        headers: { Authorization: `Bearer ${getAuthToken()}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSuppressions(prev => ({ ...prev, [candidateId]: data.suppressions || [] }));
+      }
+    } finally {
+      setSuppressionsLoading(prev => ({ ...prev, [candidateId]: false }));
+    }
+  }, []);
+
+  async function handleToggleSuppression(candidateId: string, channel: string, reason: string) {
+    const candSuppressions = suppressions[candidateId] || [];
+    const activeSupp = candSuppressions.find(s => s.active && s.channel === channel);
+    
+    setSuppressionsLoading(prev => ({ ...prev, [candidateId]: true }));
+    try {
+      if (activeSupp) {
+        await fetch(`/api/lead-intelligence/candidates/${candidateId}/suppression`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` },
+          body: JSON.stringify({ suppressionId: activeSupp.id, active: false })
+        });
+      } else {
+        await fetch(`/api/lead-intelligence/candidates/${candidateId}/suppression`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` },
+          body: JSON.stringify({ channel, reason })
+        });
+      }
+      await loadSuppressions(candidateId);
+      await loadRun(); // opcional para dar refresh na label se quiser
+    } finally {
+      setSuppressionsLoading(prev => ({ ...prev, [candidateId]: false }));
+    }
+  }
+
+  function getActiveSuppressionText(candidateId: string) {
+    const supps = suppressions[candidateId] || [];
+    const active = supps.filter(s => s.active);
+    if (active.length === 0) return null;
+    if (active.some(s => s.channel === 'all')) return 'Todos os canais bloqueados';
+    const channels = active.map(s => s.channel === 'email' ? 'Email' : 'WhatsApp');
+    return `${channels.join(' e ')} bloqueado(s)`;
+  }
+
+  const [executions, setExecutions] = useState<CampaignExecution[]>([]);
+  const [executionsLoading, setExecutionsLoading] = useState(false);
+  const [selectedExecution, setSelectedExecution] = useState<CampaignExecution | null>(null);
+  const [executionDetailLoading, setExecutionDetailLoading] = useState(false);
+
+  // Form states for execution
+  const [execFormChannel, setExecFormChannel] = useState<'email' | 'whatsapp'>('email');
+  const [execFormBatchSize, setExecFormBatchSize] = useState<number>(10);
+  const [execFormNotes, setExecFormNotes] = useState<string>('');
+  const [executingBatch, setExecutingBatch] = useState(false);
+
   const loadDrafts = useCallback(async () => {
     if (!id) return;
     setDraftsLoading(true);
@@ -278,10 +394,73 @@ export default function SearchRunDetailPage() {
     }
   }, [id]);
 
+  const loadExecutions = useCallback(async () => {
+    if (!id) return;
+    setExecutionsLoading(true);
+    try {
+      const res = await fetch(`/api/lead-intelligence/search-runs/${id}/campaign-executions`, {
+        headers: { Authorization: `Bearer ${getAuthToken()}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setExecutions(data.executions || []);
+      }
+    } finally {
+      setExecutionsLoading(false);
+    }
+  }, [id]);
+
+  const [analytics, setAnalytics] = useState<RunAnalytics | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+
+  const loadAnalytics = useCallback(async () => {
+    if (!id) return;
+    setAnalyticsLoading(true);
+    try {
+      const res = await fetch(`/api/lead-intelligence/search-runs/${id}/analytics`, {
+        headers: { Authorization: `Bearer ${getAuthToken()}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAnalytics(data);
+      }
+    } finally {
+      setAnalyticsLoading(false);
+    }
+  }, [id]);
+
   useEffect(() => {
     loadRun();
     loadDrafts();
-  }, [loadRun, loadDrafts]);
+    loadExecutions();
+    loadAnalytics();
+  }, [loadRun, loadDrafts, loadExecutions, loadAnalytics]);
+
+  const [outcomeLoadings, setOutcomeLoadings] = useState<Record<string, boolean>>({});
+
+  async function handleUpdateOutcome(itemId: string, responseStatus: string, notes?: string, value?: number) {
+    setOutcomeLoadings(prev => ({ ...prev, [itemId]: true }));
+    try {
+      const res = await fetch(`/api/lead-intelligence/execution-items/${itemId}/outcome`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` },
+        body: JSON.stringify({ responseStatus, outcomeNotes: notes, conversionValue: value })
+      });
+      if (res.ok) {
+        await loadAnalytics();
+        if (selectedExecution) {
+          // Re-fetch detail
+          const detailRes = await fetch(`/api/lead-intelligence/campaign-executions/${selectedExecution.id}`, { headers: { Authorization: `Bearer ${getAuthToken()}` } });
+          if (detailRes.ok) {
+            const data = await detailRes.json();
+            setSelectedExecution(data.execution || null);
+          }
+        }
+      }
+    } finally {
+      setOutcomeLoadings(prev => ({ ...prev, [itemId]: false }));
+    }
+  }
 
   // ── Readiness e Drafts Actions ────────────────────────────────────────────
 
@@ -371,6 +550,46 @@ export default function SearchRunDetailPage() {
       if (res.ok) await loadDrafts();
     } finally {
       setDraftActionIds(prev => ({ ...prev, [draftId]: '' }));
+    }
+  }
+
+  async function handleExecuteBatch() {
+    setExecutingBatch(true);
+    try {
+      const res = await fetch(`/api/lead-intelligence/search-runs/${id}/campaign-executions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` },
+        body: JSON.stringify({
+          channel: execFormChannel,
+          batchSize: execFormBatchSize,
+          notes: execFormNotes
+        })
+      });
+      if (res.ok) {
+        await loadDrafts();
+        await loadExecutions();
+      }
+    } finally {
+      setExecutingBatch(false);
+    }
+  }
+
+  async function loadExecutionDetail(execId: string) {
+    if (selectedExecution?.id === execId) {
+      setSelectedExecution(null);
+      return;
+    }
+    setExecutionDetailLoading(true);
+    try {
+      const res = await fetch(`/api/lead-intelligence/campaign-executions/${execId}`, {
+        headers: { Authorization: `Bearer ${getAuthToken()}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSelectedExecution(data.execution || null);
+      }
+    } finally {
+      setExecutionDetailLoading(false);
     }
   }
 
@@ -696,7 +915,12 @@ export default function SearchRunDetailPage() {
 
         {/* Section header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <h2 className="text-sm font-bold text-gray-900">🏢 Candidatos</h2>
+          <div>
+            <h2 className="text-sm font-bold text-gray-900">🏢 Candidatos</h2>
+            <p className="text-[10px] text-gray-500 mt-1 max-w-lg">
+              ⚠️ Leads suprimidos não entram em novos rascunhos nem enviados nos lotes. A supressão age como proteção e preserva histórico.
+            </p>
+          </div>
           <div className="flex items-center gap-2 flex-wrap">
             {/* Export buttons */}
             <button
@@ -1043,6 +1267,67 @@ export default function SearchRunDetailPage() {
                     </button>
                   </div>
 
+                  {/* Suppression Controls */}
+                  <div className="border-t border-gray-100 pt-3 space-y-2">
+                    <div className="flex gap-4 items-center">
+                      <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Proteção Comercial (DNC)</p>
+                      <button 
+                        onClick={() => {
+                          setShowSuppHistory(prev => ({ ...prev, [c.id]: !prev[c.id] }));
+                          if (!showSuppHistory[c.id] && !suppressions[c.id]) {
+                            loadSuppressions(c.id);
+                          }
+                        }}
+                        className="text-[10px] font-bold text-indigo-600 hover:underline"
+                      >
+                        {showSuppHistory[c.id] ? 'Esconder Histórico / Gerenciar' : 'Gerenciar Supressões'}
+                      </button>
+                    </div>
+                    {getActiveSuppressionText(c.id) && (
+                      <p className="text-[10px] text-red-600 font-bold bg-red-50 inline-block px-1.5 py-0.5 rounded">
+                        ⚠️ {getActiveSuppressionText(c.id)}
+                      </p>
+                    )}
+                    
+                    {showSuppHistory[c.id] && (
+                      <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 mt-2 space-y-3">
+                        <div className="flex flex-wrap gap-2 text-xs">
+                          {['email', 'whatsapp', 'all'].map(chan => {
+                            const isBlocked = (suppressions[c.id] || []).some(s => s.active && s.channel === chan);
+                            return (
+                              <button
+                                key={chan}
+                                onClick={() => handleToggleSuppression(c.id, chan, 'Supressão manual pelo painel')}
+                                disabled={suppressionsLoading[c.id]}
+                                className={`px-2 py-1 rounded-lg font-bold border ${isBlocked ? 'bg-red-100 text-red-700 border-red-200 hover:bg-red-200' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-100'}`}
+                              >
+                                {suppressionsLoading[c.id] ? '⏳...' : isBlocked ? `Reativar ${chan === 'all' ? 'tudo' : chan}` : `Bloquear ${chan === 'all' ? 'tudo' : chan}`}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        
+                        <div className="space-y-1 max-h-40 overflow-y-auto">
+                          {(suppressions[c.id] || []).length === 0 ? (
+                            <p className="text-[10px] text-gray-400">Nenhum histórico de supressão para este lead.</p>
+                          ) : (
+                            (suppressions[c.id] || []).map(s => (
+                              <div key={s.id} className="text-[10px] flex justify-between items-center border-b border-gray-100 pb-1">
+                                <div>
+                                  <span className={`px-1.5 py-0.5 rounded font-bold ${s.active ? 'bg-red-100 text-red-700' : 'bg-gray-200 text-gray-600'}`}>
+                                    {s.active ? 'BLOQUEADO' : 'INATIVO'} ({s.channel})
+                                  </span>
+                                  <span className="ml-1 text-gray-600">{s.reason}</span>
+                                </div>
+                                <span className="text-gray-400">{formatDate(s.createdAt)}</span>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                   {/* Score breakdown */}
                   {c.score && (
                     <div className="border-t border-gray-100 pt-3 space-y-2">
@@ -1296,6 +1581,279 @@ export default function SearchRunDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* ── Seção 5: Execução de Campanha Múltipla ────────────────────── */}
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-sm font-bold text-gray-900">🚀 Execução de Campanha (Lote Controlado)</h2>
+          <p className="text-xs text-gray-500 mt-1 max-w-3xl">
+            Apenas leads aprovados, com <strong>consentimento</strong> e readiness válidos entram no lote. O envio é controlado por lote pequeno (máx 20).
+            <span className="text-red-700 font-semibold block mt-1">Não existe blasting irrestrito nem retry oculto aqui.</span>
+          </p>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
+          {/* Formulário de Execução */}
+          <div className="flex flex-col sm:flex-row gap-4 flex-wrap items-end bg-gray-50 p-4 rounded-xl border border-gray-100">
+            <div className="flex flex-col gap-1 w-full sm:w-auto">
+              <label className="text-xs font-bold text-gray-700">Canal</label>
+              <select 
+                value={execFormChannel}
+                onChange={e => setExecFormChannel(e.target.value as 'email' | 'whatsapp')}
+                className="p-2 border border-gray-300 rounded-lg text-sm bg-white"
+              >
+                <option value="email">Email</option>
+                <option value="whatsapp">WhatsApp</option>
+              </select>
+            </div>
+            
+            <div className="flex flex-col gap-1 w-full sm:w-auto">
+              <label className="text-xs font-bold text-gray-700">Tamanho do Lote (Máx: 20)</label>
+              <input 
+                type="number" 
+                min={1} 
+                max={20} 
+                value={execFormBatchSize}
+                onChange={e => setExecFormBatchSize(Number(e.target.value))}
+                className="p-2 border border-gray-300 rounded-lg text-sm bg-white w-full sm:w-32"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1 w-full sm:w-auto flex-1">
+              <label className="text-xs font-bold text-gray-700">Notas Opcionais</label>
+              <input 
+                type="text" 
+                placeholder="Ex: Disparo manhã..."
+                value={execFormNotes}
+                onChange={e => setExecFormNotes(e.target.value)}
+                className="p-2 border border-gray-300 rounded-lg text-sm bg-white w-full"
+              />
+            </div>
+
+            <button
+              onClick={handleExecuteBatch}
+              disabled={executingBatch}
+              className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-bold shadow-sm transition-all disabled:opacity-50 whitespace-nowrap"
+            >
+              {executingBatch ? '⏳ Executando...' : '▶️ Executar Lote'}
+            </button>
+          </div>
+
+          {/* Histórico de Execuções */}
+          <div>
+            <h3 className="text-xs font-bold text-gray-800 border-b border-gray-100 pb-2 mb-3">Histórico de Execuções</h3>
+            {executionsLoading ? (
+              <p className="text-xs text-gray-400">Carregando histórico...</p>
+            ) : executions.length === 0 ? (
+              <p className="text-[11px] text-gray-400">Nenhuma execução em lote registrada até o momento.</p>
+            ) : (
+              <div className="space-y-4">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm whitespace-nowrap">
+                    <thead className="bg-gray-50 border-b border-gray-200">
+                      <tr>
+                        <th className="px-3 py-2 text-[10px] font-bold text-gray-500 uppercase">Data</th>
+                        <th className="px-3 py-2 text-[10px] font-bold text-gray-500 uppercase">Canal</th>
+                        <th className="px-3 py-2 text-[10px] font-bold text-gray-500 uppercase">Status</th>
+                        <th className="px-3 py-2 text-[10px] font-bold text-gray-500 uppercase">Req. / Elegível</th>
+                        <th className="px-3 py-2 text-[10px] font-bold text-gray-500 uppercase">Estatísticas</th>
+                        <th className="px-3 py-2 text-[10px] font-bold text-gray-500 uppercase">Ação</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {executions.map(exec => (
+                        <tr key={exec.id}>
+                          <td className="px-3 py-3 text-xs text-gray-600">{formatDate(exec.createdAt)}</td>
+                          <td className="px-3 py-3 font-semibold text-gray-800 text-xs uppercase">{exec.channel}</td>
+                          <td className="px-3 py-3">
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
+                              exec.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
+                              exec.status === 'partial' ? 'bg-amber-100 text-amber-700' :
+                              exec.status === 'failed' ? 'bg-red-100 text-red-700' :
+                              'bg-gray-100 text-gray-600'
+                            }`}>
+                              {exec.status}
+                            </span>
+                          </td>
+                          <td className="px-3 py-3 text-[11px] text-gray-600">
+                            {exec.requestedCount} / {exec.eligibleCount} (Tamanho: {exec.batchSize})
+                          </td>
+                          <td className="px-3 py-3">
+                            <div className="flex items-center gap-2 text-[11px]">
+                              <span className="text-emerald-600 font-bold" title="Enviados">{exec.sentCount} Env</span>
+                              <span className="text-amber-600" title="Ignorados">{exec.skippedCount} Ign</span>
+                              <span className="text-red-600" title="Falhas">{exec.failedCount} Fal</span>
+                            </div>
+                          </td>
+                          <td className="px-3 py-3">
+                            <button 
+                              onClick={() => loadExecutionDetail(exec.id)}
+                              className="text-[11px] font-bold text-blue-600 hover:underline"
+                            >
+                              Ver Detalhes {executionDetailLoading && selectedExecution?.id !== exec.id && '⏳'}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Área de detalhes da execução selecionada */}
+                {selectedExecution && selectedExecution.items && (
+                  <div className="bg-gray-50 rounded-xl border border-gray-200 p-4 mt-2 shadow-inner">
+                    <div className="flex items-center justify-between mb-3 border-b border-gray-200 pb-2">
+                      <h4 className="text-xs font-bold text-gray-800">Detalhes da Execução</h4>
+                      <button onClick={() => setSelectedExecution(null)} className="text-[10px] text-gray-500 hover:text-gray-800 font-bold px-2 py-1 bg-gray-200 rounded">FECHAR (X)</button>
+                    </div>
+                    {selectedExecution.items.length === 0 ? (
+                      <p className="text-[11px] text-gray-500">Nenhum item processado nesta execução.</p>
+                    ) : (
+                      <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
+                        {selectedExecution.items.map(item => (
+                          <div key={item.id} className="bg-white p-3 rounded-lg border border-gray-100 flex flex-col sm:flex-row justify-between sm:items-start gap-2 text-[11px]">
+                            <div className="flex-1">
+                              <p className="font-bold text-gray-800">{item.leadCandidate?.companyName}</p>
+                              {item.deliveredTo && <p className="text-gray-500 mt-0.5">Destino: {item.deliveredTo}</p>}
+                              {item.reason && <p className="text-red-500 mt-0.5">Interrompido/Falha: {item.reason}</p>}
+                              
+                              {item.status === 'sent' && (
+                                <div className="mt-2 flex flex-col gap-1">
+                                  <p className="text-gray-600 font-semibold mb-1">Resultado Comercial (Outcome):</p>
+                                  <div className="flex flex-wrap gap-2 items-center">
+                                    <select
+                                      value={item.responseStatus || 'unknown'}
+                                      onChange={e => handleUpdateOutcome(item.id, e.target.value)}
+                                      disabled={outcomeLoadings[item.id]}
+                                      className="border border-gray-200 rounded px-2 py-1 bg-gray-50 text-[10px] focus:outline-none"
+                                    >
+                                      <option value="unknown">Nenhum retorno</option>
+                                      <option value="delivered">Entregue</option>
+                                      <option value="opened">Aberto/Lido</option>
+                                      <option value="replied">Respondido</option>
+                                      <option value="qualified">Qualificado</option>
+                                      <option value="converted">Convertido</option>
+                                      <option value="lost">Perdido</option>
+                                      <option value="unsubscribed">Opt-out (Descadastro)</option>
+                                    </select>
+                                    <input
+                                      type="text"
+                                      placeholder="Notas manuais..."
+                                      defaultValue={item.outcomeNotes || ''}
+                                      onBlur={e => {
+                                        if (e.target.value !== (item.outcomeNotes || '')) {
+                                          handleUpdateOutcome(item.id, item.responseStatus || 'unknown', e.target.value, item.conversionValue || undefined);
+                                        }
+                                      }}
+                                      disabled={outcomeLoadings[item.id]}
+                                      className="border border-gray-200 rounded px-2 py-1 bg-white text-[10px] w-32 focus:outline-none"
+                                    />
+                                    {item.responseStatus === 'converted' && (
+                                      <input
+                                        type="number"
+                                        placeholder="Valor (R$)"
+                                        defaultValue={item.conversionValue || ''}
+                                        onBlur={e => {
+                                          const val = e.target.value ? Number(e.target.value) : undefined;
+                                          if (val !== item.conversionValue) {
+                                            handleUpdateOutcome(item.id, item.responseStatus || 'converted', item.outcomeNotes || undefined, val);
+                                          }
+                                        }}
+                                        disabled={outcomeLoadings[item.id]}
+                                        className="border border-gray-200 rounded px-2 py-1 bg-white text-[10px] w-24 focus:outline-none"
+                                      />
+                                    )}
+                                    {outcomeLoadings[item.id] && <span className="text-gray-400">⏳ Atualizando...</span>}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex flex-col items-end gap-1 shrink-0">
+                              <span className={`px-2 py-0.5 rounded-full font-bold uppercase ${
+                                item.status === 'sent' ? 'bg-emerald-100 text-emerald-700' :
+                                item.status === 'skipped' ? 'bg-amber-100 text-amber-700' :
+                                'bg-red-100 text-red-700'
+                              }`}>
+                                {item.status}
+                              </span>
+                              <span className="text-gray-400">Envio: {formatDate(item.processedAt)}</span>
+                              {item.respondedAt && <span className="text-blue-500 font-semibold mt-1">Resposta: {formatDate(item.respondedAt)}</span>}
+                              {item.convertedAt && <span className="text-emerald-600 font-bold">Conversão: {formatDate(item.convertedAt)}</span>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Seção 6: Análise e Conversões ──────────────────────────── */}
+      {analytics && (
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-sm font-bold text-gray-900">📊 Resultados e Conversões (Analytics)</h2>
+            <p className="text-xs text-gray-500 mt-1 max-w-3xl">
+              Esta seção registra o resultado comercial após o envio. Opt-outs geram supressão automática no canal correspondente. 
+              <span className="text-indigo-700 font-semibold block mt-1">Ainda não existe captura automática por webhook nesta fase. Faça atualizações de 'Qualificação' ou 'Resposta' manualmente na lista de detalhes das execuções acima.</span>
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
+            {[
+              { label: 'Enviados',  value: analytics.overall.totalSent, color: 'text-gray-900' },
+              { label: 'Abertos/Lidos', value: analytics.overall.totalOpened, color: 'text-indigo-600' },
+              { label: 'Respondidos', value: analytics.overall.totalReplied, color: 'text-blue-600' },
+              { label: 'Qualificados', value: analytics.overall.totalQualified, color: 'text-emerald-500' },
+              { label: 'Convertidos', value: analytics.overall.totalConverted, color: 'text-emerald-700' },
+              { label: 'Opt-outs', value: analytics.overall.totalUnsubscribed, color: 'text-red-500' },
+            ].map((stat, idx) => (
+              <div key={idx} className="bg-white rounded-2xl border border-gray-200 p-4 shrink-0 shadow-sm flex flex-col justify-center items-center text-center">
+                <p className={`text-2xl font-black ${stat.color}`}>{stat.value}</p>
+                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide mt-1">{stat.label}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Por Canal */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {['email', 'whatsapp'].map(ch => {
+              const base = analytics.byChannel[ch];
+              if (!base) return null;
+              return (
+                <div key={ch} className="bg-white rounded-2xl border border-gray-100 p-5 shrink-0 grow shadow-sm">
+                  <h3 className="text-xs font-bold text-gray-800 uppercase mb-3 border-b border-gray-50 pb-2">{ch}</h3>
+                  <div className="flex justify-between text-[11px] mb-1">
+                    <span className="text-gray-500 font-semibold">Enviados</span>
+                    <span className="font-bold">{base.totalSent}</span>
+                  </div>
+                  <div className="flex justify-between text-[11px] mb-1">
+                    <span className="text-gray-500 font-semibold">Respondidos (Reply Rate)</span>
+                    <span className="font-bold">{base.totalReplied} ({(base.rates?.replyRate * 100).toFixed(1)}%)</span>
+                  </div>
+                  <div className="flex justify-between text-[11px] mb-1">
+                    <span className="text-gray-500 font-semibold">Convertidos (Conversion Rate)</span>
+                    <span className="font-bold text-emerald-600">{base.totalConverted} ({(base.rates?.conversionRate * 100).toFixed(1)}%)</span>
+                  </div>
+                  <div className="flex justify-between text-[11px] mb-1">
+                    <span className="text-gray-500 font-semibold">Valor Convertido</span>
+                    <span className="font-bold text-emerald-700">R$ {base.totalConversionValue?.toFixed(2) || '0.00'}</span>
+                  </div>
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-gray-500 font-semibold">Descadastrados (Opt-out)</span>
+                    <span className="font-bold text-red-500">{base.totalUnsubscribed} ({(base.rates?.unsubscribeRate * 100).toFixed(1)}%)</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

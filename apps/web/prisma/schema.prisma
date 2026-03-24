@@ -109,6 +109,9 @@ model Tenant {
   leadScores                LeadScore[]
   leadEnrichmentAttempts    LeadEnrichmentAttempt[]
   leadCampaignDrafts        LeadCampaignDraft[]
+  leadCampaignExecutions    LeadCampaignExecution[]
+  leadCampaignExecutionItems LeadCampaignExecutionItem[]
+  leadSuppressions        LeadSuppression[]
 }
 
 // ─── Contacts Module (Phase 1) ────────────────────────────────────────────────
@@ -1517,6 +1520,7 @@ model LeadSearchRun {
   candidates          LeadCandidate[]
   enrichmentAttempts  LeadEnrichmentAttempt[]
   campaignDrafts      LeadCampaignDraft[]
+  campaignExecutions  LeadCampaignExecution[]
 
   @@index([tenantId, createdAt])
   @@index([tenantId, status])
@@ -1556,6 +1560,8 @@ model LeadCandidate {
   score              LeadScore?
   enrichmentAttempts LeadEnrichmentAttempt[]
   campaignDrafts     LeadCampaignDraft[]
+  executionItems     LeadCampaignExecutionItem[]
+  suppressions       LeadSuppression[]
 
   @@index([tenantId, searchRunId])
   @@index([tenantId, status])
@@ -1630,10 +1636,89 @@ model LeadCampaignDraft {
   tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   searchRun     LeadSearchRun @relation(fields: [searchRunId], references: [id], onDelete: Cascade)
   leadCandidate LeadCandidate @relation(fields: [leadCandidateId], references: [id], onDelete: Cascade)
+  executionItems LeadCampaignExecutionItem[]
 
   @@index([tenantId, searchRunId])
   @@index([tenantId, channel])
   @@index([tenantId, status])
   @@map("lead_campaign_drafts")
+}
+
+model LeadCampaignExecution {
+  id              String   @id @default(uuid())
+  tenantId        String
+  searchRunId     String
+  channel         String   // email | whatsapp
+  status          String   @default("queued") // queued | running | completed | partial | failed
+  requestedCount  Int      @default(0)
+  eligibleCount   Int      @default(0)
+  sentCount       Int      @default(0)
+  failedCount     Int      @default(0)
+  skippedCount    Int      @default(0)
+  batchSize       Int      @default(10)
+  notes           String?
+  startedAt       DateTime?
+  finishedAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  searchRun     LeadSearchRun @relation(fields: [searchRunId], references: [id], onDelete: Cascade)
+  items         LeadCampaignExecutionItem[]
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, channel])
+  @@index([tenantId, status])
+  @@map("lead_campaign_executions")
+}
+
+model LeadCampaignExecutionItem {
+  id              String   @id @default(uuid())
+  tenantId        String
+  executionId     String
+  draftId         String
+  leadCandidateId String
+  channel         String
+  status          String   // sent | failed | skipped
+  reason          String?
+  providerMessageId String?
+  deliveredTo     String?
+  processedAt     DateTime @default(now())
+  responseStatus  String   @default("unknown") // unknown | delivered | opened | replied | qualified | converted | lost | unsubscribed
+  outcomeNotes    String?
+  conversionValue Float?
+  respondedAt     DateTime?
+  convertedAt     DateTime?
+  outcomeUpdatedAt DateTime?
+
+  tenant        Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  execution     LeadCampaignExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  draft         LeadCampaignDraft     @relation(fields: [draftId], references: [id], onDelete: Cascade)
+  leadCandidate LeadCandidate         @relation(fields: [leadCandidateId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, executionId])
+  @@index([tenantId, status])
+  @@index([executionId, processedAt])
+  @@map("lead_campaign_execution_items")
+}
+
+model LeadSuppression {
+  id              String   @id @default(uuid())
+  tenantId        String
+  leadCandidateId String
+  channel         String   // email | whatsapp | all
+  reason          String
+  source          String   @default("manual") // manual | unsubscribe | bounce | operator | compliance
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  leadCandidate LeadCandidate @relation(fields: [leadCandidateId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, leadCandidateId])
+  @@index([tenantId, channel, active])
+  @@index([leadCandidateId, active])
+  @@map("lead_suppressions")
 }
 

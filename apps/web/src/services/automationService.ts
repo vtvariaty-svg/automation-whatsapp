@@ -206,7 +206,7 @@ export async function checkAutomationMatch(message: string, tenantId: string) {
   const msgText = message.toLowerCase().trim();
 
   const rules = await prisma.automationRule.findMany({
-    where: { tenantId, active: true },
+    where: { tenantId, active: true, NOT: { triggerType: 'order_status' } },
     orderBy: { createdAt: 'asc' } // Process older rules first
   });
 

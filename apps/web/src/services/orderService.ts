@@ -343,10 +343,17 @@ export async function createOrderFromCheckout(
   });
   if (existing) return existing;
 
+  // Resolve real phone from contact — contactId must never be used as phone
+  const contact = await prisma.contact.findFirst({
+    where: { id: contactId, tenantId },
+    select: { phone: true, name: true },
+  });
+
   return createOrder(
     {
       tenantId,
-      customerPhone: contactId,
+      customerPhone: contact?.phone ?? '',
+      customerName: contact?.name ?? undefined,
       contactId,
       conversationId,
       origin: 'checkout',

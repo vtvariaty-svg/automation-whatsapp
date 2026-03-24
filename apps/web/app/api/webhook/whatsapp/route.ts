@@ -276,6 +276,26 @@ export async function POST(req: Request) {
             console.error('[Webhook] Erro ao carregar memória do cliente (continuando sem contexto):', memErr);
           }
 
+          // Injetar catálogo de produtos ativos no contexto da IA
+          try {
+            const catalogItems = await prisma.product.findMany({
+              where: { tenantId: tenant.id, active: true },
+              select: { name: true, description: true, price: true, currency: true, category: true },
+              take: 30,
+            });
+            if (catalogItems.length > 0) {
+              const catalogLines = catalogItems.map((p) => {
+                const price = p.price > 0 ? ` — R$${p.price.toFixed(2)}` : '';
+                const cat = p.category ? ` [${p.category}]` : '';
+                const desc = p.description ? `: ${p.description}` : '';
+                return `• ${p.name}${cat}${price}${desc}`;
+              }).join('\n');
+              customerContext = `${customerContext ? customerContext + '\n\n' : ''}PRODUTOS DISPONÍVEIS NO CATÁLOGO:\n${catalogLines}`;
+            }
+          } catch (catErr) {
+            console.error('[Webhook] Erro ao carregar catálogo (continuando sem catálogo):', catErr);
+          }
+
           // Detectar nome na mensagem e salvar na memória (non-blocking)
           const detectedName = extractNameFromText(textBody);
           if (detectedName) {

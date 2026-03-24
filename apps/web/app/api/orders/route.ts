@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { getAuthTenant } from '@/lib/getAuthTenant';
 import { createOrder, listOrders } from '@/src/services/orderService';
 import { getSubscription } from '@/lib/services/subscriptionService';
-import { planAtLeast } from '@/lib/config/plans';
 
 export async function GET(request: Request) {
   const auth = await getAuthTenant(request);
@@ -31,12 +30,14 @@ export async function POST(request: Request) {
   const auth = await getAuthTenant(request);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  // Plan gate: orders require Standard+
+  // Plan gate: orders are blocked only on the free plan.
+  // 'starter' is a legacy paid plan and must not be blocked.
+  // planAtLeast() does not handle 'starter' (not in PLAN_ORDER), so we gate directly.
   const sub = await getSubscription(auth.tenantId);
   const tenantPlan = sub?.plan || 'free';
-  if (!planAtLeast(tenantPlan, 'standard')) {
+  if (tenantPlan === 'free') {
     return NextResponse.json(
-      { error: 'Pedidos disponíveis a partir do plano Standard. Faça upgrade para continuar.' },
+      { error: 'Pedidos disponíveis a partir de um plano pago. Faça upgrade para continuar.' },
       { status: 403 }
     );
   }

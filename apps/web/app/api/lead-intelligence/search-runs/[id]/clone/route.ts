@@ -44,8 +44,7 @@ export async function POST(
       requiresWebsite: sourceRun.requiresWebsite,
       requiresCommercialPhone: sourceRun.requiresCommercialPhone,
       localB2BOnly: sourceRun.localB2BOnly,
-      totalCandidates: 0,
-      summary: null
+      totalCandidates: 0
     }
   });
 

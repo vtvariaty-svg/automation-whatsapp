@@ -77,7 +77,8 @@ export type FeatureKey =
   | 'premiumTemplates'  // Premium WhatsApp templates
   | 'whiteLabel'        // White-label / custom branding
   | 'agencyReseller'    // Agency panel + reseller features
-  | 'advancedAnalytics'; // Attribution, funnels, sales metrics
+  | 'advancedAnalytics' // Attribution, funnels, sales metrics
+  | 'leadProspectingIntel'; // Prospecção IA — Business only
 
 export type LimitKey = 'messages' | 'agents' | 'automations' | 'contacts' | 'conversations';
 
@@ -107,6 +108,7 @@ export const PLAN_ENTITLEMENTS: Record<string, PlanEntitlements> = {
       whiteLabel: false,
       agencyReseller: false,
       advancedAnalytics: false,
+      leadProspectingIntel: false,
     },
     limits: { messages: 500, agents: 1, automations: 5, contacts: 1000, conversations: 200 },
   },
@@ -128,6 +130,7 @@ export const PLAN_ENTITLEMENTS: Record<string, PlanEntitlements> = {
       whiteLabel: false,
       agencyReseller: false,
       advancedAnalytics: false,
+      leadProspectingIntel: false,
     },
     limits: { messages: 3000, agents: 2, automations: 15, contacts: 5000, conversations: 5000 },
   },
@@ -149,6 +152,7 @@ export const PLAN_ENTITLEMENTS: Record<string, PlanEntitlements> = {
       whiteLabel: false,
       agencyReseller: false,
       advancedAnalytics: true,
+      leadProspectingIntel: false,
     },
     limits: { messages: 10000, agents: 5, automations: UNLIMITED, contacts: 20000, conversations: UNLIMITED },
   },
@@ -170,6 +174,7 @@ export const PLAN_ENTITLEMENTS: Record<string, PlanEntitlements> = {
       whiteLabel: true,
       agencyReseller: true,
       advancedAnalytics: true,
+      leadProspectingIntel: true,
     },
     limits: {
       messages: UNLIMITED,
@@ -197,6 +202,7 @@ export const PLAN_ENTITLEMENTS: Record<string, PlanEntitlements> = {
       whiteLabel: false,
       agencyReseller: false,
       advancedAnalytics: false,
+      leadProspectingIntel: false,
     },
     limits: { messages: 1000, agents: 1, automations: 5, contacts: 1000, conversations: 500 },
   },
@@ -218,6 +224,7 @@ export const PLAN_ENTITLEMENTS: Record<string, PlanEntitlements> = {
       whiteLabel: true,
       agencyReseller: true,
       advancedAnalytics: true,
+      leadProspectingIntel: true,
     },
     limits: {
       messages: UNLIMITED,
@@ -245,6 +252,7 @@ export const FEATURE_UPGRADE_MESSAGES: Record<FeatureKey, string> = {
   whiteLabel: 'White-label está disponível exclusivamente no plano Business.',
   agencyReseller: 'Painel de agência e revenda estão disponíveis exclusivamente no plano Business.',
   advancedAnalytics: 'Analytics avançado (atribuição, funis e métricas de vendas) está disponível nos planos Pro e Business.',
+  leadProspectingIntel: 'Prospecção IA está disponível exclusivamente no plano Business.',
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────

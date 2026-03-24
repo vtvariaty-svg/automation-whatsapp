@@ -27,6 +27,7 @@ const DEFAULT: EntitlementsState = {
     whiteLabel: false,
     agencyReseller: false,
     advancedAnalytics: false,
+    leadProspectingIntel: false,
   },
   limits: { messages: 0, agents: 1, automations: 5, contacts: 1000, conversations: 200 },
 };

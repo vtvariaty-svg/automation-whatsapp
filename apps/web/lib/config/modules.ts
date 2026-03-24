@@ -69,7 +69,7 @@ export const SIDEBAR_SECTIONS: SidebarSection[] = [
   { id: 'principal',      label: 'Principal',     moduleIds: ['dashboard', 'analytics'] },
   { id: 'atendimento',    label: 'Atendimento',   moduleIds: ['conversations', 'contacts', 'sales', 'appointments', 'orders', 'payments', 'catalog', 'services', 'professionals', 'handoff'] },
   { id: 'canais',         label: 'Canais & IA',   moduleIds: ['channels', 'instagram_comments', 'bots', 'templates', 'broadcasts', 'insights'] },
-  { id: 'crescimento',    label: 'Crescimento',   moduleIds: ['setup', 'metrics', 'attribution', 'referral', 'go_live'] },
+  { id: 'crescimento',    label: 'Crescimento',   moduleIds: ['setup', 'metrics', 'attribution', 'referral', 'go_live', 'lead_intelligence'] },
   { id: 'fiscal',         label: 'Fiscal',        moduleIds: ['fiscal', 'fiscal_new', 'fiscal_history', 'fiscal_whatsapp'] },
   { id: 'administracao',  label: 'Administração', moduleIds: ['agency', 'billing', 'settings'] },
 ];
@@ -401,6 +401,18 @@ export const MODULE_CATALOG: AppModule[] = [
     description: 'Checklist final para colocar a operação em produção.',
     pinnedByDefaultFor: [],
     sidebarOrder: 44,
+  },
+  {
+    id: 'lead_intelligence',
+    label: 'Prospecção IA',
+    icon: '🎯',
+    href: '/dashboard/lead-intelligence',
+    category: 'crescimento',
+    description: 'Descoberta e priorização de empresas por nicho, região e potencial comercial.',
+    minPlan: 'business',
+    requiredFeature: 'leadProspectingIntel',
+    pinnedByDefaultFor: [],
+    sidebarOrder: 45,
   },
 
   // ── Fiscal ────────────────────────────────────────────────────────────────

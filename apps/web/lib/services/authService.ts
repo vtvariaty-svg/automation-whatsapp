@@ -20,12 +20,13 @@ export const verifyPassword = async (password: string, hash: string) => {
 import crypto from 'crypto';
 import { sendEmail } from '../email/client';
 import { getVerificationEmailHtml } from '../email/templates/verificationTemplate';
+import { PLANS, TRIAL_DAYS } from '../config/plans';
 
-// Set REQUIRE_EMAIL_VERIFICATION=false to disable email verification temporarily.
-// Defaults to true (verification required) when the variable is absent or any value other than 'false'.
-const requireEmailVerification = process.env.REQUIRE_EMAIL_VERIFICATION !== 'false';
+// Set REQUIRE_EMAIL_VERIFICATION=true to enable email verification.
+// Defaults to false (no verification) when the variable is absent.
+const requireEmailVerification = process.env.REQUIRE_EMAIL_VERIFICATION === 'true';
 
-export const registerUser = async (name: string, email: string, passwordPlain: string, role: string = 'user') => {
+export const registerUser = async (name: string, email: string, passwordPlain: string, role: string = 'user', plan?: string) => {
   const existingUser = await prisma.user.findUnique({ where: { email } });
   if (existingUser) throw new Error('User already exists');
 
@@ -36,6 +37,21 @@ export const registerUser = async (name: string, email: string, passwordPlain: s
       name: `${name}'s Workspace`
     }
   });
+
+  // Create subscription if a valid plan slug was passed
+  const planConfig = plan ? PLANS[plan] : null;
+  if (planConfig) {
+    const trialEnd = planConfig.hasTrial ? new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000) : null;
+    await prisma.subscription.create({
+      data: {
+        tenantId: tenant.id,
+        plan: planConfig.slug,
+        status: planConfig.hasTrial ? 'trialing' : 'active',
+        currentPeriodStart: new Date(),
+        ...(trialEnd && { trialEnd }),
+      },
+    });
+  }
 
   const user = await prisma.user.create({
     data: {

@@ -634,6 +634,7 @@ function PrecosSection() {
   const planos = [
     {
       nome: "Gratuito",
+      slug: "free",
       preco: null,
       descricao: "Para explorar a interface sem compromisso",
       nota: "Sem acesso ao WhatsApp Oficial",
@@ -653,9 +654,11 @@ function PrecosSection() {
       botaoTexto: "Explorar sem compromisso",
       botaoEstilo: "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50",
       popular: false,
+      href: "/register?plan=free",
     },
     {
       nome: "Essencial",
+      slug: "standard",
       preco: "49,90",
       descricao: "O plano completo para operar no WhatsApp com IA",
       nota: "7 dias grátis · sem cartão",
@@ -673,9 +676,11 @@ function PrecosSection() {
       botaoTexto: "Começar 7 dias grátis",
       botaoEstilo: "bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-500/25",
       popular: true,
+      href: "/register?plan=standard",
     },
     {
       nome: "Crescimento",
+      slug: "pro",
       preco: "97,00",
       descricao: "Para operações que precisam de escala e controle total",
       nota: null,
@@ -694,9 +699,11 @@ function PrecosSection() {
       botaoTexto: "Assinar Crescimento",
       botaoEstilo: "bg-gray-900 text-white hover:bg-gray-800",
       popular: false,
+      href: "/register?plan=pro",
     },
     {
       nome: "Negócio",
+      slug: "business",
       preco: "197,00",
       descricao: "Para agências, franquias e grandes operações",
       nota: null,
@@ -713,6 +720,7 @@ function PrecosSection() {
       botaoTexto: "Falar com consultor",
       botaoEstilo: "bg-gray-900 text-white hover:bg-gray-800",
       popular: false,
+      href: "mailto:vtvariaty@gmail.com",
     },
   ];
 
@@ -791,7 +799,7 @@ function PrecosSection() {
               </div>
 
               <Link
-                href={plano.nome === "Negócio" ? "mailto:vtvariaty@gmail.com" : "/register"}
+                href={plano.href}
                 className={`w-full text-center py-3.5 rounded-xl font-bold text-sm transition-all ${plano.botaoEstilo}`}
               >
                 {plano.botaoTexto}

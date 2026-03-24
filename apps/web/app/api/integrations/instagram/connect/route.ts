@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
 
+// Instagram is connected via Facebook Login (not Instagram Login).
+// This avoids the "Invalid platform app" error from instagram.com/oauth/authorize.
+// The same Facebook App (NEXT_PUBLIC_FB_APP_ID) is used for WhatsApp and Facebook Messenger.
+
 if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET environment variable is required');
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -22,18 +26,24 @@ export async function GET() {
       return NextResponse.redirect(`${base}/login`);
     }
 
-    // Use Instagram-specific App ID (from Instagram product in Meta Developer Portal)
-    const igAppId = process.env.NEXT_PUBLIC_INSTAGRAM_APP_ID;
-    if (!igAppId) return NextResponse.redirect(`${base}/dashboard/integrations?error=missing_instagram_app_id`);
+    // Facebook App ID — shared with WhatsApp Embedded Signup and Facebook Messenger
+    const fbAppId = process.env.NEXT_PUBLIC_FB_APP_ID;
+    if (!fbAppId) return NextResponse.redirect(`${base}/dashboard/integrations?error=missing_app_id`);
 
     const state = Buffer.from(JSON.stringify({ tenantId })).toString('base64');
     const redirectUri = `${base}/api/integrations/instagram/callback`;
 
-    // Instagram Business Login — uses instagram.com, NOT facebook.com
-    const url = new URL('https://www.instagram.com/oauth/authorize');
-    url.searchParams.set('client_id', igAppId);
+    // Instagram API with Facebook Login uses facebook.com/dialog/oauth, NOT instagram.com/oauth/authorize
+    const url = new URL('https://www.facebook.com/v22.0/dialog/oauth');
+    url.searchParams.set('client_id', fbAppId);
     url.searchParams.set('redirect_uri', redirectUri);
-    url.searchParams.set('scope', 'instagram_business_basic,instagram_business_manage_messages,instagram_business_manage_comments');
+    url.searchParams.set('scope', [
+      'pages_show_list',
+      'pages_manage_metadata',
+      'instagram_basic',
+      'instagram_manage_messages',
+      'instagram_manage_comments',
+    ].join(','));
     url.searchParams.set('response_type', 'code');
     url.searchParams.set('state', state);
 

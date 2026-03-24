@@ -1794,3 +1794,22 @@ model LeadProspectingTemplate {
   @@map("lead_prospecting_templates")
 }
 
+// LEAD3 — Pipeline follow-up log
+model LeadFollowUpLog {
+  id              String   @id @default(uuid())
+  tenantId        String
+  leadCandidateId String
+  userId          String?  // author, if known
+  type            String   // manual_contact | note | stage_change | auto_event
+  content         String
+  metadata        Json?    // e.g. { from: 'new', to: 'contacted' }
+  loggedAt        DateTime @default(now())
+
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  leadCandidate LeadCandidate @relation(fields: [leadCandidateId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, leadCandidateId])
+  @@index([tenantId, loggedAt])
+  @@map("lead_follow_up_logs")
+}
+

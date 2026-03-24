@@ -41,6 +41,40 @@ interface QueueLead {
   searchRun:      { id: string; niche: string; city: string | null; state: string | null } | null;
 }
 
+interface AlertLead {
+  id:            string;
+  companyName:   string;
+  tradeName:     string | null;
+  pipelineStage: string;
+  priority:      string;
+  nextActionAt:  string | null;
+  ownerUserId:   string | null;
+}
+
+interface OpAlert {
+  id:             string;
+  alertType:      string;
+  severity:       string;
+  status:         string;
+  title:          string;
+  detail:         string | null;
+  ruleKey:        string;
+  createdAt:      string;
+  updatedAt:      string;
+  acknowledgedAt: string | null;
+  resolvedAt:     string | null;
+  leadCandidate:  AlertLead | null;
+  searchRun:      { id: string; niche: string; city: string | null; state: string | null } | null;
+}
+
+interface ScanResult {
+  scanned:     number;
+  created:     number;
+  reopened:    number;
+  autoResolved:number;
+  openTotal:   number;
+}
+
 type Bucket = 'all' | 'open' | 'due_today' | 'overdue' | 'no_owner' | 'converted' | 'lost';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -99,6 +133,36 @@ function verdictColor(v: string): string {
   }
 }
 
+function severityBadge(s: string): { label: string; color: string } {
+  switch (s) {
+    case 'critical': return { label: 'Crítico',  color: 'bg-red-100 text-red-800 border-red-200' };
+    case 'high':     return { label: 'Alta',     color: 'bg-orange-100 text-orange-700 border-orange-200' };
+    case 'medium':   return { label: 'Média',    color: 'bg-amber-100 text-amber-700 border-amber-200' };
+    case 'low':      return { label: 'Baixa',    color: 'bg-blue-50 text-blue-600 border-blue-100' };
+    default:         return { label: s,          color: 'bg-gray-100 text-gray-600 border-gray-200' };
+  }
+}
+
+function alertStatusBadge(s: string): { label: string; color: string } {
+  switch (s) {
+    case 'open':         return { label: 'Aberto',      color: 'bg-red-50 text-red-700' };
+    case 'acknowledged': return { label: 'Reconhecido', color: 'bg-amber-50 text-amber-700' };
+    case 'resolved':     return { label: 'Resolvido',   color: 'bg-emerald-50 text-emerald-700' };
+    default:             return { label: s,             color: 'bg-gray-50 text-gray-600' };
+  }
+}
+
+function alertTypeLabel(t: string): string {
+  switch (t) {
+    case 'overdue_next_action':     return 'Ação vencida';
+    case 'no_owner_high_priority':  return 'Alta prioridade sem dono';
+    case 'stalled_follow_up':       return 'Follow-up parado';
+    case 'replied_no_next_action':  return 'Sem próxima ação';
+    case 'ready_no_activation':     return 'Pronto, sem ativação';
+    default: return t;
+  }
+}
+
 const STAGES = [
   { value: 'new',           label: 'Novo' },
   { value: 'contacted',     label: 'Contactado' },
@@ -117,6 +181,14 @@ const BUCKETS: { value: Bucket; label: string }[] = [
   { value: 'no_owner',  label: 'Sem responsável' },
   { value: 'converted', label: 'Convertidos' },
   { value: 'lost',      label: 'Perdidos' },
+];
+
+const ALERT_TYPES = [
+  { value: 'overdue_next_action',    label: 'Ação vencida' },
+  { value: 'no_owner_high_priority', label: 'Alta prioridade sem dono' },
+  { value: 'stalled_follow_up',      label: 'Follow-up parado' },
+  { value: 'replied_no_next_action', label: 'Sem próxima ação' },
+  { value: 'ready_no_activation',    label: 'Pronto, sem ativação' },
 ];
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -144,9 +216,25 @@ export default function LeadOperationsPage() {
   const [savingPipeline, setSavingPipeline] = useState<Record<string, boolean>>({});
 
   // Per-lead note
-  const [noteText, setNoteText]           = useState<Record<string, string>>({});
-  const [savingNote, setSavingNote]       = useState<Record<string, boolean>>({});
-  const [expandedIds, setExpandedIds]     = useState<Record<string, boolean>>({});
+  const [noteText, setNoteText]       = useState<Record<string, string>>({});
+  const [savingNote, setSavingNote]   = useState<Record<string, boolean>>({});
+  const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
+
+  // ── Alerts state ─────────────────────────────────────────────────────────
+
+  const [alerts, setAlerts]             = useState<OpAlert[]>([]);
+  const [loadingAlerts, setLoadingAlerts] = useState(true);
+  const [scanning, setScanning]         = useState(false);
+  const [scanResult, setScanResult]     = useState<ScanResult | null>(null);
+  const [alertsOpen, setAlertsOpen]     = useState(true);
+
+  // Alert filters
+  const [alertStatusFilter, setAlertStatusFilter]   = useState('open');
+  const [alertSeverityFilter, setAlertSeverityFilter] = useState('');
+  const [alertTypeFilter, setAlertTypeFilter]       = useState('');
+
+  // Per-alert action loading
+  const [alertActionIds, setAlertActionIds] = useState<Record<string, boolean>>({});
 
   // ── Loaders ───────────────────────────────────────────────────────────────
 
@@ -180,7 +268,6 @@ export default function LeadOperationsPage() {
       const data = await res.json();
       const fetched: QueueLead[] = data.leads ?? [];
       setLeads(fetched);
-      // Initialise pipeline drafts for each lead
       setPipelineDraft(prev => {
         const next = { ...prev };
         for (const l of fetched) {
@@ -200,8 +287,30 @@ export default function LeadOperationsPage() {
     }
   }, [bucket, stage, priority, search]);
 
+  const loadAlerts = useCallback(async () => {
+    setLoadingAlerts(true);
+    try {
+      const params = new URLSearchParams();
+      if (alertStatusFilter)   params.set('status',    alertStatusFilter);
+      if (alertSeverityFilter) params.set('severity',  alertSeverityFilter);
+      if (alertTypeFilter)     params.set('alertType', alertTypeFilter);
+      params.set('limit', '100');
+
+      const res = await fetch(`/api/lead-intelligence/alerts?${params}`, {
+        headers: { Authorization: `Bearer ${getAuthToken()}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAlerts(data.alerts ?? []);
+      }
+    } finally {
+      setLoadingAlerts(false);
+    }
+  }, [alertStatusFilter, alertSeverityFilter, alertTypeFilter]);
+
   useEffect(() => { loadSummary(); }, [loadSummary]);
   useEffect(() => { loadQueue(); }, [loadQueue]);
+  useEffect(() => { loadAlerts(); }, [loadAlerts]);
 
   // Debounce search input
   useEffect(() => {
@@ -210,7 +319,43 @@ export default function LeadOperationsPage() {
   }, [searchInput]);
 
   async function refresh() {
-    await Promise.all([loadSummary(), loadQueue()]);
+    await Promise.all([loadSummary(), loadQueue(), loadAlerts()]);
+  }
+
+  // ── Alert scan ─────────────────────────────────────────────────────────────
+
+  async function handleScan() {
+    setScanning(true);
+    setScanResult(null);
+    try {
+      const res = await fetch('/api/lead-intelligence/alerts', {
+        method:  'POST',
+        headers: { Authorization: `Bearer ${getAuthToken()}` },
+      });
+      if (res.ok) {
+        const data: ScanResult = await res.json();
+        setScanResult(data);
+        await Promise.all([loadAlerts(), loadSummary()]);
+      }
+    } finally {
+      setScanning(false);
+    }
+  }
+
+  // ── Alert action ───────────────────────────────────────────────────────────
+
+  async function handleAlertAction(alertId: string, action: 'acknowledge' | 'resolve' | 'reopen') {
+    setAlertActionIds(prev => ({ ...prev, [alertId]: true }));
+    try {
+      const res = await fetch(`/api/lead-intelligence/alerts/${alertId}`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` },
+        body:    JSON.stringify({ action }),
+      });
+      if (res.ok) await loadAlerts();
+    } finally {
+      setAlertActionIds(prev => ({ ...prev, [alertId]: false }));
+    }
   }
 
   // ── Pipeline save ──────────────────────────────────────────────────────────
@@ -221,9 +366,9 @@ export default function LeadOperationsPage() {
     setSavingPipeline(prev => ({ ...prev, [leadId]: true }));
     try {
       const res = await fetch(`/api/lead-intelligence/candidates/${leadId}/pipeline`, {
-        method: 'PATCH',
+        method:  'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` },
-        body: JSON.stringify({
+        body:    JSON.stringify({
           pipelineStage: draft.pipelineStage,
           nextActionAt:  draft.nextActionAt || null,
         }),
@@ -242,9 +387,9 @@ export default function LeadOperationsPage() {
     setSavingNote(prev => ({ ...prev, [leadId]: true }));
     try {
       const res = await fetch(`/api/lead-intelligence/candidates/${leadId}/follow-up-log`, {
-        method: 'POST',
+        method:  'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` },
-        body: JSON.stringify({ type, content }),
+        body:    JSON.stringify({ type, content }),
       });
       if (res.ok) {
         setNoteText(prev => ({ ...prev, [leadId]: '' }));
@@ -254,6 +399,14 @@ export default function LeadOperationsPage() {
       setSavingNote(prev => ({ ...prev, [leadId]: false }));
     }
   }
+
+  // ── Derived alert counts ───────────────────────────────────────────────────
+
+  const openAlerts     = alerts.filter(a => a.status === 'open').length;
+  const highAlerts     = alerts.filter(a => (a.severity === 'high' || a.severity === 'critical') && a.status !== 'resolved').length;
+  const overdueAlerts  = alerts.filter(a => a.alertType === 'overdue_next_action' && a.status !== 'resolved').length;
+  const noOwnerAlerts  = alerts.filter(a => a.alertType === 'no_owner_high_priority' && a.status !== 'resolved').length;
+  const stalledAlerts  = alerts.filter(a => a.alertType === 'stalled_follow_up' && a.status !== 'resolved').length;
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -346,6 +499,233 @@ export default function LeadOperationsPage() {
             </p>
           </button>
         ))}
+      </div>
+
+      {/* ── Alerts section ─────────────────────────────────────────────────── */}
+      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+
+        {/* Alerts header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-5 py-4 border-b border-gray-100">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setAlertsOpen(o => !o)}
+              className="text-gray-400 hover:text-gray-700 text-sm font-bold transition-colors"
+            >
+              {alertsOpen ? '▼' : '▶'}
+            </button>
+            <span className="text-sm font-bold text-gray-900">🚨 Alertas operacionais</span>
+            {openAlerts > 0 && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700">
+                {openAlerts} aberto{openAlerts !== 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Alert summary counters */}
+            {!loadingAlerts && (
+              <div className="flex items-center gap-3 text-[10px] font-semibold text-gray-500 mr-2">
+                {highAlerts    > 0 && <span className="text-orange-600">🔴 {highAlerts} alta/crítico</span>}
+                {overdueAlerts > 0 && <span className="text-red-600">⏰ {overdueAlerts} vencidos</span>}
+                {noOwnerAlerts > 0 && <span className="text-amber-600">👤 {noOwnerAlerts} sem dono</span>}
+                {stalledAlerts > 0 && <span className="text-gray-500">🛑 {stalledAlerts} parados</span>}
+              </div>
+            )}
+
+            <button
+              onClick={handleScan}
+              disabled={scanning}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-lg text-xs font-bold transition-all"
+            >
+              {scanning ? '⏳ Escaneando...' : '🔍 Atualizar alertas'}
+            </button>
+          </div>
+        </div>
+
+        {/* Scan result banner */}
+        {scanResult && (
+          <div className="px-5 py-3 bg-indigo-50 border-b border-indigo-100 text-xs text-indigo-800 flex flex-wrap gap-4 items-center">
+            <span className="font-bold">Resultado do scan:</span>
+            <span>📊 {scanResult.scanned} leads analisados</span>
+            <span className="text-emerald-700 font-semibold">+{scanResult.created} criados</span>
+            <span className="text-amber-600 font-semibold">↺ {scanResult.reopened} reabertos</span>
+            <span className="text-gray-500">✅ {scanResult.autoResolved} auto-resolvidos</span>
+            <span className="font-bold text-red-600">{scanResult.openTotal} alertas abertos no total</span>
+            <button
+              onClick={() => setScanResult(null)}
+              className="ml-auto text-indigo-400 hover:text-indigo-700 font-bold"
+            >✕</button>
+          </div>
+        )}
+
+        {alertsOpen && (
+          <div className="p-5 space-y-4">
+            {/* Alert filters */}
+            <div className="flex flex-wrap gap-2 items-center">
+              <select
+                value={alertStatusFilter}
+                onChange={e => setAlertStatusFilter(e.target.value)}
+                className="border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              >
+                <option value="">Todos os status</option>
+                <option value="open">Abertos</option>
+                <option value="acknowledged">Reconhecidos</option>
+                <option value="resolved">Resolvidos</option>
+              </select>
+
+              <select
+                value={alertSeverityFilter}
+                onChange={e => setAlertSeverityFilter(e.target.value)}
+                className="border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              >
+                <option value="">Todas as severidades</option>
+                <option value="critical">Crítico</option>
+                <option value="high">Alta</option>
+                <option value="medium">Média</option>
+                <option value="low">Baixa</option>
+              </select>
+
+              <select
+                value={alertTypeFilter}
+                onChange={e => setAlertTypeFilter(e.target.value)}
+                className="border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              >
+                <option value="">Todos os tipos</option>
+                {ALERT_TYPES.map(t => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </select>
+
+              {(alertStatusFilter || alertSeverityFilter || alertTypeFilter) && (
+                <button
+                  onClick={() => { setAlertStatusFilter('open'); setAlertSeverityFilter(''); setAlertTypeFilter(''); }}
+                  className="text-xs text-gray-400 hover:text-gray-700 font-semibold"
+                >
+                  ✕ Limpar
+                </button>
+              )}
+            </div>
+
+            {/* Alert list */}
+            {loadingAlerts ? (
+              <p className="text-xs text-gray-400 py-4 text-center">Carregando alertas...</p>
+            ) : alerts.length === 0 ? (
+              <div className="border-2 border-dashed border-gray-100 rounded-xl py-10 flex flex-col items-center justify-center text-center">
+                <span className="text-2xl mb-2">✅</span>
+                <p className="text-sm font-semibold text-gray-400">Nenhum alerta para este filtro</p>
+                <p className="text-xs text-gray-400 mt-1">Execute o scan para detectar riscos nos seus leads.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {alerts.map(alert => {
+                  const sev    = severityBadge(alert.severity);
+                  const aStatus = alertStatusBadge(alert.status);
+                  const lead   = alert.leadCandidate;
+                  const stage_ = lead ? stageLabelAndColor(lead.pipelineStage) : null;
+                  const loading = alertActionIds[alert.id] ?? false;
+
+                  return (
+                    <div
+                      key={alert.id}
+                      className={`rounded-xl border p-4 space-y-2 ${
+                        alert.status === 'resolved' ? 'border-gray-100 bg-gray-50 opacity-70' :
+                        alert.severity === 'high' || alert.severity === 'critical' ? 'border-orange-100 bg-orange-50' :
+                        'border-gray-200 bg-white'
+                      }`}
+                    >
+                      {/* Alert header */}
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                        <div className="space-y-1 flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${sev.color}`}>
+                              {sev.label}
+                            </span>
+                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${aStatus.color}`}>
+                              {aStatus.label}
+                            </span>
+                            <span className="text-[9px] font-semibold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+                              {alertTypeLabel(alert.alertType)}
+                            </span>
+                          </div>
+
+                          <p className="text-xs font-bold text-gray-900">{alert.title}</p>
+                          {alert.detail && (
+                            <p className="text-[10px] text-gray-600">{alert.detail}</p>
+                          )}
+
+                          {lead && (
+                            <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-gray-500 pt-0.5">
+                              <span className="font-semibold text-gray-700">{lead.companyName}{lead.tradeName ? ` (${lead.tradeName})` : ''}</span>
+                              {stage_ && (
+                                <span className={`font-bold px-1.5 py-px rounded-full text-[9px] ${stage_.color}`}>
+                                  {stage_.label}
+                                </span>
+                              )}
+                              {lead.nextActionAt && (
+                                <span className="text-amber-600">🗓 {formatDateShort(lead.nextActionAt)}</span>
+                              )}
+                            </div>
+                          )}
+
+                          {alert.searchRun && (
+                            <p className="text-[9px] text-gray-400">
+                              🎯 Busca: {alert.searchRun.niche}
+                              {[alert.searchRun.city, alert.searchRun.state].filter(Boolean).join(', ') ? ` · ${[alert.searchRun.city, alert.searchRun.state].filter(Boolean).join(', ')}` : ''}
+                            </p>
+                          )}
+
+                          <p className="text-[9px] text-gray-400">Criado em {formatDate(alert.createdAt)}</p>
+                        </div>
+
+                        {/* Alert actions */}
+                        <div className="flex items-center gap-1.5 flex-wrap shrink-0">
+                          {alert.searchRun && (
+                            <Link
+                              href={`/dashboard/lead-intelligence/${alert.searchRun.id}`}
+                              className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2 py-1 rounded-lg transition-colors border border-indigo-100"
+                            >
+                              Ver busca →
+                            </Link>
+                          )}
+
+                          {alert.status === 'open' && (
+                            <button
+                              onClick={() => handleAlertAction(alert.id, 'acknowledge')}
+                              disabled={loading}
+                              className="text-[10px] font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 disabled:opacity-50 px-2 py-1 rounded-lg border border-amber-200 transition-all"
+                            >
+                              {loading ? '⏳' : 'Reconhecer'}
+                            </button>
+                          )}
+
+                          {(alert.status === 'open' || alert.status === 'acknowledged') && (
+                            <button
+                              onClick={() => handleAlertAction(alert.id, 'resolve')}
+                              disabled={loading}
+                              className="text-[10px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 disabled:opacity-50 px-2 py-1 rounded-lg border border-emerald-200 transition-all"
+                            >
+                              {loading ? '⏳' : 'Resolver'}
+                            </button>
+                          )}
+
+                          {alert.status === 'resolved' && (
+                            <button
+                              onClick={() => handleAlertAction(alert.id, 'reopen')}
+                              disabled={loading}
+                              className="text-[10px] font-bold text-gray-600 bg-gray-50 hover:bg-gray-100 disabled:opacity-50 px-2 py-1 rounded-lg border border-gray-200 transition-all"
+                            >
+                              {loading ? '⏳' : 'Reabrir'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── Filters ────────────────────────────────────────────────────────── */}
@@ -611,6 +991,7 @@ export default function LeadOperationsPage() {
           <p className="font-bold mb-1">Sobre esta página</p>
           <p>
             Esta página serve para <strong>operação diária e follow-up manual</strong>. Ela centraliza leads de múltiplas buscas em uma única fila operacional, facilitando a priorização e o registro de contatos sem precisar entrar em cada busca individualmente.<br />
+            Os <strong>alertas operacionais</strong> detectam leads travados ou em risco (ação vencida, sem responsável, follow-up parado, estágio avançado sem próxima ação, pronto sem ativação) e permitem que você reconheça, resolva ou reabra cada alerta individualmente.<br />
             <strong>Não cria automação de envio</strong> — disparos de email e WhatsApp continuam sendo realizados nas páginas individuais de cada busca.
           </p>
         </div>

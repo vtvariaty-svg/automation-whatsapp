@@ -115,6 +115,7 @@ model Tenant {
   leadProviderEventLogs   LeadProviderEventLog[]
   leadProspectingTemplates LeadProspectingTemplate[]
   leadFollowUpLogs        LeadFollowUpLog[]
+  leadOperationalAlerts   LeadOperationalAlert[]
 }
 
 // ─── Contacts Module (Phase 1) ────────────────────────────────────────────────
@@ -1525,6 +1526,7 @@ model LeadSearchRun {
   enrichmentAttempts  LeadEnrichmentAttempt[]
   campaignDrafts      LeadCampaignDraft[]
   campaignExecutions  LeadCampaignExecution[]
+  operationalAlerts   LeadOperationalAlert[]
 
   @@index([tenantId, createdAt])
   @@index([tenantId, status])
@@ -1575,6 +1577,7 @@ model LeadCandidate {
   suppressions       LeadSuppression[]
   followUpLogs       LeadFollowUpLog[]
   owner              User?                   @relation(fields: [ownerUserId], references: [id], onDelete: SetNull)
+  operationalAlerts  LeadOperationalAlert[]
 
   @@index([tenantId, searchRunId])
   @@index([tenantId, status])
@@ -1813,3 +1816,30 @@ model LeadFollowUpLog {
   @@map("lead_follow_up_logs")
 }
 
+// LEAD5 — Operational alerts (escalation control)
+model LeadOperationalAlert {
+  id               String    @id @default(uuid())
+  tenantId         String
+  leadCandidateId  String
+  searchRunId      String?
+  alertType        String    // overdue_next_action | no_owner_high_priority | stalled_follow_up | replied_no_next_action | ready_no_activation
+  severity         String    @default("medium") // low | medium | high | critical
+  status           String    @default("open")   // open | acknowledged | resolved
+  title            String
+  detail           String?
+  ruleKey          String    // "${alertType}::${leadCandidateId}" — unique per tenant
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  acknowledgedAt   DateTime?
+  resolvedAt       DateTime?
+
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  leadCandidate LeadCandidate @relation(fields: [leadCandidateId], references: [id], onDelete: Cascade)
+  searchRun     LeadSearchRun? @relation(fields: [searchRunId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, ruleKey])
+  @@index([tenantId, status, createdAt])
+  @@index([tenantId, alertType, status])
+  @@index([leadCandidateId, status])
+  @@map("lead_operational_alerts")
+}

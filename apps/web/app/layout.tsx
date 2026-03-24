@@ -9,9 +9,9 @@ export const metadata: Metadata = {
   title: "VTvariaty IA Secretaria",
   description: "Automatize atendimento, pedidos e agendamentos com IA",
   icons: {
-    icon: "/logo.png",
-    shortcut: "/logo.png",
-    apple: "/logo.png",
+    icon: "/emblem.png",
+    shortcut: "/emblem.png",
+    apple: "/emblem.png",
   },
 };
 

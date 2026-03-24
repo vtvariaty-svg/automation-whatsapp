@@ -328,50 +328,6 @@ export default function LeadIntelligencePage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {templates.map(t => (
-              <div key={t.id} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm hover:-translate-y-0.5 transition-transform">
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="text-sm font-bold text-gray-900 truncate" title={t.name}>{t.name}</h3>
-                  <span className="text-[10px] bg-indigo-50 text-indigo-600 font-bold px-2 py-0.5 rounded-md">Ativo</span>
-                </div>
-                <p className="text-xs text-gray-500 mb-1"><strong>Nicho:</strong> {t.niche}</p>
-                <p className="text-xs text-gray-500 mb-3"><strong>Local:</strong> {[t.city, t.state].filter(Boolean).join('-') || 'Geral'}</p>
-                <div className="flex items-center justify-between border-t border-gray-50 pt-3">
-                  <span className="text-[10px] text-gray-400">Criado em {formatDate(t.createdAt).substring(0, 10)}</span>
-                  <button
-                    onClick={() => handleUseTemplate(t.id)}
-                    disabled={usingTemplateId === t.id}
-                    className="text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors"
-                  >
-                    {usingTemplateId === t.id ? '⏳' : 'Usar template'}
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-xs text-blue-800 flex items-start gap-3">
-        <span className="text-xl">ℹ️</span>
-        <div className="flex-1">
-          <p className="font-bold mb-1">Como funcionam os Templates e Clones?</p>
-          <p>
-            • <strong>Templates</strong> servem para guardar critérios de busca e parâmetros de filtro frequentes (ex: 'Estética SP Alto Padrão'), facilitando a repetição do fluxo sem preencher o formulário do zero.<br/>
-            • A ação de <strong>Clonar busca</strong> gera um novo rascunho aproveitando apenas a configuração base. Nenhum candidato, campanha ou histórico operacional da busca anterior é copiado.
-          </p>
-        </div>
-      </div>
-
-      {/* ── Seção de Templates ─────────────────────────────────────────────── */}
-      <div className="space-y-4">
-        <h2 className="text-base font-bold text-gray-900 border-b border-gray-100 pb-2">Templates de Prospecção</h2>
-        {loadingTemplates ? (
-          <p className="text-xs text-gray-400">Carregando templates...</p>
-        ) : templates.length === 0 ? (
-          <p className="text-xs text-gray-400">Você ainda não tem templates salvos. Crie uma nova busca e salve-a como template para reaproveitá-la futuramente.</p>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {templates.map(t => (
               <div key={t.id} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm hover:-translate-y-0.5 transition-transform flex flex-col justify-between">
                 <div>
                   <div className="flex justify-between items-start mb-2">

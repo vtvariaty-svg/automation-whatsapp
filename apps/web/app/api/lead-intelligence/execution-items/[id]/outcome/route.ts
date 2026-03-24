@@ -4,6 +4,12 @@ import { getAuthTenant } from '@/lib/getAuthTenant';
 
 export const dynamic = 'force-dynamic';
 
+interface OutcomeBody {
+  responseStatus?: unknown;
+  outcomeNotes?: unknown;
+  conversionValue?: unknown;
+}
+
 export async function PATCH(
   request: Request,
   context: { params: Promise<{ id: string }> },
@@ -13,17 +19,22 @@ export async function PATCH(
 
   const { id } = await context.params;
 
-  let body: any;
+  let body: OutcomeBody;
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: 'Payload inválido' }, { status: 400 });
   }
 
-  const { responseStatus, outcomeNotes, conversionValue } = body;
+  const validStatuses = ['unknown', 'delivered', 'opened', 'replied', 'qualified', 'converted', 'lost', 'unsubscribed'];
 
-  const validStatuses = ["unknown", "delivered", "opened", "replied", "qualified", "converted", "lost", "unsubscribed"];
-  if (responseStatus && !validStatuses.includes(responseStatus)) {
+  const responseStatus  = typeof body.responseStatus === 'string'  ? body.responseStatus  : undefined;
+  const outcomeNotes    = body.outcomeNotes    === null ? null
+    : typeof body.outcomeNotes    === 'string'  ? body.outcomeNotes    : undefined;
+  const conversionValue = body.conversionValue === null ? null
+    : typeof body.conversionValue === 'number'  ? body.conversionValue : undefined;
+
+  if (responseStatus !== undefined && !validStatuses.includes(responseStatus)) {
     return NextResponse.json({ error: 'Status de resposta inválido' }, { status: 400 });
   }
 
@@ -32,8 +43,8 @@ export async function PATCH(
     include: {
       execution: true,
       draft: true,
-      leadCandidate: true
-    }
+      leadCandidate: true,
+    },
   });
 
   if (!existingItem) {
@@ -44,27 +55,27 @@ export async function PATCH(
     return NextResponse.json({ error: 'Apenas itens enviados podem ter seu resultado comercial alterado' }, { status: 400 });
   }
 
-  const updates: any = {
-    outcomeUpdatedAt: new Date()
+  const updates: Record<string, unknown> = {
+    outcomeUpdatedAt: new Date(),
   };
 
-  if (responseStatus !== undefined) updates.responseStatus = responseStatus;
-  if (outcomeNotes !== undefined) updates.outcomeNotes = outcomeNotes;
+  if (responseStatus  !== undefined) updates.responseStatus  = responseStatus;
+  if (outcomeNotes    !== undefined) updates.outcomeNotes    = outcomeNotes;
   if (conversionValue !== undefined) updates.conversionValue = conversionValue;
 
-  const finalStatus = responseStatus || existingItem.responseStatus;
+  const finalStatus = responseStatus ?? existingItem.responseStatus;
 
-  if (["replied", "qualified", "converted"].includes(finalStatus) && !existingItem.respondedAt) {
+  if (['replied', 'qualified', 'converted'].includes(finalStatus) && !existingItem.respondedAt) {
     updates.respondedAt = new Date();
   }
 
-  if (finalStatus === "converted" && !existingItem.convertedAt) {
+  if (finalStatus === 'converted' && !existingItem.convertedAt) {
     updates.convertedAt = new Date();
   }
 
   const updatedItem = await prisma.leadCampaignExecutionItem.update({
     where: { id },
-    data: updates
+    data: updates,
   });
 
   let createdSuppression = null;
@@ -75,8 +86,8 @@ export async function PATCH(
         leadCandidateId: existingItem.leadCandidateId,
         tenantId: auth.tenantId,
         channel: existingItem.channel,
-        active: true
-      }
+        active: true,
+      },
     });
 
     if (!activeSupp) {
@@ -87,8 +98,8 @@ export async function PATCH(
           channel: existingItem.channel,
           reason: 'Opt-out registrado na campanha',
           source: 'unsubscribe',
-          active: true
-        }
+          active: true,
+        },
       });
     } else {
       createdSuppression = activeSupp;
@@ -99,8 +110,8 @@ export async function PATCH(
     executionItem: updatedItem,
     candidate: {
       id: existingItem.leadCandidate.id,
-      companyName: existingItem.leadCandidate.companyName
+      companyName: existingItem.leadCandidate.companyName,
     },
-    suppression: createdSuppression
+    suppression: createdSuppression,
   });
 }

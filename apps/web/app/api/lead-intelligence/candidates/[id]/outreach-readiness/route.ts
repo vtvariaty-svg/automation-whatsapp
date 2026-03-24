@@ -83,15 +83,20 @@ export async function PATCH(
     return NextResponse.json({ error: 'Candidato não encontrado.' }, { status: 404 });
   }
 
-  const body = await request.json();
-  const dataToUpdate: any = {};
+  let body: { emailConsentStatus?: unknown; whatsappConsentStatus?: unknown };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Payload inválido' }, { status: 400 });
+  }
+  const dataToUpdate: Record<string, string> = {};
 
   const allowedConsentValues = ['unknown', 'granted', 'denied'];
 
-  if (body.emailConsentStatus && allowedConsentValues.includes(body.emailConsentStatus)) {
+  if (typeof body.emailConsentStatus === 'string' && allowedConsentValues.includes(body.emailConsentStatus)) {
     dataToUpdate.emailConsentStatus = body.emailConsentStatus;
   }
-  if (body.whatsappConsentStatus && allowedConsentValues.includes(body.whatsappConsentStatus)) {
+  if (typeof body.whatsappConsentStatus === 'string' && allowedConsentValues.includes(body.whatsappConsentStatus)) {
     dataToUpdate.whatsappConsentStatus = body.whatsappConsentStatus;
   }
 

@@ -40,10 +40,8 @@ export async function PATCH(
     where: { id },
     data: {
       status: body.action,
-      approvedAt: new Date(),
-      // Extract userId from auth if available, otherwise just use a fallback string
-      // NOTE: `getAuthTenant` usually provides tenantId and often userId depending on implementation.
-      approvedBy: (auth as any).userId || 'system',
+      approvedAt: body.action === 'approved' ? new Date() : null,
+      approvedBy: body.action === 'approved' ? auth.userId : null,
     },
     include: {
       leadCandidate: {

@@ -6,6 +6,7 @@ import ChurnNudge from "@/components/ChurnNudge";
 import ExpansionBanner from "@/components/ExpansionBanner";
 import FeedbackWidget from "@/components/FeedbackWidget";
 import SupportCopilot from "@/components/SupportCopilot";
+import MaintenanceBanner from "@/components/MaintenanceBanner";
 
 export default function DashboardLayout({
   children,
@@ -20,6 +21,7 @@ export default function DashboardLayout({
         <TrialBanner />
         <ChurnNudge />
         <ExpansionBanner />
+        <MaintenanceBanner />
         <Header />
         <main className="flex-1 overflow-auto p-4 md:p-6 lg:p-8 bg-gray-50">
           <div className="mx-auto max-w-7xl w-full">

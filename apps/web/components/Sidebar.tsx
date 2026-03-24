@@ -1,100 +1,83 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useEntitlements } from "@/hooks/useEntitlements";
-import type { FeatureKey } from "@/lib/config/plans";
+import { useModuleContext, resolvePinnedIds } from "@/hooks/useModuleContext";
+import {
+  MODULE_CATALOG,
+  SIDEBAR_SECTIONS,
+  getModuleById,
+  type AppModule,
+} from "@/lib/config/modules";
 import { planAtLeast, PLANS } from "@/lib/config/plans";
+import type { FeatureKey } from "@/lib/config/plans";
 
-interface NavItem {
-  href: string;
-  label: string;
-  icon: string;
-  section: string | null;
-  requiredFeature?: FeatureKey;
-  minPlan?: string;
-  /** When true, the item is completely hidden for users below minPlan instead of shown locked. */
-  hideWhenLocked?: boolean;
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function isModuleLocked(m: AppModule, ent: ReturnType<typeof useEntitlements>): boolean {
+  if (ent.loading) return false;
+  if (m.requiredFeature) return !ent.features[m.requiredFeature as FeatureKey];
+  if (m.minPlan)         return !planAtLeast(ent.plan, m.minPlan);
+  return false;
 }
 
-const navItems: NavItem[] = [
-  // ── Principal ──
-  { href: "/dashboard", label: "Dashboard", icon: "📊", section: "Principal" },
-  { href: "/dashboard/analytics", label: "Analytics", icon: "📈", section: null },
-
-  // ── Atendimento ──
-  { href: "/dashboard/conversations", label: "Conversas", icon: "💬", section: "Atendimento" },
-  { href: "/dashboard/contacts", label: "Contatos", icon: "👥", section: null },
-  { href: "/dashboard/sales", label: "Vendas", icon: "💰", section: null, requiredFeature: "advancedCRM", minPlan: "pro" },
-  { href: "/dashboard/appointments", label: "Agenda", icon: "📅", section: null, minPlan: "standard" },
-  { href: "/dashboard/orders", label: "Pedidos", icon: "🛍️", section: null, minPlan: "standard" },
-  { href: "/dashboard/payments", label: "Cobranças", icon: "💸", section: null, minPlan: "standard" },
-  { href: "/dashboard/vendas", label: "Catálogo & Vendas IA", icon: "🏪", section: null, minPlan: "standard" },
-  { href: "/dashboard/services", label: "Serviços", icon: "✂️", section: null, minPlan: "standard" },
-  { href: "/dashboard/professionals", label: "Profissionais", icon: "👤", section: null, minPlan: "standard" },
-
-  { href: "/dashboard/avisos", label: "Avisos & Escalação", icon: "🔔", section: null },
-
-  // ── Canais & IA ──
-  { href: "/dashboard/integrations", label: "Canais", icon: "📡", section: "Canais & IA" },
-  { href: "/dashboard/instagram-comments", label: "Comentários Instagram", icon: "💬", section: null, requiredFeature: "instagramComments", minPlan: "standard" },
-  { href: "/dashboard/bots", label: "Bots & IA", icon: "🤖", section: null },
-  { href: "/dashboard/templates", label: "Templates WhatsApp", icon: "📋", section: null, requiredFeature: "whatsapp", minPlan: "standard" },
-  { href: "/dashboard/broadcasts", label: "Envios em Lote", icon: "📨", section: null, requiredFeature: "whatsapp", minPlan: "standard" },
-  { href: "/dashboard/insights", label: "Insights de IA", icon: "🔍", section: null, requiredFeature: "aiCopilot", minPlan: "pro" },
-
-  // ── Crescimento ──
-  { href: "/dashboard/setup", label: "Setup & Ativação", icon: "✅", section: "Crescimento" },
-  { href: "/dashboard/activation", label: "Métricas", icon: "🚀", section: null },
-  { href: "/dashboard/attribution", label: "Atribuição", icon: "🎯", section: null, requiredFeature: "advancedAnalytics", minPlan: "pro" },
-  { href: "/dashboard/referral", label: "Indicações", icon: "🎁", section: null },
-  { href: "/dashboard/go-live", label: "Go-Live", icon: "✅", section: null },
-
-  // ── Fiscal ──
-  { href: "/dashboard/fiscal", label: "Fiscal", icon: "🧾", section: "Fiscal", minPlan: "pro", hideWhenLocked: true },
-  { href: "/dashboard/fiscal/nova", label: "Nova emissão", icon: "📝", section: null, minPlan: "pro", hideWhenLocked: true },
-  { href: "/dashboard/fiscal/historico", label: "Histórico", icon: "📋", section: null, minPlan: "pro", hideWhenLocked: true },
-  { href: "/dashboard/fiscal/whatsapp", label: "Emissão por WhatsApp", icon: "📱", section: null, minPlan: "pro", hideWhenLocked: true },
-
-  // ── Administração ──
-  { href: "/dashboard/agency", label: "Agência", icon: "🏢", section: "Administração", requiredFeature: "agencyReseller", minPlan: "business" },
-  { href: "/dashboard/billing", label: "Assinatura", icon: "💳", section: null },
-  { href: "/dashboard/settings", label: "Configurações", icon: "⚙️", section: null },
-];
+// ─── Sidebar ──────────────────────────────────────────────────────────────────
 
 export default function Sidebar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const { isSuperAdmin } = useAuth();
   const ent = useEntitlements();
+  const { flags, pinnedModules: savedPins } = useModuleContext();
+
+  useEffect(() => { setIsOpen(false); }, [pathname]);
 
   useEffect(() => {
-    setIsOpen(false);
-  }, [pathname]);
-
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setIsOpen(false);
-    };
-    const handleToggle = () => setIsOpen((prev) => !prev);
-    window.addEventListener("keydown", handleEsc);
-    window.addEventListener("toggle-sidebar", handleToggle);
+    const onEsc    = (e: KeyboardEvent) => { if (e.key === "Escape") setIsOpen(false); };
+    const onToggle = () => setIsOpen(p => !p);
+    window.addEventListener("keydown", onEsc);
+    window.addEventListener("toggle-sidebar", onToggle);
     return () => {
-      window.removeEventListener("keydown", handleEsc);
-      window.removeEventListener("toggle-sidebar", handleToggle);
+      window.removeEventListener("keydown", onEsc);
+      window.removeEventListener("toggle-sidebar", onToggle);
     };
   }, []);
+
+  // Superadmin vê tudo (sem filtro de plano)
+  const effectivePlan = isSuperAdmin ? 'business' : (ent.plan ?? 'free');
+  const pinnedIds = resolvePinnedIds(savedPins, effectivePlan);
+
+  // Resolve módulos visíveis com estado: locked / inMaintenance
+  const resolved = pinnedIds
+    .map(id => getModuleById(id))
+    .filter((m): m is AppModule => !!m)
+    .map(m => {
+      const locked = isSuperAdmin ? false : isModuleLocked(m, ent);
+      const flagState = flags[m.id];
+      const inMaintenance = !!flagState && !flagState.enabled;
+      return { ...m, locked, inMaintenance, maintenanceNote: flagState?.maintenanceNote ?? null };
+    })
+    .filter(m => !(m.locked && m.hideWhenLocked));
+
+  // Grupos por seção
+  const groups: { label: string | null; items: typeof resolved }[] = [];
+  for (const sec of SIDEBAR_SECTIONS) {
+    const items = resolved.filter(m => sec.moduleIds.includes(m.id));
+    if (items.length > 0) groups.push({ label: sec.label, items });
+  }
+  // Módulos sem seção conhecida (fallback)
+  const knownIds = new Set(SIDEBAR_SECTIONS.flatMap(s => s.moduleIds));
+  const extras = resolved.filter(m => !knownIds.has(m.id));
+  if (extras.length > 0) groups.push({ label: null, items: extras });
 
   const navContent = (
     <>
       {/* Logo */}
       <div className="h-20 flex items-center px-4 border-b border-white/[0.06] shrink-0">
-        <div className="flex items-center">
-          <img src="/logo.webp" alt="Variaty Secretary" className="h-16 w-auto" />
-        </div>
+        <img src="/logo.webp" alt="Variaty Secretary" className="h-16 w-auto" />
         <button
           onClick={() => setIsOpen(false)}
           className="ml-auto lg:hidden text-gray-500 hover:text-white p-1 rounded-lg hover:bg-white/5 transition-all"
@@ -106,76 +89,92 @@ export default function Sidebar() {
         </button>
       </div>
 
-      {/* Navigation */}
+      {/* Navegação */}
       <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-0.5">
-        {navItems.map((item) => {
-          // Determine if this nav item is locked for the current plan
-          let isLocked = false;
-          let lockPlanLabel = '';
+        {groups.map(({ label, items }, gi) => (
+          <div key={gi}>
+            {label && (
+              <div className="pt-5 pb-2 px-3">
+                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.15em]">{label}</p>
+              </div>
+            )}
+            {items.map(m => {
+              const isActive = pathname === m.href || (m.href !== '/dashboard' && pathname.startsWith(m.href + '/'));
+              const lockLabel = m.locked && m.minPlan ? (PLANS[m.minPlan]?.name ?? m.minPlan) : '';
 
-          if (!ent.loading) {
-            if (item.requiredFeature) {
-              isLocked = !ent.features[item.requiredFeature];
-            } else if (item.minPlan) {
-              isLocked = !planAtLeast(ent.plan, item.minPlan);
-            }
-            // Agency: also accessible for superadmin
-            if (item.href === '/dashboard/agency' && isSuperAdmin) {
-              isLocked = false;
-            }
-            if (isLocked && item.minPlan) {
-              lockPlanLabel = PLANS[item.minPlan]?.name ?? item.minPlan;
-            }
-          }
+              // Em manutenção
+              if (m.inMaintenance) {
+                return (
+                  <Link
+                    key={m.id}
+                    href="/dashboard/apps"
+                    title={m.maintenanceNote ?? 'Em manutenção'}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-amber-400/70 hover:text-amber-300 hover:bg-white/[0.03] transition-all"
+                  >
+                    <span className="text-base opacity-60">{m.icon}</span>
+                    <span>{m.label}</span>
+                    <span className="ml-auto text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded font-bold">🔧</span>
+                  </Link>
+                );
+              }
 
-          // Completely hide items that have hideWhenLocked=true when user lacks access
-          if (isLocked && item.hideWhenLocked) return null;
+              // Bloqueado por plano (só chega aqui se hideWhenLocked=false)
+              if (m.locked) {
+                return (
+                  <Link
+                    key={m.id}
+                    href="/dashboard/billing"
+                    title={`Disponível a partir do plano ${lockLabel}`}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 opacity-50 hover:opacity-70 hover:bg-white/[0.03] transition-all"
+                  >
+                    <span className="text-base">{m.icon}</span>
+                    <span>{m.label}</span>
+                    <span className="ml-auto flex items-center gap-1.5 text-[10px] text-gray-500">
+                      <span>🔒</span>
+                      {lockLabel && <span className="bg-white/10 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase">{lockLabel}</span>}
+                    </span>
+                  </Link>
+                );
+              }
 
-          const isActive = pathname === item.href;
-          return (
-            <div key={item.href}>
-              {item.section && (
-                <div className="pt-5 pb-2 px-3">
-                  <p className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.15em]">
-                    {item.section}
-                  </p>
-                </div>
-              )}
-              {isLocked ? (
+              // Normal
+              return (
                 <Link
-                  href="/dashboard/billing"
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 text-gray-600 opacity-50 hover:opacity-70 hover:bg-white/[0.03]"
-                  title={`Disponível a partir do plano ${lockPlanLabel}`}
-                >
-                  <span className="text-base">{item.icon}</span>
-                  <span>{item.label}</span>
-                  <span className="ml-auto flex items-center gap-1.5 text-[10px] text-gray-500">
-                    <span>🔒</span>
-                    {lockPlanLabel && <span className="bg-white/10 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase">{lockPlanLabel}</span>}
-                  </span>
-                </Link>
-              ) : (
-                <Link
-                  href={item.href}
+                  key={m.id}
+                  href={m.href}
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
                     isActive
                       ? "bg-gradient-to-r from-[#4f46e5]/20 to-[#7c3aed]/10 text-white border border-indigo-500/20 shadow-sm shadow-indigo-500/10"
                       : "text-gray-400 hover:text-white hover:bg-white/[0.05]"
                   }`}
                 >
-                  <span className={`text-base ${isActive ? "scale-110" : ""} transition-transform`}>{item.icon}</span>
-                  <span>{item.label}</span>
-                  {isActive && (
-                    <div className="ml-auto w-1.5 h-1.5 rounded-full bg-indigo-400 shadow-sm shadow-indigo-400"></div>
-                  )}
+                  <span className={`text-base ${isActive ? "scale-110" : ""} transition-transform`}>{m.icon}</span>
+                  <span>{m.label}</span>
+                  {isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-indigo-400 shadow-sm shadow-indigo-400" />}
                 </Link>
-              )}
-            </div>
-          );
-        })}
+              );
+            })}
+          </div>
+        ))}
+
+        {/* Todos os aplicativos — sempre visível */}
+        <div className="pt-4 pb-1 px-3">
+          <div className="border-t border-white/[0.06]" />
+        </div>
+        <Link
+          href="/dashboard/apps"
+          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
+            pathname === '/dashboard/apps'
+              ? "bg-gradient-to-r from-[#4f46e5]/20 to-[#7c3aed]/10 text-white border border-indigo-500/20"
+              : "text-gray-500 hover:text-white hover:bg-white/[0.05]"
+          }`}
+        >
+          <span className="text-base">🗂️</span>
+          <span>Todos os aplicativos</span>
+        </Link>
       </nav>
 
-      {/* Bottom section */}
+      {/* Rodapé */}
       <div className="p-4 border-t border-white/[0.06] flex flex-col gap-3">
         {isSuperAdmin ? (
           <div className="bg-gradient-to-r from-rose-500/20 to-orange-500/10 rounded-xl p-4 border border-rose-500/20">
@@ -189,17 +188,13 @@ export default function Sidebar() {
               </Link>
             </div>
             <div className="flex flex-col gap-1 mt-1">
-              <Link href="/dashboard/admin/diagnostics" className="inline-flex items-center gap-1 text-[11px] text-rose-400 hover:text-rose-300 font-medium transition-colors">🔍 Diagnóstico →</Link>
-              <Link href="/dashboard/admin/retention" className="inline-flex items-center gap-1 text-[11px] text-rose-400 hover:text-rose-300 font-medium transition-colors">📊 Retenção →</Link>
-              <Link href="/dashboard/admin/feedback" className="inline-flex items-center gap-1 text-[11px] text-rose-400 hover:text-rose-300 font-medium transition-colors">💬 Feedback →</Link>
-              <Link href="/dashboard/demo" className="inline-flex items-center gap-1 text-[11px] text-rose-400 hover:text-rose-300 font-medium transition-colors">🎭 Demo →</Link>
-              <Link href="/dashboard/admin/go-live" className="inline-flex items-center gap-1 text-[11px] text-rose-400 hover:text-rose-300 font-medium transition-colors">✅ Go-Live →</Link>
-              <Link href="/dashboard/admin/attribution" className="inline-flex items-center gap-1 text-[11px] text-rose-400 hover:text-rose-300 font-medium transition-colors">📡 Atribuição →</Link>
-              <Link href="/dashboard/admin/churn" className="inline-flex items-center gap-1 text-[11px] text-rose-400 hover:text-rose-300 font-medium transition-colors">🚨 Churn →</Link>
-              <Link href="/dashboard/admin/expansion" className="inline-flex items-center gap-1 text-[11px] text-rose-400 hover:text-rose-300 font-medium transition-colors">💰 Expansão →</Link>
-              <Link href="/dashboard/admin/copilot-logs" className="inline-flex items-center gap-1 text-[11px] text-rose-400 hover:text-rose-300 font-medium transition-colors">🤖 Copiloto →</Link>
-              <Link href="/dashboard/admin/referral" className="inline-flex items-center gap-1 text-[11px] text-rose-400 hover:text-rose-300 font-medium transition-colors">🎁 Referral →</Link>
-              <Link href="/dashboard/admin/ops" className="inline-flex items-center gap-1 text-[11px] text-rose-400 hover:text-rose-300 font-medium transition-colors">🛡️ Ops →</Link>
+              <Link href="/dashboard/admin/diagnostics"    className="inline-flex items-center gap-1 text-[11px] text-rose-400 hover:text-rose-300 font-medium transition-colors">🔍 Diagnóstico →</Link>
+              <Link href="/dashboard/admin/retention"      className="inline-flex items-center gap-1 text-[11px] text-rose-400 hover:text-rose-300 font-medium transition-colors">📊 Retenção →</Link>
+              <Link href="/dashboard/admin/feedback"       className="inline-flex items-center gap-1 text-[11px] text-rose-400 hover:text-rose-300 font-medium transition-colors">💬 Feedback →</Link>
+              <Link href="/dashboard/demo"                 className="inline-flex items-center gap-1 text-[11px] text-rose-400 hover:text-rose-300 font-medium transition-colors">🎭 Demo →</Link>
+              <Link href="/superadmin/feature-flags"       className="inline-flex items-center gap-1 text-[11px] text-rose-400 hover:text-rose-300 font-medium transition-colors">🔧 Feature Flags →</Link>
+              <Link href="/dashboard/admin/churn"          className="inline-flex items-center gap-1 text-[11px] text-rose-400 hover:text-rose-300 font-medium transition-colors">🚨 Churn →</Link>
+              <Link href="/dashboard/admin/ops"            className="inline-flex items-center gap-1 text-[11px] text-rose-400 hover:text-rose-300 font-medium transition-colors">🛡️ Ops →</Link>
             </div>
           </div>
         ) : (
@@ -221,12 +216,10 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* Desktop sidebar */}
       <aside className="hidden lg:flex w-[260px] bg-[#0c1120] flex-col h-full shrink-0 border-r border-white/[0.06]">
         {navContent}
       </aside>
 
-      {/* Mobile overlay */}
       {isOpen && (
         <div
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
@@ -234,21 +227,11 @@ export default function Sidebar() {
         />
       )}
 
-      {/* Mobile sidebar */}
-      <aside
-        className={`fixed inset-y-0 left-0 z-50 w-[280px] bg-[#0c1120] flex flex-col transition-transform duration-300 ease-in-out lg:hidden ${
-          isOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
+      <aside className={`fixed inset-y-0 left-0 z-50 w-[280px] bg-[#0c1120] flex flex-col transition-transform duration-300 ease-in-out lg:hidden ${isOpen ? "translate-x-0" : "-translate-x-full"}`}>
         {navContent}
       </aside>
 
-      <button
-        id="sidebar-toggle"
-        onClick={() => setIsOpen(true)}
-        className="hidden"
-        aria-label="Abrir menu"
-      />
+      <button id="sidebar-toggle" onClick={() => setIsOpen(true)} className="hidden" aria-label="Abrir menu" />
     </>
   );
 }

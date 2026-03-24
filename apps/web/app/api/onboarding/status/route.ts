@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthTenant } from '@/lib/getAuthTenant';
 import { createSystemHealthCheck } from '@/lib/onboarding/healthCheck';
+import { getOnboardingBlueprint } from '@/lib/config/onboardingBlueprint';
 
 export async function GET(request: Request) {
   try {
@@ -10,24 +11,25 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
-    const tenant = await prisma.tenant.findUnique({
-      where: { id: auth.tenantId },
-      select: {
-        setupStep: true,
-        setupCompleted: true,
-        name: true,
-        businessType: true,
-      }
-    });
+    const [tenant, subscription] = await Promise.all([
+      prisma.tenant.findUnique({
+        where: { id: auth.tenantId },
+        select: { setupStep: true, setupCompleted: true, name: true, businessType: true },
+      }),
+      prisma.subscription.findUnique({
+        where: { tenantId: auth.tenantId },
+        select: { plan: true },
+      }),
+    ]);
 
     if (!tenant) {
       return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
     }
 
-    // Run the full system health check
     const health = await createSystemHealthCheck(auth.tenantId);
+    const plan = subscription?.plan ?? 'free';
 
-    // Map to the checklist format used by the frontend
+    // Legado — mantido para compatibilidade com SetupChecklist existente
     const checklist = {
       companyConfigured: !!(tenant.name && tenant.businessType),
       whatsappConnected: health.whatsapp_connected,
@@ -37,11 +39,17 @@ export async function GET(request: Request) {
       firstTestDone: health.test_message_received,
     };
 
+    // Blueprint contextual por plano + businessType
+    const blueprint = getOnboardingBlueprint(plan, tenant.businessType, health);
+
     return NextResponse.json({
       setupStep: tenant.setupStep,
       setupCompleted: tenant.setupCompleted,
+      plan,
+      businessType: tenant.businessType,
       checklist,
-      health, // raw health check result
+      blueprint,
+      health,
     });
   } catch (error: any) {
     console.error('Error getting onboarding status:', error);

@@ -101,6 +101,8 @@ model Tenant {
   payments                  Payment[]
   // HANDOFF1 — operator alert / escalation config
   handoffConfig             HandoffConfig?
+  // MOD1 — workspace module preferences (array of module IDs)
+  pinnedModules             String[]                  @default([])
 }
 
 // ─── Contacts Module (Phase 1) ────────────────────────────────────────────────
@@ -1463,4 +1465,18 @@ model PaymentEvent {
   @@index([paymentId])
   @@index([tenantId, eventType])
   @@map("payment_events")
+}
+
+// ─── MOD1 — Feature Flags (superadmin kill switch global) ────────────────────
+// Controle global de módulos/funções pelo superadmin.
+// Ausência de registro = enabled por padrão.
+model FeatureFlag {
+  id              String   @id @default(cuid())
+  moduleId        String   @unique  // corresponde a AppModule.id no catálogo
+  enabled         Boolean  @default(true)
+  maintenanceNote String?           // mensagem exibida no banner de manutenção
+  updatedAt       DateTime @updatedAt
+  updatedBy       String?           // userId do superadmin que fez a alteração
+
+  @@map("feature_flags")
 }

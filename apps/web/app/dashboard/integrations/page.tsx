@@ -56,6 +56,9 @@ function IntegrationsContent() {
   const [embeddedLoading, setEmbeddedLoading] = useState(false);
   const [sdkReady, setSdkReady] = useState(false);
   const [disconnecting, setDisconnecting] = useState<string | null>(null);
+  const [igSelectPending, setIgSelectPending] = useState(false);
+  const [igPages, setIgPages] = useState<Array<{ pageId: string; pageName: string; igAccountId: string; username: string | null }>>([]);
+  const [igSelecting, setIgSelecting] = useState(false);
   const searchParams = useSearchParams();
   const appId = process.env.NEXT_PUBLIC_FB_APP_ID;
 
@@ -89,6 +92,13 @@ function IntegrationsContent() {
       const extra = searchParams.get("phone") || searchParams.get("username") || searchParams.get("page") || "";
       setMessage(`✅ ${channel} conectado!${extra ? ` (${extra})` : ""}`);
       window.history.replaceState({}, "", "/dashboard/integrations");
+    } else if (searchParams.get("instagram_select") === "1") {
+      window.history.replaceState({}, "", "/dashboard/integrations");
+      setIgSelectPending(true);
+      fetch("/api/integrations/instagram/pages", { headers: authHeaders() })
+        .then((r) => r.json())
+        .then((data) => setIgPages(data.pages || []))
+        .catch(() => {});
     } else if (error) {
       const msgs: Record<string, string> = {
         oauth_cancelled: "Autorização cancelada.",
@@ -227,6 +237,30 @@ function IntegrationsContent() {
       }
     } catch { setMessage("❌ Erro ao desconectar."); }
     finally { setDisconnecting(null); }
+  };
+
+  const handleIgPageSelect = async (pageId: string) => {
+    setIgSelecting(true);
+    try {
+      const res = await fetch("/api/integrations/instagram/select", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ pageId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMessage(`✅ Instagram conectado! (${data.username || data.pageName || ""})`);
+        setIgSelectPending(false);
+        setIgPages([]);
+        fetchAll();
+      } else {
+        setMessage("❌ " + (data.error || "Erro ao conectar"));
+      }
+    } catch (err: any) {
+      setMessage("❌ " + err.message);
+    } finally {
+      setIgSelecting(false);
+    }
   };
 
   const handleConnectInstagram = async () => {
@@ -441,7 +475,38 @@ function IntegrationsContent() {
               </div>
             </div>
             <div className="p-6">
-              {igStatus?.connected ? (
+              {igSelectPending ? (
+                <div className="space-y-3">
+                  <p className="text-sm font-semibold text-gray-700">Escolha qual página/conta Instagram conectar:</p>
+                  {igPages.length === 0 ? (
+                    <div className="flex items-center gap-2 text-sm text-gray-500 py-2">
+                      <div className="w-4 h-4 border-2 border-gray-300 border-t-pink-500 rounded-full animate-spin" />
+                      Carregando páginas...
+                    </div>
+                  ) : (
+                    igPages.map((pg) => (
+                      <div key={pg.pageId} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
+                        <div>
+                          <p className="font-semibold text-gray-900 text-sm">{pg.pageName}</p>
+                          {pg.username && <p className="text-xs text-gray-500 mt-0.5">@{pg.username}</p>}
+                          <p className="text-[10px] text-gray-400 font-mono mt-0.5">{pg.igAccountId}</p>
+                        </div>
+                        <button
+                          onClick={() => handleIgPageSelect(pg.pageId)}
+                          disabled={igSelecting}
+                          className="ml-4 px-4 py-2 text-sm font-semibold text-white rounded-xl disabled:opacity-50 shrink-0"
+                          style={{ background: "linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)" }}
+                        >
+                          {igSelecting ? "Conectando..." : "Conectar"}
+                        </button>
+                      </div>
+                    ))
+                  )}
+                  <button onClick={() => { setIgSelectPending(false); setIgPages([]); }} className="text-xs text-gray-400 hover:text-gray-600 mt-1">
+                    Cancelar
+                  </button>
+                </div>
+              ) : igStatus?.connected ? (
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {igStatus.username && (

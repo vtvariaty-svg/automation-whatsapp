@@ -1,14 +1,33 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { encrypt } from '@/lib/utils/crypto';
-import { addChannel } from '@/lib/channels/featureFlags';
-import { audit } from '@/lib/audit';
+import { persistInstagramConnection } from '@/lib/instagram/persist';
 
 // Instagram API with Facebook Login callback.
 // Replaces the previous Instagram Login flow (api.instagram.com / graph.instagram.com).
 // Uses Graph API to resolve the Facebook Page → Instagram Business Account link.
+//
+// Flow:
+//   1 candidate  → auto-connect
+//   >1 candidates → store pending_selection, redirect to ?instagram_select=1
+//   0 candidates  → redirect with diagnostic error
 
 const GRAPH = 'https://graph.facebook.com/v22.0';
+
+// Probe a single Facebook Page for its linked Instagram Business Account.
+// The batch /me/accounts call sometimes omits instagram_business_account even when
+// the link exists — an individual probe is significantly more reliable.
+async function probeIgAccount(pageId: string, pageToken: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${GRAPH}/${pageId}?fields=instagram_business_account&access_token=${pageToken}`);
+    const data = await res.json();
+    return data.instagram_business_account?.id || null;
+  } catch {
+    return null;
+  }
+}
+
+type Candidate = { pageId: string; pageName: string; igAccountId: string; username: string | null };
 
 export async function GET(req: Request) {
   let base = process.env.NEXT_PUBLIC_BASE_URL || 'https://automation-whatsapp.onrender.com';
@@ -30,7 +49,6 @@ export async function GET(req: Request) {
     return NextResponse.redirect(`${base}/dashboard/integrations?error=invalid_state`);
   }
 
-  // Same Facebook App credentials used by WhatsApp Embedded Signup and Facebook Messenger
   const appId = process.env.NEXT_PUBLIC_FB_APP_ID;
   const appSecret = process.env.FB_APP_SECRET;
   if (!appId || !appSecret) {
@@ -57,83 +75,77 @@ export async function GET(req: Request) {
     const llData = await llRes.json();
     const userToken: string = llData.access_token || tokenData.access_token;
 
-    // Step 3: List user's Facebook Pages and their linked Instagram Business Accounts
+    // Step 3: List user's Facebook Pages
     const pagesRes = await fetch(
       `${GRAPH}/me/accounts?fields=id,name,access_token,instagram_business_account&access_token=${userToken}`
     );
     const pagesData = await pagesRes.json();
+    const pages: any[] = pagesData.data || [];
 
-    // Find the first page that has a linked Instagram Business Account
-    const page = pagesData.data?.find((p: any) => p.instagram_business_account);
-    if (!page) {
-      console.error('[Instagram/FB callback] no page with Instagram Business Account:', pagesData);
-      return NextResponse.redirect(`${base}/dashboard/integrations?error=no_instagram_account`);
+    // Step 4: Build candidates list.
+    // The batch call may omit instagram_business_account even when a link exists.
+    // Probe each page without the field individually as a fallback (in parallel).
+    const candidatesMap = new Map<string, Candidate>();
+
+    await Promise.all(
+      pages.map(async (page) => {
+        let igAccountId: string | null = page.instagram_business_account?.id || null;
+        if (!igAccountId) igAccountId = await probeIgAccount(page.id, page.access_token);
+        if (!igAccountId) return;
+
+        let username: string | null = null;
+        try {
+          const igRes = await fetch(`${GRAPH}/${igAccountId}?fields=username&access_token=${page.access_token}`);
+          const igData = await igRes.json();
+          username = igData.username || null;
+        } catch {}
+
+        candidatesMap.set(page.id, { pageId: page.id, pageName: page.name, igAccountId, username });
+      })
+    );
+
+    const candidates = Array.from(candidatesMap.values());
+
+    if (candidates.length === 0) {
+      const detail = pages.length > 0 ? `found_${pages.length}_pages_no_ig` : 'no_pages_found';
+      console.error('[Instagram/FB callback] no eligible pages. Total pages:', pages.length, JSON.stringify(pagesData));
+      return NextResponse.redirect(`${base}/dashboard/integrations?error=no_instagram_account&detail=${detail}`);
     }
 
-    // Facebook Page ID — this is what the Instagram webhook sends in body.entry[0].id
-    const pageId: string = page.id;
-    const pageName: string = page.name;
-    const pageToken: string = page.access_token; // Page access token — used to send Instagram DMs
-    const igAccountId: string = page.instagram_business_account.id;
+    if (candidates.length === 1) {
+      // Single candidate — auto-connect (same behavior as before)
+      const { pageId, pageName, igAccountId, username } = candidates[0];
+      const pageToken: string = pages.find((p) => p.id === pageId)!.access_token;
+      await persistInstagramConnection({ tenantId, pageId, pageName, pageToken, igAccountId, username });
+      return NextResponse.redirect(
+        `${base}/dashboard/integrations?success=instagram&username=${username || pageName || ''}`
+      );
+    }
 
-    // Step 4: Fetch Instagram username (best-effort, for display only)
-    let username: string | null = null;
-    try {
-      const igRes = await fetch(`${GRAPH}/${igAccountId}?fields=username&access_token=${pageToken}`);
-      const igData = await igRes.json();
-      username = igData.username || null;
-    } catch {}
-
-    // Step 5: Subscribe the Facebook Page to Instagram webhook events (best-effort)
-    try {
-      await fetch(`${GRAPH}/${pageId}/subscribed_apps?subscribed_fields=messages,instagram_manage_messages`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${pageToken}` },
-      });
-    } catch {}
-
-    // Step 6: Persist
-    const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
-    if (!tenant) return NextResponse.redirect(`${base}/dashboard/integrations?error=tenant_not_found`);
-
-    await prisma.tenant.update({
-      where: { id: tenantId },
-      data: {
-        // Page access token — webhook uses this to send Instagram DMs
-        instagramToken: encrypt(pageToken),
-        // Instagram Business Account ID — for reference
-        instagramAccountId: igAccountId,
-        // IMPORTANT: instagramPageId must be the Facebook Page ID, not the IG Account ID.
-        // The webhook resolves tenants by instagramPageId, and body.entry[0].id is the Facebook Page ID.
-        instagramPageId: pageId,
-        enabledChannels: addChannel(tenant.enabledChannels, 'instagram'),
-      },
-    });
-
+    // Multiple candidates — store pending selection so the user can choose.
+    // When status='pending_selection':
+    //   accessToken = encrypt(userToken)       — re-fetch page tokens on confirmation
+    //   pageId      = JSON.stringify(Candidate[]) — list of options WITHOUT page tokens
     await prisma.instagramConnection.upsert({
       where: { tenantId },
       create: {
         tenantId,
-        pageId,       // Facebook Page ID — matches instagramPageId in tenant
-        accessToken: encrypt(pageToken),
-        igAccountId,
-        username,
-        status: 'connected',
+        status: 'pending_selection',
+        accessToken: encrypt(userToken),
+        pageId: JSON.stringify(candidates),
+        igAccountId: null,
+        username: null,
       },
       update: {
-        pageId,
-        accessToken: encrypt(pageToken),
-        igAccountId,
-        username,
-        status: 'connected',
+        status: 'pending_selection',
+        accessToken: encrypt(userToken),
+        pageId: JSON.stringify(candidates),
+        igAccountId: null,
+        username: null,
       },
     });
 
-    audit(tenantId, 'instagram.connect', { igAccountId, pageId, pageName, username });
-
-    return NextResponse.redirect(
-      `${base}/dashboard/integrations?success=instagram&username=${username || pageName || ''}`
-    );
+    return NextResponse.redirect(`${base}/dashboard/integrations?instagram_select=1`);
   } catch (e: any) {
     console.error('[Instagram/FB callback]', e.message);
     return NextResponse.redirect(`${base}/dashboard/integrations?error=server_error`);

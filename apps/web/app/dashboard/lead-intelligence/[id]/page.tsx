@@ -88,6 +88,9 @@ interface CampaignExecutionItem {
   respondedAt?: string | null;
   convertedAt?: string | null;
   outcomeUpdatedAt?: string | null;
+  outcomeSource?: string;
+  lastProviderEventType?: string | null;
+  lastProviderEventAt?: string | null;
 }
 
 interface CampaignExecution {
@@ -1713,7 +1716,17 @@ export default function SearchRunDetailPage() {
                         {selectedExecution.items.map(item => (
                           <div key={item.id} className="bg-white p-3 rounded-lg border border-gray-100 flex flex-col sm:flex-row justify-between sm:items-start gap-2 text-[11px]">
                             <div className="flex-1">
-                              <p className="font-bold text-gray-800">{item.leadCandidate?.companyName}</p>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="font-bold text-gray-800">{item.leadCandidate?.companyName}</p>
+                                {item.outcomeSource === 'provider_webhook' && (
+                                  <span 
+                                    className="text-[9px] bg-blue-100 text-blue-800 font-bold px-1.5 py-0.5 rounded-md border border-blue-200 cursor-help" 
+                                    title={`Último evento: ${item.lastProviderEventType} em ${item.lastProviderEventAt ? formatDate(item.lastProviderEventAt) : 'N/A'}`}
+                                  >
+                                    🤖 Atualizado por webhook
+                                  </span>
+                                )}
+                              </div>
                               {item.deliveredTo && <p className="text-gray-500 mt-0.5">Destino: {item.deliveredTo}</p>}
                               {item.reason && <p className="text-red-500 mt-0.5">Interrompido/Falha: {item.reason}</p>}
                               
@@ -1799,8 +1812,8 @@ export default function SearchRunDetailPage() {
           <div>
             <h2 className="text-sm font-bold text-gray-900">📊 Resultados e Conversões (Analytics)</h2>
             <p className="text-xs text-gray-500 mt-1 max-w-3xl">
-              Esta seção registra o resultado comercial após o envio. Opt-outs geram supressão automática no canal correspondente. 
-              <span className="text-indigo-700 font-semibold block mt-1">Ainda não existe captura automática por webhook nesta fase. Faça atualizações de 'Qualificação' ou 'Resposta' manualmente na lista de detalhes das execuções acima.</span>
+              Esta seção registra o resultado comercial após o envio. Eventos de email (Resend) podem atualizar entrega, abertura, bounce e complains automaticamente. Opt-outs e bounces geram supressão automática no canal. 
+              <span className="text-indigo-700 font-semibold block mt-1">O WhatsApp ainda não possui sync automático nesta etapa. Faça as atualizações de resposta ou conversão manualmente na lista de detalhes das execuções acima. O mesmo vale caso queira forçar uma conversão de email manulamente.</span>
             </p>
           </div>
 

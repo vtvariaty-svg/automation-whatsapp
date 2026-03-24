@@ -112,6 +112,9 @@ model Tenant {
   leadCampaignExecutions    LeadCampaignExecution[]
   leadCampaignExecutionItems LeadCampaignExecutionItem[]
   leadSuppressions        LeadSuppression[]
+  leadProviderEventLogs   LeadProviderEventLog[]
+  leadProspectingTemplates LeadProspectingTemplate[]
+  leadFollowUpLogs        LeadFollowUpLog[]
 }
 
 // ─── Contacts Module (Phase 1) ────────────────────────────────────────────────
@@ -321,8 +324,9 @@ model User {
   forcePasswordReset Boolean      @default(false)
   sessionVersion     Int          @default(1)
   createdAt          DateTime     @default(now())
-  tenant             Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  loginEvents        LoginEvent[]
+  tenant                  Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  loginEvents             LoginEvent[]
+  ownedLeadCandidates     LeadCandidate[]
 }
 
 model LoginEvent {
@@ -1552,8 +1556,15 @@ model LeadCandidate {
   outreachStatus String @default("not_ready") // not_ready | ready_email | ready_whatsapp | ready_multichannel | blocked
   outreachBlockReason String?
   lastReadinessCheckedAt DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  // Pipeline fields (LEAD3)
+  pipelineStage  String   @default("new") // new | contacted | interested | proposal_sent | negotiating | won | lost
+  ownerUserId    String?
+  priority       String   @default("normal") // low | normal | high
+  nextActionAt   DateTime?
+  lastContactAt  DateTime?
+  internalNotes  String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   tenant             Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   searchRun          LeadSearchRun           @relation(fields: [searchRunId], references: [id], onDelete: Cascade)
@@ -1562,9 +1573,12 @@ model LeadCandidate {
   campaignDrafts     LeadCampaignDraft[]
   executionItems     LeadCampaignExecutionItem[]
   suppressions       LeadSuppression[]
+  followUpLogs       LeadFollowUpLog[]
+  owner              User?                   @relation(fields: [ownerUserId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, searchRunId])
   @@index([tenantId, status])
+  @@index([tenantId, pipelineStage])
   @@map("lead_candidates")
 }
 
@@ -1690,11 +1704,15 @@ model LeadCampaignExecutionItem {
   respondedAt     DateTime?
   convertedAt     DateTime?
   outcomeUpdatedAt DateTime?
+  outcomeSource   String   @default("manual") // manual | provider_webhook
+  lastProviderEventType String?
+  lastProviderEventAt   DateTime?
 
   tenant        Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   execution     LeadCampaignExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
   draft         LeadCampaignDraft     @relation(fields: [draftId], references: [id], onDelete: Cascade)
   leadCandidate LeadCandidate         @relation(fields: [leadCandidateId], references: [id], onDelete: Cascade)
+  providerEventLogs LeadProviderEventLog[]
 
   @@index([tenantId, executionId])
   @@index([tenantId, status])
@@ -1720,5 +1738,59 @@ model LeadSuppression {
   @@index([tenantId, channel, active])
   @@index([leadCandidateId, active])
   @@map("lead_suppressions")
+}
+
+model LeadProviderEventLog {
+  id                String   @id @default(uuid())
+  tenantId          String?
+  executionItemId   String?
+  provider          String   // resend
+  channel           String   // email
+  externalEventId   String
+  providerMessageId String?
+  eventType         String
+  processingStatus  String   @default("pending") // pending | processed | ignored_duplicate | ignored_unmatched | failed
+  errorMessage      String?
+  payload           Json
+  receivedAt        DateTime @default(now())
+  processedAt       DateTime?
+
+  tenant        Tenant?                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  executionItem LeadCampaignExecutionItem? @relation(fields: [executionItemId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, externalEventId])
+  @@index([tenantId, receivedAt])
+  @@index([provider, channel])
+  @@index([executionItemId, receivedAt])
+  @@map("lead_provider_event_logs")
+}
+
+model LeadProspectingTemplate {
+  id                      String   @id @default(uuid())
+  tenantId                String
+  name                    String
+  niche                   String
+  city                    String?
+  state                   String?
+  radiusKm                Int?
+  maxResults              Int      @default(50)
+  minTicket               Float?
+  minRating               Float?
+  minReviews              Int?
+  requiresWebsite         Boolean  @default(false)
+  requiresCommercialPhone Boolean  @default(false)
+  localB2BOnly            Boolean  @default(false)
+  preferredChannel        String?  // email | whatsapp | multichannel | null
+  notes                   String?
+  active                  Boolean  @default(true)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, active])
+  @@index([tenantId, niche])
+  @@map("lead_prospecting_templates")
 }
 

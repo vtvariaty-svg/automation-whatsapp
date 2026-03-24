@@ -18,6 +18,17 @@ interface SearchRun {
   _count: { candidates: number };
 }
 
+interface ProspectingTemplate {
+  id: string;
+  name: string;
+  niche: string;
+  city: string | null;
+  state: string | null;
+  preferredChannel: string | null;
+  active: boolean;
+  createdAt: string;
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getAuthToken(): string {
@@ -88,7 +99,125 @@ export default function LeadIntelligencePage() {
     }
   }, []);
 
-  useEffect(() => { loadRuns(); }, [loadRuns]);
+  const [templates, setTemplates] = useState<ProspectingTemplate[]>([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(true);
+
+  const loadTemplates = useCallback(async () => {
+    setLoadingTemplates(true);
+    try {
+      const res = await fetch('/api/lead-intelligence/templates?active=true', {
+        headers: { Authorization: `Bearer ${getAuthToken()}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setTemplates(data.templates ?? []);
+      }
+    } finally {
+      setLoadingTemplates(false);
+    }
+  }, []);
+
+  useEffect(() => { loadRuns(); loadTemplates(); }, [loadRuns, loadTemplates]);
+
+  // ── Template Actions ─────────────────────────────────────────────────────
+
+  const [usingTemplateId, setUsingTemplateId] = useState<string | null>(null);
+  
+  async function handleUseTemplate(id: string) {
+    setUsingTemplateId(id);
+    try {
+      const res = await fetch(`/api/lead-intelligence/templates/${id}`, {
+        headers: { Authorization: `Bearer ${getAuthToken()}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const t = data.template;
+        setForm({
+          niche: t.niche || '',
+          city: t.city || '',
+          state: t.state || '',
+          radiusKm: t.radiusKm ? String(t.radiusKm) : '',
+          maxResults: t.maxResults ? String(t.maxResults) : '50',
+          minTicket: t.minTicket ? String(t.minTicket) : '',
+          minRating: t.minRating ? String(t.minRating) : '',
+          minReviews: t.minReviews ? String(t.minReviews) : '',
+          requiresWebsite: t.requiresWebsite ? 'sim' : 'nao',
+          requiresCommercialPhone: t.requiresCommercialPhone ? 'sim' : 'nao',
+          localB2BOnly: t.localB2BOnly ? 'sim' : 'nao',
+        });
+        setFormOpen(true);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    } finally {
+      setUsingTemplateId(null);
+    }
+  }
+
+  const [cloningId, setCloningId] = useState<string | null>(null);
+
+  async function handleCloneRun(id: string, e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setCloningId(id);
+    try {
+      const res = await fetch(`/api/lead-intelligence/search-runs/${id}/clone`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${getAuthToken()}` }
+      });
+      if (res.ok) {
+        await loadRuns();
+      }
+    } finally {
+      setCloningId(null);
+    }
+  }
+
+  const [templateName, setTemplateName] = useState('');
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [templateMessage, setTemplateMessage] = useState<{type: 'error' | 'success', text: string} | null>(null);
+
+  function buildPayload(f: typeof EMPTY_FORM) {
+    return {
+      niche: f.niche.trim(),
+      city:  f.city.trim()  || undefined,
+      state: f.state.trim() || undefined,
+      radiusKm:   f.radiusKm  ? Number(f.radiusKm)  : undefined,
+      maxResults: f.maxResults ? Number(f.maxResults) : 50,
+      minTicket:  f.minTicket  ? Number(f.minTicket)  : undefined,
+      minRating:  f.minRating  ? Number(f.minRating)  : undefined,
+      minReviews: f.minReviews ? Number(f.minReviews) : undefined,
+      requiresWebsite:         f.requiresWebsite         === 'sim',
+      requiresCommercialPhone: f.requiresCommercialPhone === 'sim',
+      localB2BOnly:            f.localB2BOnly            === 'sim',
+    };
+  }
+
+  async function handleSaveTemplate() {
+    setTemplateMessage(null);
+    if (!templateName.trim() || !form.niche.trim()) {
+      setTemplateMessage({ type: 'error', text: 'Nome do template e Nicho são obrigatórios' });
+      return;
+    }
+    setSavingTemplate(true);
+    try {
+      const body = { ...buildPayload(form), name: templateName.trim() };
+      const res = await fetch('/api/lead-intelligence/templates', {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` },
+         body: JSON.stringify(body)
+      });
+      if (res.ok) {
+        setTemplateMessage({ type: 'success', text: 'Template salvo!' });
+        setTemplateName('');
+        await loadTemplates();
+      } else {
+        const data = await res.json();
+        setTemplateMessage({ type: 'error', text: data.error || 'Erro ao salvar' });
+      }
+    } finally {
+      setSavingTemplate(false);
+    }
+  }
 
   // ── Form helpers ─────────────────────────────────────────────────────────
 
@@ -107,19 +236,7 @@ export default function LeadIntelligencePage() {
       return;
     }
 
-    const body: Record<string, unknown> = {
-      niche: form.niche.trim(),
-      city:  form.city.trim()  || undefined,
-      state: form.state.trim() || undefined,
-      radiusKm:   form.radiusKm  ? Number(form.radiusKm)  : undefined,
-      maxResults: form.maxResults ? Number(form.maxResults) : 50,
-      minTicket:  form.minTicket  ? Number(form.minTicket)  : undefined,
-      minRating:  form.minRating  ? Number(form.minRating)  : undefined,
-      minReviews: form.minReviews ? Number(form.minReviews) : undefined,
-      requiresWebsite:         form.requiresWebsite         === 'sim',
-      requiresCommercialPhone: form.requiresCommercialPhone === 'sim',
-      localB2BOnly:            form.localB2BOnly            === 'sim',
-    };
+    const body: Record<string, unknown> = buildPayload(form);
 
     setSubmitting(true);
     try {
@@ -169,6 +286,96 @@ export default function LeadIntelligencePage() {
         >
           {formOpen ? '✕ Cancelar' : '+ Nova busca'}
         </button>
+      </div>
+
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-xs text-blue-800 flex items-start gap-3">
+        <span className="text-xl">ℹ️</span>
+        <div className="flex-1">
+          <p className="font-bold mb-1">Como funcionam os Templates e Clones?</p>
+          <p>
+            • <strong>Templates</strong> servem para guardar critérios de busca e parâmetros de filtro frequentes (ex: 'Estética SP Alto Padrão'), facilitando a repetição do fluxo sem preencher o formulário do zero.<br/>
+            • A ação de <strong>Clonar busca</strong> gera um novo rascunho aproveitando apenas a configuração base. Nenhum candidato, campanha ou histórico operacional da busca anterior é copiado.
+          </p>
+        </div>
+      </div>
+
+      {/* ── Seção de Templates ─────────────────────────────────────────────── */}
+      <div className="space-y-4">
+        <h2 className="text-base font-bold text-gray-900 border-b border-gray-100 pb-2">Templates de Prospecção</h2>
+        {loadingTemplates ? (
+          <p className="text-xs text-gray-400">Carregando templates...</p>
+        ) : templates.length === 0 ? (
+          <p className="text-xs text-gray-400">Você ainda não tem templates salvos. Crie uma nova busca e salve-a como template para reaproveitá-la futuramente.</p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {templates.map(t => (
+              <div key={t.id} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm hover:-translate-y-0.5 transition-transform">
+                <div className="flex justify-between items-start mb-2">
+                  <h3 className="text-sm font-bold text-gray-900 truncate" title={t.name}>{t.name}</h3>
+                  <span className="text-[10px] bg-indigo-50 text-indigo-600 font-bold px-2 py-0.5 rounded-md">Ativo</span>
+                </div>
+                <p className="text-xs text-gray-500 mb-1"><strong>Nicho:</strong> {t.niche}</p>
+                <p className="text-xs text-gray-500 mb-3"><strong>Local:</strong> {[t.city, t.state].filter(Boolean).join('-') || 'Geral'}</p>
+                <div className="flex items-center justify-between border-t border-gray-50 pt-3">
+                  <span className="text-[10px] text-gray-400">Criado em {formatDate(t.createdAt).substring(0, 10)}</span>
+                  <button
+                    onClick={() => handleUseTemplate(t.id)}
+                    disabled={usingTemplateId === t.id}
+                    className="text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors"
+                  >
+                    {usingTemplateId === t.id ? '⏳' : 'Usar template'}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-xs text-blue-800 flex items-start gap-3">
+        <span className="text-xl">ℹ️</span>
+        <div className="flex-1">
+          <p className="font-bold mb-1">Como funcionam os Templates e Clones?</p>
+          <p>
+            • <strong>Templates</strong> servem para guardar critérios de busca e parâmetros de filtro frequentes (ex: 'Estética SP Alto Padrão'), facilitando a repetição do fluxo sem preencher o formulário do zero.<br/>
+            • A ação de <strong>Clonar busca</strong> gera um novo rascunho aproveitando apenas a configuração base. Nenhum candidato, campanha ou histórico operacional da busca anterior é copiado.
+          </p>
+        </div>
+      </div>
+
+      {/* ── Seção de Templates ─────────────────────────────────────────────── */}
+      <div className="space-y-4">
+        <h2 className="text-base font-bold text-gray-900 border-b border-gray-100 pb-2">Templates de Prospecção</h2>
+        {loadingTemplates ? (
+          <p className="text-xs text-gray-400">Carregando templates...</p>
+        ) : templates.length === 0 ? (
+          <p className="text-xs text-gray-400">Você ainda não tem templates salvos. Crie uma nova busca e salve-a como template para reaproveitá-la futuramente.</p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {templates.map(t => (
+              <div key={t.id} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm hover:-translate-y-0.5 transition-transform flex flex-col justify-between">
+                <div>
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="text-sm font-bold text-gray-900 truncate" title={t.name}>{t.name}</h3>
+                    <span className="text-[10px] bg-indigo-50 text-indigo-600 font-bold px-2 py-0.5 rounded-md">Ativo</span>
+                  </div>
+                  <p className="text-xs text-gray-500 mb-1"><strong>Nicho:</strong> {t.niche}</p>
+                  <p className="text-xs text-gray-500 mb-3"><strong>Local:</strong> {[t.city, t.state].filter(Boolean).join('-') || 'Geral'}</p>
+                </div>
+                <div className="flex items-center justify-between border-t border-gray-50 pt-3 mt-auto">
+                  <span className="text-[10px] text-gray-400">Criado em {formatDate(t.createdAt).substring(0, 10)}</span>
+                  <button
+                    onClick={() => handleUseTemplate(t.id)}
+                    disabled={usingTemplateId === t.id}
+                    className="text-xs font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg transition-colors"
+                  >
+                    {usingTemplateId === t.id ? '⏳' : 'Usar template'}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ── Form (collapsible) ─────────────────────────────────────────────── */}
@@ -322,14 +529,38 @@ export default function LeadIntelligencePage() {
             </div>
           </div>
 
-          {/* Submit */}
-          <div className="flex justify-end pt-2 border-t border-gray-100">
+          {/* Submit & Save Template */}
+          <div className="pt-4 border-t border-gray-100 flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-4">
+            
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 bg-gray-50 p-3 rounded-xl border border-gray-100">
+              <input 
+                type="text" 
+                placeholder="Nome do template"
+                value={templateName}
+                onChange={e => setTemplateName(e.target.value)}
+                className="border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 placeholder-gray-400 w-full sm:w-48 focus:outline-none focus:ring-2 focus:ring-green-400"
+              />
+              <button
+                type="button"
+                onClick={handleSaveTemplate}
+                disabled={savingTemplate}
+                className="bg-green-100 hover:bg-green-200 text-green-800 font-bold px-4 py-2 rounded-lg text-xs transition-colors disabled:opacity-50 whitespace-nowrap"
+              >
+                {savingTemplate ? '⏳' : 'Salvar como template'}
+              </button>
+              {templateMessage && (
+                <span className={`text-xs font-semibold ${templateMessage.type === 'error' ? 'text-red-500' : 'text-green-600'}`}>
+                  {templateMessage.text}
+                </span>
+              )}
+            </div>
+
             <button
               type="submit"
               disabled={submitting}
-              className="inline-flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-xl text-sm font-bold transition-all"
+              className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-xl text-sm font-bold transition-all"
             >
-              {submitting ? '⏳ Salvando...' : '💾 Salvar rascunho'}
+              {submitting ? '⏳ Salvando rascunho...' : '🚀 Criar nova busca'}
             </button>
           </div>
         </form>
@@ -401,7 +632,15 @@ export default function LeadIntelligencePage() {
                       <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${color}`}>
                         {label}
                       </span>
-                      <span className="text-gray-400 text-xs">→</span>
+                      <button
+                        onClick={(e) => handleCloneRun(run.id, e)}
+                        disabled={cloningId === run.id}
+                        className="ml-2 text-[10px] border border-gray-200 hover:border-indigo-400 hover:text-indigo-600 bg-white font-bold px-2.5 py-1.5 rounded-lg transition-all"
+                        title="Clonar configuração desta busca"
+                      >
+                        {cloningId === run.id ? '⏳' : 'Clonar busca'}
+                      </button>
+                      <span className="text-gray-400 text-xs ml-1">→</span>
                     </div>
                   </div>
                 </Link>

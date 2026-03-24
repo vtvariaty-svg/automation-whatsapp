@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 
@@ -14,6 +14,7 @@ interface LeadScore {
   approachabilityScore: number;
   confidenceScore: number;
   verdict: string; // compensa | revisar | nao_compensa
+  reasons?: string[] | null;
 }
 
 interface LeadCandidate {
@@ -100,6 +101,24 @@ function verdictBadge(verdict: string): { label: string; color: string } {
   }
 }
 
+// ─── Candidate form empty state ───────────────────────────────────────────────
+
+const EMPTY_CANDIDATE = {
+  companyName: '',
+  tradeName: '',
+  cnpj: '',
+  website: '',
+  email: '',
+  phone: '',
+  mobilePhone: '',
+  address: '',
+  city: '',
+  state: '',
+  category: '',
+  rating: '',
+  reviewsCount: '',
+};
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SearchRunDetailPage() {
@@ -111,25 +130,111 @@ export default function SearchRunDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
 
-  useEffect(() => {
+  // Candidate form state
+  const [candidateFormOpen, setCandidateFormOpen] = useState(false);
+  const [candidateForm, setCandidateForm] = useState(EMPTY_CANDIDATE);
+  const [candidateSubmitting, setCandidateSubmitting] = useState(false);
+  const [candidateError, setCandidateError] = useState<string | null>(null);
+
+  // Per-candidate scoring state: candidateId → loading boolean
+  const [scoringIds, setScoringIds] = useState<Record<string, boolean>>({});
+
+  // ── Fetch detail ─────────────────────────────────────────────────────────
+
+  const loadRun = useCallback(async () => {
     if (!id) return;
     const token = getAuthToken();
     setLoading(true);
     setError(null);
     setNotFound(false);
 
-    fetch(`/api/lead-intelligence/search-runs/${id}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then(async res => {
-        if (res.status === 404) { setNotFound(true); return; }
-        if (!res.ok) throw new Error('Erro ao carregar a busca.');
-        const data = await res.json();
-        setRun(data.run);
-      })
-      .catch(e => setError(e instanceof Error ? e.message : 'Erro inesperado.'))
-      .finally(() => setLoading(false));
+    try {
+      const res = await fetch(`/api/lead-intelligence/search-runs/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.status === 404) { setNotFound(true); return; }
+      if (!res.ok) throw new Error('Erro ao carregar a busca.');
+      const data = await res.json();
+      setRun(data.run);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Erro inesperado.');
+    } finally {
+      setLoading(false);
+    }
   }, [id]);
+
+  useEffect(() => { loadRun(); }, [loadRun]);
+
+  // ── Candidate form helpers ────────────────────────────────────────────────
+
+  function setCandidateField(key: keyof typeof EMPTY_CANDIDATE, value: string) {
+    setCandidateForm(prev => ({ ...prev, [key]: value }));
+  }
+
+  async function handleCandidateSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setCandidateError(null);
+
+    if (!candidateForm.companyName.trim()) {
+      setCandidateError('O campo "Razão Social" é obrigatório.');
+      return;
+    }
+
+    const body: Record<string, unknown> = {
+      companyName:  candidateForm.companyName.trim(),
+      tradeName:    candidateForm.tradeName.trim()    || undefined,
+      cnpj:         candidateForm.cnpj.trim()         || undefined,
+      website:      candidateForm.website.trim()      || undefined,
+      email:        candidateForm.email.trim()        || undefined,
+      phone:        candidateForm.phone.trim()        || undefined,
+      mobilePhone:  candidateForm.mobilePhone.trim()  || undefined,
+      address:      candidateForm.address.trim()      || undefined,
+      city:         candidateForm.city.trim()         || undefined,
+      state:        candidateForm.state.trim()        || undefined,
+      category:     candidateForm.category.trim()     || undefined,
+      rating:       candidateForm.rating !== '' ? Number(candidateForm.rating) : undefined,
+      reviewsCount: candidateForm.reviewsCount !== '' ? Number(candidateForm.reviewsCount) : undefined,
+      source:       'manual',
+    };
+
+    setCandidateSubmitting(true);
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`/api/lead-intelligence/search-runs/${id}/candidates`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setCandidateError(data.error ?? 'Erro ao criar candidato.');
+        return;
+      }
+      setCandidateForm(EMPTY_CANDIDATE);
+      setCandidateFormOpen(false);
+      await loadRun();
+    } catch {
+      setCandidateError('Erro de conexão. Tente novamente.');
+    } finally {
+      setCandidateSubmitting(false);
+    }
+  }
+
+  // ── Score action ──────────────────────────────────────────────────────────
+
+  async function handleScore(candidateId: string) {
+    setScoringIds(prev => ({ ...prev, [candidateId]: true }));
+    try {
+      const token = getAuthToken();
+      await fetch(`/api/lead-intelligence/candidates/${candidateId}/score`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      await loadRun();
+    } finally {
+      setScoringIds(prev => ({ ...prev, [candidateId]: false }));
+    }
+  }
 
   // ── States ─────────────────────────────────────────────────────────────
 
@@ -250,15 +355,205 @@ export default function SearchRunDetailPage() {
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-bold text-gray-900">🏢 Candidatos</h2>
-          <span className="text-xs text-gray-500">{run.candidates.length} encontrado{run.candidates.length !== 1 ? 's' : ''}</span>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-gray-500">{run.candidates.length} encontrado{run.candidates.length !== 1 ? 's' : ''}</span>
+            <button
+              onClick={() => { setCandidateFormOpen(o => !o); setCandidateError(null); }}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all"
+            >
+              {candidateFormOpen ? '✕ Cancelar' : '+ Adicionar candidato'}
+            </button>
+          </div>
         </div>
+
+        {/* Manual candidate creation form */}
+        {candidateFormOpen && (
+          <form
+            onSubmit={handleCandidateSubmit}
+            className="bg-white rounded-2xl border border-gray-200 p-5 space-y-4"
+          >
+            <div>
+              <h3 className="text-sm font-bold text-gray-900">Novo candidato manual</h3>
+              <p className="text-xs text-gray-500 mt-0.5">Preencha os dados da empresa a ser adicionada nesta busca.</p>
+            </div>
+
+            {candidateError && (
+              <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-2.5 text-xs text-red-700">
+                {candidateError}
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Row 1 */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Razão Social <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={candidateForm.companyName}
+                  onChange={e => setCandidateField('companyName', e.target.value)}
+                  placeholder="Nome empresarial"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Nome Fantasia</label>
+                <input
+                  type="text"
+                  value={candidateForm.tradeName}
+                  onChange={e => setCandidateField('tradeName', e.target.value)}
+                  placeholder="Nome fantasia"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                />
+              </div>
+
+              {/* Row 2 */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">CNPJ</label>
+                <input
+                  type="text"
+                  value={candidateForm.cnpj}
+                  onChange={e => setCandidateField('cnpj', e.target.value)}
+                  placeholder="00.000.000/0000-00"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Categoria</label>
+                <input
+                  type="text"
+                  value={candidateForm.category}
+                  onChange={e => setCandidateField('category', e.target.value)}
+                  placeholder="Ex: Clínica de Estética"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                />
+              </div>
+
+              {/* Row 3 */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Site</label>
+                <input
+                  type="url"
+                  value={candidateForm.website}
+                  onChange={e => setCandidateField('website', e.target.value)}
+                  placeholder="https://..."
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">E-mail</label>
+                <input
+                  type="email"
+                  value={candidateForm.email}
+                  onChange={e => setCandidateField('email', e.target.value)}
+                  placeholder="contato@empresa.com.br"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                />
+              </div>
+
+              {/* Row 4 */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Telefone</label>
+                <input
+                  type="tel"
+                  value={candidateForm.phone}
+                  onChange={e => setCandidateField('phone', e.target.value)}
+                  placeholder="(11) 3000-0000"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Celular</label>
+                <input
+                  type="tel"
+                  value={candidateForm.mobilePhone}
+                  onChange={e => setCandidateField('mobilePhone', e.target.value)}
+                  placeholder="(11) 9 9000-0000"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                />
+              </div>
+
+              {/* Row 5 */}
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Endereço</label>
+                <input
+                  type="text"
+                  value={candidateForm.address}
+                  onChange={e => setCandidateField('address', e.target.value)}
+                  placeholder="Rua, número, bairro"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                />
+              </div>
+
+              {/* Row 6 */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Cidade</label>
+                <input
+                  type="text"
+                  value={candidateForm.city}
+                  onChange={e => setCandidateField('city', e.target.value)}
+                  placeholder="São Paulo"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Estado (UF)</label>
+                <input
+                  type="text"
+                  value={candidateForm.state}
+                  onChange={e => setCandidateField('state', e.target.value)}
+                  placeholder="SP"
+                  maxLength={2}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                />
+              </div>
+
+              {/* Row 7 */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Rating (0–5)</label>
+                <input
+                  type="number"
+                  value={candidateForm.rating}
+                  onChange={e => setCandidateField('rating', e.target.value)}
+                  placeholder="Ex: 4.2"
+                  min={0}
+                  max={5}
+                  step={0.1}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Qtd. de reviews</label>
+                <input
+                  type="number"
+                  value={candidateForm.reviewsCount}
+                  onChange={e => setCandidateField('reviewsCount', e.target.value)}
+                  placeholder="Ex: 87"
+                  min={0}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-1 border-t border-gray-100">
+              <button
+                type="submit"
+                disabled={candidateSubmitting}
+                className="inline-flex items-center gap-2 px-5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-xl text-xs font-bold transition-all"
+              >
+                {candidateSubmitting ? '⏳ Salvando...' : '💾 Salvar candidato'}
+              </button>
+            </div>
+          </form>
+        )}
 
         {run.candidates.length === 0 ? (
           <div className="border-2 border-dashed border-gray-200 rounded-2xl py-14 flex flex-col items-center justify-center text-center">
             <span className="text-3xl mb-2">🏢</span>
             <p className="text-sm font-semibold text-gray-400">Nenhum candidato ainda</p>
             <p className="text-xs text-gray-400 mt-1 max-w-xs">
-              Os candidatos serão adicionados quando a busca for processada.
+              Clique em <strong>+ Adicionar candidato</strong> para incluir empresas manualmente.
             </p>
           </div>
         ) : (
@@ -266,8 +561,10 @@ export default function SearchRunDetailPage() {
             {run.candidates.map(c => {
               const cs = statusBadge(c.status);
               const candidateLocation = [c.city, c.state].filter(Boolean).join(', ');
+              const isScoring = scoringIds[c.id] === true;
+              const reasons = c.score?.reasons as string[] | null | undefined;
               return (
-                <div key={c.id} className="bg-white rounded-2xl border border-gray-200 p-5">
+                <div key={c.id} className="bg-white rounded-2xl border border-gray-200 p-5 space-y-3">
                   <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                     {/* Info principal */}
                     <div className="space-y-1 flex-1 min-w-0">
@@ -307,15 +604,61 @@ export default function SearchRunDetailPage() {
                       </div>
                     </div>
 
-                    {/* Score */}
-                    {c.score && (
-                      <div className="flex flex-col items-center shrink-0 bg-gray-50 rounded-xl px-4 py-3 min-w-[90px]">
-                        <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Score</p>
-                        <p className="text-2xl font-black text-indigo-600 mt-0.5">{c.score.overallScore}</p>
-                        <p className="text-[10px] text-gray-400">/ 100</p>
-                      </div>
-                    )}
+                    {/* Score panel + action */}
+                    <div className="flex flex-col items-end gap-2 shrink-0">
+                      {c.score ? (
+                        <div className="flex flex-col items-center bg-gray-50 rounded-xl px-4 py-3 min-w-[90px]">
+                          <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Score</p>
+                          <p className="text-2xl font-black text-indigo-600 mt-0.5">{c.score.overallScore}</p>
+                          <p className="text-[10px] text-gray-400">/ 100</p>
+                        </div>
+                      ) : null}
+                      <button
+                        onClick={() => handleScore(c.id)}
+                        disabled={isScoring}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 disabled:opacity-60 text-indigo-700 rounded-xl text-xs font-bold transition-all border border-indigo-200"
+                      >
+                        {isScoring ? '⏳ Calculando...' : '🧮 Calcular score'}
+                      </button>
+                    </div>
                   </div>
+
+                  {/* Score breakdown */}
+                  {c.score && (
+                    <div className="border-t border-gray-100 pt-3 space-y-2">
+                      <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Detalhamento do score</p>
+                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                        {[
+                          ['ICP Fit',           c.score.icpFitScore,              35],
+                          ['Pot. Comercial',    c.score.commercialPotentialScore,  25],
+                          ['Maturidade Digital', c.score.digitalMaturityScore,     20],
+                          ['Abordabilidade',    c.score.approachabilityScore,      10],
+                          ['Confiança',         c.score.confidenceScore,           10],
+                        ].map(([label, value, max]) => (
+                          <div key={String(label)} className="bg-gray-50 rounded-xl p-2 text-center">
+                            <p className="text-[9px] font-semibold text-gray-500 leading-tight">{label}</p>
+                            <p className="text-base font-black text-gray-800 mt-0.5">{value}</p>
+                            <p className="text-[9px] text-gray-400">/ {max}</p>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Reasons */}
+                      {reasons && reasons.length > 0 && (
+                        <div className="mt-2">
+                          <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide mb-1">Justificativas</p>
+                          <ul className="space-y-0.5">
+                            {reasons.map((reason, i) => (
+                              <li key={i} className="text-xs text-gray-600 flex items-start gap-1.5">
+                                <span className="text-indigo-400 mt-px">•</span>
+                                <span>{reason}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}

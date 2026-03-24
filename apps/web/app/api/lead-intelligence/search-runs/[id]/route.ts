@@ -11,13 +11,15 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const auth = await getAuthTenant(request);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+  const { id } = await params;
+
   const run = await prisma.leadSearchRun.findFirst({
-    where: { id: params.id, tenantId: auth.tenantId },
+    where: { id, tenantId: auth.tenantId },
     include: {
       candidates: {
         orderBy: { createdAt: 'desc' },

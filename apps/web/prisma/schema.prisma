@@ -1621,7 +1621,9 @@ model LeadCampaignDraft {
   approvedBy      String?
   sentAt          DateTime?
   providerMessageId String?
+  providerChannel   String?
   errorMessage    String?
+  deliveryMeta    Json?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

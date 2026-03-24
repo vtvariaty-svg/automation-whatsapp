@@ -51,6 +51,7 @@ interface CampaignDraft {
   approvedAt?: string | null;
   sentAt?: string | null;
   errorMessage?: string | null;
+  deliveryMeta?: { deliveredTo?: string } | null;
   leadCandidate?: {
     id: string;
     companyName: string;
@@ -351,6 +352,19 @@ export default function SearchRunDetailPage() {
     setDraftActionIds(prev => ({ ...prev, [draftId]: 'sending' }));
     try {
       const res = await fetch(`/api/lead-intelligence/campaign-drafts/${draftId}/send-email`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${getAuthToken()}` },
+      });
+      if (res.ok) await loadDrafts();
+    } finally {
+      setDraftActionIds(prev => ({ ...prev, [draftId]: '' }));
+    }
+  }
+
+  async function handleDraftSendWhatsapp(draftId: string) {
+    setDraftActionIds(prev => ({ ...prev, [draftId]: 'sending' }));
+    try {
+      const res = await fetch(`/api/lead-intelligence/campaign-drafts/${draftId}/send-whatsapp`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${getAuthToken()}` },
       });
@@ -1145,8 +1159,8 @@ export default function SearchRunDetailPage() {
         <div>
           <h2 className="text-sm font-bold text-gray-900">📝 Rascunhos de Ativação (Outreach)</h2>
           <p className="text-xs text-gray-500 mt-1 max-w-3xl">
-            Esta seção <strong>apenas prepara a ativação e gera rascunhos</strong> de mensagens para candidatos aprovados e elegíveis (com consentimento válido).
-            <span className="text-amber-600 font-semibold block mt-1">Nenhum email ou WhatsApp é enviado nativamente por aqui nesta versão.</span>
+            Esta etapa prepara e envia campanhas individuais para candidatos aprovados e com <strong>consentimento concedido</strong>.
+            <span className="text-emerald-700 font-semibold block mt-1">Os envios de Email e WhatsApp são feitos individualmente. Não existe disparo em massa aqui.</span>
           </p>
         </div>
 
@@ -1233,8 +1247,17 @@ export default function SearchRunDetailPage() {
                             {draftActionIds[d.id] === 'sending' ? '⏳ Enviando...' : '🚀 Enviar email'}
                           </button>
                         )}
-                        {d.channel === 'whatsapp' && (
-                           <span className="text-[10px] text-gray-500 font-semibold bg-gray-50 border border-gray-200 px-2 py-1 rounded-lg">WhatsApp ainda não envia nesta etapa</span>
+                        {d.status === 'approved' && d.channel === 'whatsapp' && (
+                          <button
+                            onClick={() => handleDraftSendWhatsapp(d.id)}
+                            disabled={draftActionIds[d.id] === 'sending'}
+                            className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all shadow-sm disabled:opacity-60 flex items-center gap-1.5"
+                          >
+                            {draftActionIds[d.id] === 'sending' ? '⏳ Enviando...' : '💬 Enviar WhatsApp'}
+                          </button>
+                        )}
+                        {d.channel === 'whatsapp' && d.status !== 'approved' && d.status !== 'sent' && (
+                           <span className="text-[10px] text-gray-500 font-semibold bg-gray-50 border border-gray-200 px-2 py-1 rounded-lg">Aprove para enviar WhatsApp</span>
                         )}
                       </div>
                     </div>
@@ -1254,7 +1277,10 @@ export default function SearchRunDetailPage() {
                         <p className="text-[10px] text-gray-400">Aprovado em: {formatDate(d.approvedAt)}</p>
                       )}
                       {d.sentAt && (
-                        <p className="text-[10px] text-emerald-600 font-semibold">Enviado em: {formatDate(d.sentAt)}</p>
+                        <p className="text-[10px] text-emerald-600 font-semibold">
+                          Enviado em: {formatDate(d.sentAt)}
+                          {d.deliveryMeta?.deliveredTo ? ` para ${d.deliveryMeta.deliveredTo}` : ''}
+                        </p>
                       )}
                     </div>
                     {d.errorMessage && (

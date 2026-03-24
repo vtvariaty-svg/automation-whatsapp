@@ -19,7 +19,7 @@ export async function GET(request: Request) {
   const auth = await guardSuperadmin(request);
   if (!auth) return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
 
-  const flags = await prisma.featureFlag.findMany();
+  const flags = await prisma.featureFlag.findMany({ where: { scope: 'module' } });
 
   // Enriquecer com metadados do catálogo
   const flagMap: Record<string, { enabled: boolean; maintenanceNote: string | null; updatedAt: Date; updatedBy: string | null }> = {};
@@ -68,9 +68,10 @@ export async function PUT(request: Request) {
   }
 
   const flag = await prisma.featureFlag.upsert({
-    where: { moduleId },
+    where: { moduleId_scope: { moduleId, scope: 'module' } },
     create: {
       moduleId,
+      scope: 'module',
       enabled,
       maintenanceNote: maintenanceNote ?? null,
       updatedBy: auth.userId,

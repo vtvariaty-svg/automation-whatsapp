@@ -31,7 +31,7 @@ export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const { isSuperAdmin } = useAuth();
   const ent = useEntitlements();
-  const { flags, pinnedModules: savedPins } = useModuleContext();
+  const { flags, pinnedModules: savedPins, businessType } = useModuleContext();
 
   useEffect(() => { setIsOpen(false); }, [pathname]);
 
@@ -48,7 +48,7 @@ export default function Sidebar() {
 
   // Superadmin vê tudo (sem filtro de plano)
   const effectivePlan = isSuperAdmin ? 'business' : (ent.plan ?? 'free');
-  const pinnedIds = resolvePinnedIds(savedPins, effectivePlan);
+  const pinnedIds = resolvePinnedIds(savedPins, effectivePlan, businessType);
 
   // Resolve módulos visíveis com estado: locked / inMaintenance
   const resolved = pinnedIds

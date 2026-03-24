@@ -71,11 +71,11 @@ function resolveStepCompleted(
     case 'channels':     return health.whatsapp_connected;
     case 'bots':         return health.ai_configured;
     case 'services':     return health.services_configured;
-    case 'catalog':      return health.services_configured; // proxy: produtos = serviços no health check
+    case 'catalog':      return health.products_configured;
     case 'conversations':return health.test_message_received;
     case 'appointments': return health.services_configured && health.whatsapp_connected;
-    case 'orders':       return false; // sem check dedicado ainda
-    case 'payments':     return false;
+    case 'orders':       return health.orders_configured;
+    case 'payments':     return health.payments_configured;
     case 'dashboard':    return true;
     default:             return false;
   }

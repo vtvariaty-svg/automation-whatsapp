@@ -1472,11 +1472,15 @@ model PaymentEvent {
 // Ausência de registro = enabled por padrão.
 model FeatureFlag {
   id              String   @id @default(cuid())
-  moduleId        String   @unique  // corresponde a AppModule.id no catálogo
+  moduleId        String
+  scope           String   @default("module")  // module | function
+  parentModuleId  String?                       // preenchido quando scope = "function"
   enabled         Boolean  @default(true)
-  maintenanceNote String?           // mensagem exibida no banner de manutenção
+  maintenanceNote String?                       // mensagem exibida no banner de manutenção
   updatedAt       DateTime @updatedAt
-  updatedBy       String?           // userId do superadmin que fez a alteração
+  updatedBy       String?                       // userId do superadmin que fez a alteração
 
+  @@unique([moduleId, scope])
+  @@index([parentModuleId])
   @@map("feature_flags")
 }

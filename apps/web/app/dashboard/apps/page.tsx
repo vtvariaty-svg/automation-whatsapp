@@ -26,7 +26,7 @@ function isLocked(m: AppModule, ent: ReturnType<typeof useEntitlements>): boolea
 
 export default function AllAppsPage() {
   const ent = useEntitlements();
-  const { flags, pinnedModules: savedPins, loading: ctxLoading } = useModuleContext();
+  const { flags, pinnedModules: savedPins, businessType, loading: ctxLoading } = useModuleContext();
   const [localPins, setLocalPins] = useState<string[] | null>(null);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
@@ -35,12 +35,12 @@ export default function AllAppsPage() {
   // Usa pins salvos como estado local editável
   useEffect(() => {
     if (!ctxLoading && localPins === null) {
-      const resolved = resolvePinnedIds(savedPins, ent.plan ?? 'free');
+      const resolved = resolvePinnedIds(savedPins, ent.plan ?? 'free', businessType);
       setLocalPins(resolved);
     }
-  }, [ctxLoading, savedPins, ent.plan, localPins]);
+  }, [ctxLoading, savedPins, ent.plan, businessType, localPins]);
 
-  const pins = localPins ?? resolvePinnedIds(savedPins, ent.plan ?? 'free');
+  const pins = localPins ?? resolvePinnedIds(savedPins, ent.plan ?? 'free', businessType);
 
   function togglePin(id: string) {
     setLocalPins(prev => {
@@ -88,7 +88,7 @@ export default function AllAppsPage() {
 
   const hasChanges =
     localPins !== null &&
-    JSON.stringify([...localPins].sort()) !== JSON.stringify([...resolvePinnedIds(savedPins, ent.plan ?? 'free')].sort());
+    JSON.stringify([...localPins].sort()) !== JSON.stringify([...resolvePinnedIds(savedPins, ent.plan ?? 'free', businessType)].sort());
 
   return (
     <div className="space-y-8">
@@ -146,6 +146,7 @@ export default function AllAppsPage() {
         <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-gray-200 inline-block" /> Oculto da sidebar</span>
         <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-red-400 inline-block" /> Bloqueado pelo plano</span>
         <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block" /> Em manutenção</span>
+        {businessType && <span className="flex items-center gap-1.5">⭐ Recomendado para seu negócio</span>}
       </div>
 
       {/* Categorias */}
@@ -160,6 +161,10 @@ export default function AllAppsPage() {
               const flagState = flags[m.id];
               const inMaintenance = !!flagState && !flagState.enabled;
               const isPinned = pins.includes(m.id);
+              const isRecommended = !!(
+                businessType &&
+                m.recommendedFor?.includes(businessType.toLowerCase())
+              );
 
               let statusColor = 'border-gray-200';
               let statusBadge: React.ReactNode = null;
@@ -196,7 +201,14 @@ export default function AllAppsPage() {
                         <p className={`font-semibold text-sm ${(locked || inMaintenance) ? 'text-gray-400' : 'text-gray-900'}`}>
                           {m.label}
                         </p>
-                        {statusBadge}
+                        <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                          {statusBadge}
+                          {isRecommended && !locked && !inMaintenance && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600">
+                              ⭐ Recomendado
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                     {/* Toggle de pin */}

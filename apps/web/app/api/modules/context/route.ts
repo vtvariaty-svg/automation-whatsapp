@@ -12,10 +12,10 @@ export async function GET(request: Request) {
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const [flags, tenant] = await Promise.all([
-    prisma.featureFlag.findMany(),
+    prisma.featureFlag.findMany({ where: { scope: 'module' } }),
     prisma.tenant.findUnique({
       where: { id: auth.tenantId },
-      select: { pinnedModules: true },
+      select: { pinnedModules: true, businessType: true },
     }),
   ]);
 
@@ -28,5 +28,6 @@ export async function GET(request: Request) {
   return NextResponse.json({
     flags: flagMap,
     pinnedModules: tenant?.pinnedModules ?? [],
+    businessType: tenant?.businessType ?? null,
   });
 }

@@ -6,6 +6,9 @@ export interface SystemHealthResult {
   ai_configured: boolean;
   automations_created: boolean;
   test_message_received: boolean;
+  products_configured: boolean;
+  orders_configured: boolean;
+  payments_configured: boolean;
 }
 
 /**
@@ -44,11 +47,33 @@ export async function createSystemHealthCheck(tenantId: string): Promise<SystemH
   });
   const test_message_received = aiUsageCount > 0;
 
+  // 6. Products configured — at least 1 active product
+  const productCount = await prisma.product.count({
+    where: { tenantId, active: true },
+  });
+  const products_configured = productCount > 0;
+
+  // 7. Orders configured — at least 1 order received
+  const orderCount = await prisma.order.count({
+    where: { tenantId },
+  });
+  const orders_configured = orderCount > 0;
+
+  // 8. Payments configured — payment gateway enabled
+  const payConfig = await prisma.tenantPaymentConfig.findUnique({
+    where: { tenantId },
+    select: { enabled: true },
+  }).catch(() => null);
+  const payments_configured = payConfig?.enabled === true;
+
   return {
     whatsapp_connected,
     services_configured,
     ai_configured,
     automations_created,
     test_message_received,
+    products_configured,
+    orders_configured,
+    payments_configured,
   };
 }

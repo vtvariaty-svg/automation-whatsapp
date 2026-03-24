@@ -11,47 +11,87 @@ import { marketplaceBots } from '@/lib/marketplace/bots';
 
 export const dynamic = 'force-dynamic';
 
-// ─── Step definitions per plan ────────────────────────────────────────────────
+// ─── Step definitions: contextual by plan + businessType ─────────────────────
 
-const PLAN_STEPS: Record<string, StepDef[]> = {
-  free: [
-    { id: 'profile',            title: 'Perfil inicial',           description: 'Configure nome, tipo de negócio e horários de atendimento.',    href: '/onboarding/step/1',        cta: 'Configurar perfil',   priority: 1 },
-    { id: 'instagram',          title: 'Conectar Instagram',        description: 'Vincule sua conta para receber DMs automaticamente.',           href: '/dashboard/integrations',   cta: 'Conectar Instagram',  priority: 2 },
-    { id: 'automation',         title: 'Criar automação',           description: 'Adicione pelo menos 1 resposta automática por palavra-chave.',  href: '/dashboard/vendas?tab=automacoes',    cta: 'Criar automação',     priority: 3 },
-    { id: 'first_conversation', title: 'Receber primeira conversa', description: 'Aguarde ou dispare uma mensagem teste para o canal conectado.', href: '/dashboard/conversations',  cta: 'Ver conversas',       priority: 4 },
-  ],
-  standard: [
-    { id: 'profile',            title: 'Perfil inicial',                  description: 'Configure nome, tipo de negócio e horários de atendimento.',    href: '/onboarding/step/1',        cta: 'Configurar perfil',     priority: 1 },
-    { id: 'trial',              title: 'Trial de 7 dias ativo',           description: 'Seu período gratuito está contando. Explore todos os recursos.', href: '/dashboard/billing',        cta: 'Ver assinatura',        priority: 2 },
-    { id: 'instagram',          title: 'Conectar Instagram',              description: 'Vincule sua conta para receber DMs automaticamente.',           href: '/dashboard/integrations',   cta: 'Conectar Instagram',    priority: 3 },
-    { id: 'whatsapp',           title: 'Conectar WhatsApp',               description: 'Vincule o WhatsApp Business para atendimento automático.',      href: '/onboarding/step/2',        cta: 'Conectar WhatsApp',     priority: 4 },
-    { id: 'automation',         title: 'Criar automação',                 description: 'Adicione pelo menos 1 resposta automática por palavra-chave.',  href: '/dashboard/vendas?tab=automacoes',    cta: 'Criar automação',       priority: 5 },
-    { id: 'template',           title: 'Configurar template WhatsApp',    description: 'Crie um template aprovado pela Meta para mensagens ativas.',   href: '/dashboard/templates',      cta: 'Criar template',        priority: 6 },
-    { id: 'first_conversation', title: 'Receber primeira conversa',       description: 'Aguarde ou dispare uma mensagem teste para o canal conectado.', href: '/dashboard/conversations',  cta: 'Ver conversas',         priority: 7 },
-  ],
-  pro: [
-    { id: 'profile',            title: 'Perfil inicial',           description: 'Configure nome, tipo de negócio e horários de atendimento.',    href: '/onboarding/step/1',        cta: 'Configurar perfil',     priority: 1 },
-    { id: 'whatsapp',           title: 'Conectar WhatsApp',        description: 'Vincule o WhatsApp Business para atendimento automático.',      href: '/onboarding/step/2',        cta: 'Conectar WhatsApp',     priority: 2 },
-    { id: 'instagram',          title: 'Conectar Instagram',       description: 'Vincule sua conta para receber DMs automaticamente.',           href: '/dashboard/integrations',   cta: 'Conectar Instagram',    priority: 3 },
-    { id: 'facebook',           title: 'Conectar Facebook',        description: 'Vincule o Facebook Messenger para operação omnichannel.',       href: '/dashboard/integrations',   cta: 'Conectar Facebook',     priority: 4 },
-    { id: 'automation',         title: 'Criar automação',          description: 'Adicione pelo menos 1 resposta automática por palavra-chave.',  href: '/dashboard/vendas?tab=automacoes',    cta: 'Criar automação',       priority: 5 },
-    { id: 'crm',                title: 'Ativar CRM avançado',      description: 'Configure tags, segmentos e pipeline de vendas.',              href: '/dashboard/sales',          cta: 'Configurar CRM',        priority: 6 },
-    { id: 'first_conversation', title: 'Receber primeira conversa', description: 'Valide os canais com uma mensagem de teste.',                 href: '/dashboard/conversations',  cta: 'Ver conversas',         priority: 7 },
-  ],
-  business: [
-    { id: 'profile',            title: 'Perfil inicial',              description: 'Configure nome, tipo de negócio e horários de atendimento.',    href: '/onboarding/step/1',        cta: 'Configurar perfil',     priority: 1 },
-    { id: 'whatsapp',           title: 'Conectar WhatsApp',           description: 'Vincule o WhatsApp Business.',                                  href: '/onboarding/step/2',        cta: 'Conectar WhatsApp',     priority: 2 },
-    { id: 'instagram',          title: 'Conectar Instagram',          description: 'Vincule sua conta Instagram.',                                  href: '/dashboard/integrations',   cta: 'Conectar Instagram',    priority: 3 },
-    { id: 'facebook',           title: 'Conectar Facebook',           description: 'Vincule o Facebook Messenger.',                                 href: '/dashboard/integrations',   cta: 'Conectar Facebook',     priority: 4 },
-    { id: 'automation',         title: 'Criar automação principal',   description: 'Publique pelo menos 1 resposta automática ativa.',              href: '/dashboard/vendas?tab=automacoes',    cta: 'Criar automação',       priority: 5 },
-    { id: 'team',               title: 'Configurar equipe',           description: 'Adicione membros da equipe e configure permissões.',            href: '/dashboard/settings',       cta: 'Gerenciar equipe',      priority: 6 },
-    { id: 'go_live',            title: 'Ativar plataforma',           description: 'Verifique o checklist e coloque o sistema em produção.',        href: '/dashboard/go-live',        cta: 'Ativar agora',          priority: 7 },
-    { id: 'first_conversation', title: 'Receber primeira conversa',   description: 'Confirme que os canais estão respondendo.',                    href: '/dashboard/conversations',  cta: 'Ver conversas',         priority: 8 },
-  ],
-};
+const AGENDA_TYPES = new Set(['clínica', 'salão', 'estética', 'serviços locais']);
+const SALES_TYPES  = new Set(['ecommerce', 'restaurante', 'infoproduto']);
 
-// Free and Standard steps apply to legacy plans too
-PLAN_STEPS['starter'] = PLAN_STEPS['free'];
+function getContextualStepDefs(plan: string, businessType: string | null): StepDef[] {
+  const bType = (businessType ?? 'outro').toLowerCase();
+  const isAgenda = AGENDA_TYPES.has(bType);
+  const isSales  = SALES_TYPES.has(bType);
+
+  // Base steps always included
+  const steps: StepDef[] = [
+    { id: 'profile', title: 'Perfil inicial', description: 'Configure nome, tipo de negócio e horários de atendimento.', href: '/onboarding/step/1', cta: 'Configurar perfil', priority: 1 },
+  ];
+
+  if (plan === 'free' || plan === 'starter') {
+    steps.push(
+      { id: 'instagram',          title: 'Conectar Instagram',        description: 'Vincule sua conta para receber DMs automaticamente.',          href: '/dashboard/integrations',          cta: 'Conectar Instagram', priority: 2 },
+      { id: 'automation',         title: 'Criar automação',           description: 'Adicione pelo menos 1 resposta automática por palavra-chave.', href: '/dashboard/vendas?tab=automacoes', cta: 'Criar automação',    priority: 3 },
+      { id: 'first_conversation', title: 'Receber primeira conversa', description: 'Aguarde ou dispare uma mensagem teste para o canal conectado.',href: '/dashboard/conversations',         cta: 'Ver conversas',      priority: 4 },
+    );
+    return steps;
+  }
+
+  // Paid plans
+  steps.push(
+    { id: 'whatsapp',  title: 'Conectar WhatsApp',  description: 'Vincule o WhatsApp Business para atendimento automático.',    href: '/onboarding/step/2',       cta: 'Conectar WhatsApp',  priority: 2 },
+    { id: 'instagram', title: 'Conectar Instagram', description: 'Vincule sua conta para receber DMs automaticamente.',          href: '/dashboard/integrations',  cta: 'Conectar Instagram', priority: 3 },
+  );
+
+  if (plan === 'standard' || plan === 'trial') {
+    steps.push({ id: 'trial', title: 'Trial de 7 dias ativo', description: 'Seu período gratuito está contando. Explore todos os recursos.', href: '/dashboard/billing', cta: 'Ver assinatura', priority: 4 });
+  }
+
+  // businessType-specific setup steps
+  if (isAgenda) {
+    steps.push(
+      { id: 'services',     title: 'Cadastrar serviços', description: 'Defina os serviços que você oferece para ativar o agendamento automático.', href: '/dashboard/services',      cta: 'Cadastrar serviços',   priority: 5 },
+      { id: 'appointments', title: 'Configurar agenda',  description: 'Seus clientes poderão agendar diretamente pelo WhatsApp.',                  href: '/dashboard/appointments',  cta: 'Configurar agenda',    priority: 6 },
+    );
+  } else if (isSales) {
+    steps.push(
+      { id: 'catalog', title: 'Configurar catálogo', description: 'Adicione produtos e a IA enviará links de compra automaticamente.', href: '/dashboard/vendas',    cta: 'Configurar catálogo', priority: 5 },
+      { id: 'payments', title: 'Configurar cobranças', description: 'Receba pagamentos integrados diretamente via chat.',               href: '/dashboard/payments', cta: 'Configurar cobranças', priority: 6 },
+    );
+  } else {
+    // Generic: include both agenda and sales basics
+    steps.push(
+      { id: 'catalog',  title: 'Configurar catálogo ou serviços', description: 'Cadastre produtos ou serviços para a IA apresentar aos clientes.', href: '/dashboard/vendas',    cta: 'Gerenciar catálogo',  priority: 5 },
+    );
+  }
+
+  steps.push(
+    { id: 'automation', title: 'Criar automação', description: 'Adicione pelo menos 1 resposta automática por palavra-chave.', href: '/dashboard/vendas?tab=automacoes', cta: 'Criar automação', priority: 7 },
+  );
+
+  if (plan === 'pro' || plan === 'business') {
+    steps.push(
+      { id: 'facebook', title: 'Conectar Facebook', description: 'Vincule o Facebook Messenger para operação omnichannel.', href: '/dashboard/integrations', cta: 'Conectar Facebook', priority: 8 },
+    );
+  }
+
+  if (plan === 'pro') {
+    steps.push(
+      { id: 'crm', title: 'Ativar CRM avançado', description: 'Configure tags, segmentos e pipeline de vendas.', href: '/dashboard/sales', cta: 'Configurar CRM', priority: 9 },
+    );
+  }
+
+  if (plan === 'business') {
+    steps.push(
+      { id: 'team',    title: 'Configurar equipe',   description: 'Adicione membros da equipe e configure permissões.',               href: '/dashboard/settings', cta: 'Gerenciar equipe', priority: 9 },
+      { id: 'go_live', title: 'Ativar plataforma',   description: 'Verifique o checklist e coloque o sistema em produção.',           href: '/dashboard/go-live',  cta: 'Ativar agora',     priority: 10 },
+    );
+  }
+
+  steps.push(
+    { id: 'first_conversation', title: 'Receber primeira conversa', description: 'Aguarde ou dispare uma mensagem teste para o canal conectado.', href: '/dashboard/conversations', cta: 'Ver conversas', priority: 99 },
+  );
+
+  return steps.sort((a, b) => a.priority - b.priority);
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -90,27 +130,41 @@ interface BotSetup {
 // ─── Completion map ────────────────────────────────────────────────────────────
 
 async function buildCompletionMap(tenantId: string): Promise<Record<string, boolean>> {
-  const [tenant, instagramConn, automationCount, conversationCount, subscription, userCount] =
-    await Promise.all([
-      prisma.tenant.findUnique({
-        where: { id: tenantId },
-        select: {
-          name: true,
-          businessType: true,
-          whatsappToken: true,
-          facebookToken: true,
-          operationalStatus: true,
-        },
-      }),
-      prisma.instagramConnection.findUnique({ where: { tenantId }, select: { status: true } }),
-      prisma.automationRule.count({ where: { tenantId, active: true } }),
-      prisma.conversation.count({ where: { tenantId } }),
-      prisma.subscription.findUnique({
-        where: { tenantId },
-        select: { status: true, trialEnd: true },
-      }),
-      prisma.user.count({ where: { tenantId } }),
-    ]);
+  const [
+    tenant,
+    instagramConn,
+    automationCount,
+    conversationCount,
+    subscription,
+    userCount,
+    serviceCount,
+    productCount,
+    orderCount,
+    payConfig,
+  ] = await Promise.all([
+    prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: {
+        name: true,
+        businessType: true,
+        whatsappToken: true,
+        facebookToken: true,
+        operationalStatus: true,
+      },
+    }),
+    prisma.instagramConnection.findUnique({ where: { tenantId }, select: { status: true } }),
+    prisma.automationRule.count({ where: { tenantId, active: true } }),
+    prisma.conversation.count({ where: { tenantId } }),
+    prisma.subscription.findUnique({
+      where: { tenantId },
+      select: { status: true, trialEnd: true },
+    }),
+    prisma.user.count({ where: { tenantId } }),
+    prisma.service.count({ where: { tenantId, active: true } }),
+    prisma.product.count({ where: { tenantId, active: true } }),
+    prisma.order.count({ where: { tenantId } }),
+    prisma.tenantPaymentConfig.findUnique({ where: { tenantId }, select: { enabled: true } }).catch(() => null),
+  ]);
 
   // Optional model counts — wrapped to avoid compile/runtime issues on missing tables
   const templateCount: number =
@@ -119,10 +173,11 @@ async function buildCompletionMap(tenantId: string): Promise<Record<string, bool
     await (prisma as any).contact?.count({ where: { tenantId } }).catch(() => 0) ?? 0;
 
   const now = new Date();
+  const hasWhatsapp = tenant?.whatsappToken != null;
 
   return {
     profile: !!(tenant?.name?.trim() && tenant?.businessType?.trim()),
-    whatsapp: tenant?.whatsappToken != null,
+    whatsapp: hasWhatsapp,
     instagram: instagramConn?.status === 'connected',
     facebook: tenant?.facebookToken != null,
     automation: automationCount > 0,
@@ -136,6 +191,12 @@ async function buildCompletionMap(tenantId: string): Promise<Record<string, bool
     crm: contactCount > 0,
     team: userCount > 1,
     go_live: tenant?.operationalStatus === 'live',
+    // businessType-aware steps
+    services: serviceCount > 0,
+    appointments: serviceCount > 0 && hasWhatsapp,
+    catalog: productCount > 0,
+    orders: orderCount > 0,
+    payments: payConfig?.enabled === true,
   };
 }
 
@@ -250,13 +311,20 @@ export async function GET(request: Request) {
 
   const { tenantId } = auth;
 
-  const subscription = await prisma.subscription.findUnique({
-    where: { tenantId },
-    select: { plan: true, status: true, trialEnd: true },
-  });
+  const [subscription, tenantMeta] = await Promise.all([
+    prisma.subscription.findUnique({
+      where: { tenantId },
+      select: { plan: true, status: true, trialEnd: true },
+    }),
+    prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { businessType: true },
+    }),
+  ]);
 
   const plan = subscription?.plan ?? 'free';
-  const stepDefs = PLAN_STEPS[plan] ?? PLAN_STEPS['free'];
+  const businessType = tenantMeta?.businessType ?? null;
+  const stepDefs = getContextualStepDefs(plan, businessType);
 
   const [completionMap, analytics, botSetup] = await Promise.all([
     buildCompletionMap(tenantId),

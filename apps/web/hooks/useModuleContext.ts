@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getDefaultPinnedIds } from '@/lib/config/modules';
+import { getDefaultPinnedIdsForBusinessType } from '@/lib/config/modules';
 
 export interface ModuleFlag {
   enabled: boolean;
@@ -13,12 +13,15 @@ export interface ModuleContextState {
   flags: Record<string, ModuleFlag>;
   /** IDs explicitamente salvos pelo tenant. Vazio = usar defaults por plano. */
   pinnedModules: string[];
+  /** businessType do tenant para personalização de sidebar e recomendações. */
+  businessType: string | null;
 }
 
 const DEFAULT_STATE: ModuleContextState = {
   loading: true,
   flags: {},
   pinnedModules: [],
+  businessType: null,
 };
 
 let _cache: ModuleContextState | null = null;
@@ -44,12 +47,13 @@ export function useModuleContext(): ModuleContextState {
             loading: false,
             flags: data?.flags ?? {},
             pinnedModules: data?.pinnedModules ?? [],
+            businessType: data?.businessType ?? null,
           };
           _cache = next;
           setState(next);
         })
         .catch(() => {
-          const next = { ...DEFAULT_STATE, loading: false };
+          const next: ModuleContextState = { ...DEFAULT_STATE, loading: false };
           _cache = next;
           setState(next);
         });
@@ -67,8 +71,12 @@ export function invalidateModuleContext() {
   _promise = null;
 }
 
-/** Resolve os IDs pinados: pins do tenant SE preenchido, senão defaults por plano. */
-export function resolvePinnedIds(pinnedModules: string[], plan: string | null): string[] {
+/** Resolve os IDs pinados: pins do tenant SE preenchido, senão defaults por plano + businessType. */
+export function resolvePinnedIds(
+  pinnedModules: string[],
+  plan: string | null,
+  businessType?: string | null,
+): string[] {
   if (pinnedModules.length > 0) return pinnedModules;
-  return getDefaultPinnedIds(plan ?? 'free');
+  return getDefaultPinnedIdsForBusinessType(plan ?? 'free', businessType);
 }

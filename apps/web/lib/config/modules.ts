@@ -46,6 +46,11 @@ export interface AppModule {
    * Vazio = opt-in via "Todos os aplicativos".
    */
   pinnedByDefaultFor: string[];
+  /**
+   * businessTypes para os quais este módulo é especialmente relevante.
+   * Usado para badge "Recomendado" e defaults de sidebar por tipo de negócio.
+   */
+  recommendedFor?: string[];
   /** Ordem de exibição na sidebar. */
   sidebarOrder: number;
   /** Metadados de onboarding. Ausente = não faz parte do checklist. */
@@ -146,6 +151,7 @@ export const MODULE_CATALOG: AppModule[] = [
     description: 'Agendamentos automáticos pelo WhatsApp com lembretes configuráveis.',
     minPlan: 'standard',
     pinnedByDefaultFor: ['standard', 'pro', 'business'],
+    recommendedFor: ['clínica', 'salão', 'estética', 'serviços locais'],
     sidebarOrder: 13,
     onboarding: {
       plans: ['standard', 'pro', 'business'],
@@ -165,6 +171,7 @@ export const MODULE_CATALOG: AppModule[] = [
     description: 'Gestão de pedidos recebidos via WhatsApp com rastreamento de status.',
     minPlan: 'standard',
     pinnedByDefaultFor: ['standard', 'pro', 'business'],
+    recommendedFor: ['ecommerce', 'restaurante'],
     sidebarOrder: 14,
     onboarding: {
       plans: ['standard', 'pro', 'business'],
@@ -184,6 +191,7 @@ export const MODULE_CATALOG: AppModule[] = [
     description: 'Links de pagamento, cobranças via Stripe e Asaas.',
     minPlan: 'standard',
     pinnedByDefaultFor: ['standard', 'pro', 'business'],
+    recommendedFor: ['ecommerce', 'restaurante', 'infoproduto', 'serviços locais'],
     sidebarOrder: 15,
     onboarding: {
       plans: ['standard', 'pro', 'business'],
@@ -202,6 +210,7 @@ export const MODULE_CATALOG: AppModule[] = [
     description: 'Catálogo de produtos com checkout automático pela IA.',
     minPlan: 'standard',
     pinnedByDefaultFor: ['standard', 'pro', 'business'],
+    recommendedFor: ['ecommerce', 'restaurante', 'infoproduto'],
     sidebarOrder: 16,
     onboarding: {
       plans: ['standard', 'pro', 'business'],
@@ -221,6 +230,7 @@ export const MODULE_CATALOG: AppModule[] = [
     description: 'Catálogo de serviços com duração, buffer e disponibilidade.',
     minPlan: 'standard',
     pinnedByDefaultFor: ['standard', 'pro', 'business'],
+    recommendedFor: ['clínica', 'salão', 'estética', 'serviços locais'],
     sidebarOrder: 17,
     onboarding: {
       plans: ['standard', 'pro', 'business'],
@@ -501,6 +511,37 @@ export function getDefaultPinnedIds(plan: string): string[] {
     .filter(m => m.pinnedByDefaultFor.includes(slug))
     .sort((a, b) => a.sidebarOrder - b.sidebarOrder)
     .map(m => m.id);
+}
+
+/**
+ * IDs pinned por padrão, ajustados pelo businessType do tenant.
+ * Para free ou sem businessType, retorna o conjunto padrão por plano.
+ * Para planos pagos com businessType reconhecido, prioriza módulos relevantes.
+ */
+export function getDefaultPinnedIdsForBusinessType(
+  plan: string,
+  businessType: string | null | undefined,
+): string[] {
+  const base = getDefaultPinnedIds(plan);
+  if (!businessType || plan === 'free') return base;
+
+  const bType = businessType.toLowerCase();
+  const AGENDA_TYPES = new Set(['clínica', 'salão', 'estética', 'serviços locais']);
+  const SALES_TYPES  = new Set(['ecommerce', 'restaurante', 'infoproduto']);
+
+  // Módulos irrelevantes por businessType: remover do padrão
+  const toRemove = new Set<string>();
+  if (AGENDA_TYPES.has(bType)) {
+    toRemove.add('catalog');
+    toRemove.add('orders');
+  }
+  if (SALES_TYPES.has(bType)) {
+    toRemove.add('services');
+    toRemove.add('appointments');
+    toRemove.add('professionals');
+  }
+
+  return base.filter(id => !toRemove.has(id));
 }
 
 /** Nomes de todas as categorias com label legível. */

@@ -43,6 +43,16 @@ interface EnrichmentAttempt {
   attemptedAt: string;
   completedAt: string | null;
   errorMessage: string | null;
+  responseSummary?: Record<string, any> | null;
+}
+
+interface SearchRunSummary {
+  provider: string;
+  query: string;
+  discovered: number;
+  created: number;
+  skipped: number;
+  lastDiscoveryAt: string;
 }
 
 interface SearchRun {
@@ -63,6 +73,7 @@ interface SearchRun {
   createdAt: string;
   candidates: LeadCandidate[];
   enrichmentAttempts: EnrichmentAttempt[];
+  summary?: SearchRunSummary | null;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -147,6 +158,55 @@ export default function SearchRunDetailPage() {
   // Filters
   const [statusFilter, setStatusFilter]   = useState<StatusFilter>('all');
   const [verdictFilter, setVerdictFilter] = useState<VerdictFilter>('todos');
+
+  // Discovery state
+  const [isDiscovering, setIsDiscovering] = useState(false);
+  const [discoverError, setDiscoverError] = useState<string | null>(null);
+  const [discoverSuccess, setDiscoverSuccess] = useState<{ discovered: number; created: number; skipped: number } | null>(null);
+
+  // Enrichment state
+  const [enrichingIds, setEnrichingIds] = useState<Record<string, boolean>>({});
+
+  async function handleEnrich(candidateId: string) {
+    setEnrichingIds(prev => ({ ...prev, [candidateId]: true }));
+    try {
+      const token = getAuthToken();
+      await fetch(`/api/lead-intelligence/candidates/${candidateId}/enrich`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      await loadRun();
+    } finally {
+      setEnrichingIds(prev => ({ ...prev, [candidateId]: false }));
+    }
+  }
+
+  async function handleDiscover() {
+    setIsDiscovering(true);
+    setDiscoverError(null);
+    setDiscoverSuccess(null);
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`/api/lead-intelligence/search-runs/${id}/discover`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error ?? 'Erro na descoberta.');
+      }
+      setDiscoverSuccess({
+        discovered: data.discovered,
+        created: data.created,
+        skipped: data.skipped,
+      });
+      await loadRun();
+    } catch (e: any) {
+      setDiscoverError(e.message ?? 'Erro de conexão.');
+    } finally {
+      setIsDiscovering(false);
+    }
+  }
 
   // ── Fetch detail ─────────────────────────────────────────────────────────
 
@@ -435,6 +495,62 @@ export default function SearchRunDetailPage() {
         </div>
       </div>
 
+      {/* ── Nova Seção: Descoberta de Empresas ────────────────────────────────*/}
+      <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div>
+            <h2 className="text-sm font-bold text-gray-900">🔍 Descoberta de Empresas</h2>
+            <p className="text-xs text-gray-500 mt-1 max-w-2xl">
+              Este passo utiliza o Google Places para encontrar listagens públicas de empresas na região da busca. 
+              <strong>Nota:</strong> CNPJ e e-mails não são coletados nesta etapa. Empresas já salvas são ignoradas para evitar duplicações.
+            </p>
+          </div>
+          <button
+            onClick={handleDiscover}
+            disabled={isDiscovering || run.status === 'queued'}
+            className="shrink-0 inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white rounded-xl text-sm font-bold transition-all shadow-sm"
+          >
+            {isDiscovering ? '⏳ Buscando...' : '🔍 Buscar empresas no Google'}
+          </button>
+        </div>
+
+        {discoverError && (
+          <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">
+            {discoverError}
+          </div>
+        )}
+
+        {discoverSuccess && (
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-sm text-emerald-800">
+            <strong>✅ Busca concluída!</strong> Encontradas {discoverSuccess.discovered} empresas. {discoverSuccess.created} novos candidatos salvos ({discoverSuccess.skipped} ignorados por duplicação).
+          </div>
+        )}
+
+        {run.summary && (
+          <div className="bg-gray-50 rounded-xl p-4 mt-2">
+            <h3 className="text-[11px] font-bold text-gray-500 uppercase tracking-wide mb-2">Última Descoberta</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div>
+                <p className="text-[10px] font-semibold text-gray-500 uppercase">Provedor</p>
+                <p className="text-sm font-semibold text-gray-900">{run.summary.provider}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-semibold text-gray-500 uppercase">Query Usada</p>
+                <p className="text-sm font-semibold text-gray-900 truncate" title={run.summary.query}>{run.summary.query}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-semibold text-gray-500 uppercase">Status do Processamento</p>
+                <p className="text-sm font-semibold text-gray-900">Criados: {run.summary.created} / Skipped: {run.summary.skipped}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-semibold text-gray-500 uppercase">Data</p>
+                <p className="text-sm font-semibold text-gray-900">{formatDate(run.summary.lastDiscoveryAt)}</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* ── Seção 2: Candidatos ─────────────────────────────────────────────── */}
       <div className="space-y-4">
 
@@ -697,10 +813,19 @@ export default function SearchRunDetailPage() {
                       ) : null}
                       <button
                         onClick={() => handleScore(c.id)}
-                        disabled={isScoring || isUpdatingStatus}
+                        disabled={isScoring || isUpdatingStatus || enrichingIds[c.id]}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 disabled:opacity-60 text-indigo-700 rounded-xl text-xs font-bold transition-all border border-indigo-200"
                       >
                         {isScoring ? '⏳ Calculando...' : '🧮 Calcular score'}
+                      </button>
+
+                      <button
+                        onClick={() => handleEnrich(c.id)}
+                        disabled={!c.website || enrichingIds[c.id] || isUpdatingStatus || isScoring}
+                        title={!c.website ? 'Adicione um site para enriquecer' : ''}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 disabled:opacity-60 text-blue-700 rounded-xl text-xs font-bold transition-all border border-blue-200"
+                      >
+                        {enrichingIds[c.id] ? '⏳ Buscando...' : '🌐 Enriquecer lead'}
                       </button>
                     </div>
                   </div>
@@ -767,7 +892,13 @@ export default function SearchRunDetailPage() {
 
       {/* ── Seção 3: Tentativas de enriquecimento ────────────────────────────── */}
       <div className="space-y-3">
-        <h2 className="text-sm font-bold text-gray-900">🔄 Tentativas de enriquecimento</h2>
+        <div>
+          <h2 className="text-sm font-bold text-gray-900">🔄 Histórico de Enriquecimento</h2>
+          <p className="text-xs text-gray-500 mt-1 max-w-3xl">
+            A etapa de enriquecimento coleta dados comerciais <strong>apenas de páginas públicas do site </strong>
+            (como a home e páginas de contato). Campanhas de WhatsApp e e-mail marketing não são disparadas de forma automatizada por aqui.
+          </p>
+        </div>
 
         {run.enrichmentAttempts.length === 0 ? (
           <div className="border-2 border-dashed border-gray-200 rounded-2xl py-10 flex flex-col items-center justify-center text-center">
@@ -778,41 +909,52 @@ export default function SearchRunDetailPage() {
           </div>
         ) : (
           <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-100 bg-gray-50">
-                  <th className="text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide px-5 py-3">Provedor</th>
-                  <th className="text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide px-5 py-3">Status</th>
-                  <th className="text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide px-5 py-3 hidden sm:table-cell">Iniciada em</th>
-                  <th className="text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide px-5 py-3 hidden md:table-cell">Concluída em</th>
-                  <th className="text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide px-5 py-3">Erro</th>
-                </tr>
-              </thead>
-              <tbody>
-                {run.enrichmentAttempts.map((a, i) => {
-                  const as_ = statusBadge(a.status);
-                  return (
-                    <tr key={a.id} className={`${i !== 0 ? 'border-t border-gray-100' : ''}`}>
-                      <td className="px-5 py-3 font-medium text-gray-800">{a.provider}</td>
-                      <td className="px-5 py-3">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${as_.color}`}>
-                          {as_.label}
-                        </span>
-                      </td>
-                      <td className="px-5 py-3 text-gray-500 text-xs hidden sm:table-cell">
-                        {formatDate(a.attemptedAt)}
-                      </td>
-                      <td className="px-5 py-3 text-gray-500 text-xs hidden md:table-cell">
-                        {a.completedAt ? formatDate(a.completedAt) : '—'}
-                      </td>
-                      <td className="px-5 py-3 text-xs text-red-600 max-w-[200px] truncate">
-                        {a.errorMessage ?? '—'}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm min-w-[700px]">
+                <thead>
+                  <tr className="border-b border-gray-100 bg-gray-50">
+                    <th className="text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide px-5 py-3">Provedor</th>
+                    <th className="text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide px-5 py-3">Status</th>
+                    <th className="text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide px-5 py-3 hidden sm:table-cell">Iniciada em</th>
+                    <th className="text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide px-5 py-3 hidden md:table-cell">Concluída em</th>
+                    <th className="text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide px-5 py-3">Resultado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {run.enrichmentAttempts.map((a, i) => {
+                    const as_ = statusBadge(a.status);
+                    const filledCount = a.responseSummary?.filledFields?.length ?? 0;
+                    return (
+                      <tr key={a.id} className={`${i !== 0 ? 'border-t border-gray-100' : ''}`}>
+                        <td className="px-5 py-3 font-medium text-gray-800">{a.provider === 'website_public' ? 'Site' : a.provider}</td>
+                        <td className="px-5 py-3">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${as_.color}`}>
+                            {as_.label}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3 text-gray-500 text-xs hidden sm:table-cell">
+                          {formatDate(a.attemptedAt)}
+                        </td>
+                        <td className="px-5 py-3 text-gray-500 text-xs hidden md:table-cell">
+                          {a.completedAt ? formatDate(a.completedAt) : '—'}
+                        </td>
+                        <td className="px-5 py-3 text-xs">
+                          {a.errorMessage ? (
+                            <span className="text-red-600 max-w-[200px] truncate block" title={a.errorMessage}>
+                              {a.errorMessage}
+                            </span>
+                          ) : (
+                            <span className="text-gray-600 block">
+                              {filledCount > 0 ? `${filledCount} campos preenchidos` : 'Sem novos dados'}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>

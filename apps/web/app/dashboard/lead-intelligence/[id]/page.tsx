@@ -34,6 +34,28 @@ interface LeadCandidate {
   source: string;
   createdAt: string;
   score: LeadScore | null;
+  emailConsentStatus: string;
+  whatsappConsentStatus: string;
+  outreachStatus: string;
+  outreachBlockReason: string | null;
+  lastReadinessCheckedAt: string | null;
+}
+
+interface CampaignDraft {
+  id: string;
+  channel: string;
+  status: string;
+  subject: string | null;
+  messageBody: string;
+  createdAt: string;
+  leadCandidate?: {
+    id: string;
+    companyName: string;
+    email: string | null;
+    phone: string | null;
+    mobilePhone: string | null;
+    status: string;
+  };
 }
 
 interface EnrichmentAttempt {
@@ -232,7 +254,79 @@ export default function SearchRunDetailPage() {
     }
   }, [id]);
 
-  useEffect(() => { loadRun(); }, [loadRun]);
+  const [drafts, setDrafts] = useState<CampaignDraft[]>([]);
+  const [draftsLoading, setDraftsLoading] = useState(false);
+  const [draftSummary, setDraftSummary] = useState<any>(null);
+
+  const loadDrafts = useCallback(async () => {
+    if (!id) return;
+    setDraftsLoading(true);
+    try {
+      const res = await fetch(`/api/lead-intelligence/search-runs/${id}/campaign-drafts`, {
+        headers: { Authorization: `Bearer ${getAuthToken()}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setDrafts(data.drafts || []);
+      }
+    } finally {
+      setDraftsLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    loadRun();
+    loadDrafts();
+  }, [loadRun, loadDrafts]);
+
+  // ── Readiness e Drafts Actions ────────────────────────────────────────────
+
+  const [readinessIds, setReadinessIds] = useState<Record<string, boolean>>({});
+
+  async function handleConsentPatch(candidateId: string, field: string, value: string) {
+    try {
+      await fetch(`/api/lead-intelligence/candidates/${candidateId}/outreach-readiness`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` },
+        body: JSON.stringify({ [field]: value }),
+      });
+      await loadRun(); // recarrega UI
+    } catch {}
+  }
+
+  async function handleReadinessCheck(candidateId: string) {
+    setReadinessIds(prev => ({ ...prev, [candidateId]: true }));
+    try {
+      await fetch(`/api/lead-intelligence/candidates/${candidateId}/outreach-readiness`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${getAuthToken()}` },
+      });
+      await loadRun();
+    } finally {
+      setReadinessIds(prev => ({ ...prev, [candidateId]: false }));
+    }
+  }
+
+  const [generatingDrafts, setGeneratingDrafts] = useState(false);
+
+  async function handleGenerateDrafts(channel: string) {
+    setGeneratingDrafts(true);
+    setDraftSummary(null);
+    try {
+      const res = await fetch(`/api/lead-intelligence/search-runs/${id}/campaign-drafts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` },
+        body: JSON.stringify({ channel }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setDraftSummary(data.summary);
+        await loadDrafts();
+      }
+    } finally {
+      setGeneratingDrafts(false);
+    }
+  }
 
   // ── Candidate form helpers ────────────────────────────────────────────────
 
@@ -848,6 +942,61 @@ export default function SearchRunDetailPage() {
                     )}
                   </div>
 
+                  {/* Readiness e Consentimentos */}
+                  <div className="border-t border-gray-100 pt-3 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                    <div className="space-y-2 flex-1">
+                      <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Status de Ativação / Consentimentos</p>
+                      
+                      <div className="flex flex-wrap items-center gap-4 text-xs font-medium">
+                        <div className="flex items-center gap-1.5">
+                          <label className="text-gray-600">Email:</label>
+                          <select 
+                            value={c.emailConsentStatus || 'unknown'} 
+                            onChange={(e) => handleConsentPatch(c.id, 'emailConsentStatus', e.target.value)}
+                            className="border border-gray-200 rounded px-1.5 py-0.5 text-gray-800 bg-gray-50 text-[11px] focus:outline-none focus:border-indigo-300"
+                          >
+                            <option value="unknown">Desconhecido</option>
+                            <option value="granted">Concedido</option>
+                            <option value="denied">Negado</option>
+                          </select>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <label className="text-gray-600">WhatsApp:</label>
+                          <select 
+                            value={c.whatsappConsentStatus || 'unknown'} 
+                            onChange={(e) => handleConsentPatch(c.id, 'whatsappConsentStatus', e.target.value)}
+                            className="border border-gray-200 rounded px-1.5 py-0.5 text-gray-800 bg-gray-50 text-[11px] focus:outline-none focus:border-indigo-300"
+                          >
+                            <option value="unknown">Desconhecido</option>
+                            <option value="granted">Concedido</option>
+                            <option value="denied">Negado</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="text-xs">
+                        <span className="font-semibold text-gray-700">Readiness: </span>
+                        <span className={`font-bold ${c.outreachStatus === 'blocked' ? 'text-red-600' : c.outreachStatus === 'not_ready' ? 'text-gray-400' : 'text-emerald-600'}`}>
+                          {c.outreachStatus || 'not_ready'}
+                        </span>
+                        {c.outreachBlockReason && (
+                          <p className="text-[10px] text-red-500 mt-0.5">Motivo bloqueio: {c.outreachBlockReason}</p>
+                        )}
+                        {c.lastReadinessCheckedAt && (
+                          <p className="text-[9px] text-gray-400 mt-0.5">Checado em: {formatDate(c.lastReadinessCheckedAt)}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => handleReadinessCheck(c.id)}
+                      disabled={readinessIds[c.id]}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 disabled:opacity-60 text-indigo-700 rounded-xl text-xs font-bold transition-all border border-indigo-200 shrink-0"
+                    >
+                      {readinessIds[c.id] ? '⏳ Validando...' : '🛡️ Validar ativação'}
+                    </button>
+                  </div>
+
                   {/* Score breakdown */}
                   {c.score && (
                     <div className="border-t border-gray-100 pt-3 space-y-2">
@@ -957,6 +1106,78 @@ export default function SearchRunDetailPage() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* ── Seção 4: Preparação e Rascunhos de Ativação ────────────────────── */}
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-sm font-bold text-gray-900">📝 Rascunhos de Ativação (Outreach)</h2>
+          <p className="text-xs text-gray-500 mt-1 max-w-3xl">
+            Esta seção <strong>apenas prepara a ativação e gera rascunhos</strong> de mensagens para candidatos aprovados e elegíveis (com consentimento válido).
+            <span className="text-amber-600 font-semibold block mt-1">Nenhum email ou WhatsApp é enviado nativamente por aqui nesta versão.</span>
+          </p>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={() => handleGenerateDrafts('email')}
+              disabled={generatingDrafts}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white rounded-xl text-xs font-bold transition-all"
+            >
+              {generatingDrafts ? '⏳ Gerando...' : '✉️ Gerar rascunhos de Email'}
+            </button>
+            <button
+              onClick={() => handleGenerateDrafts('whatsapp')}
+              disabled={generatingDrafts}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded-xl text-xs font-bold transition-all"
+            >
+              {generatingDrafts ? '⏳ Gerando...' : '💬 Gerar rascunhos de WhatsApp'}
+            </button>
+          </div>
+
+          {draftSummary && (
+            <div className="bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm text-gray-700 mt-3 flex items-center gap-4 flex-wrap">
+              <span><strong>Resumo da geração:</strong></span>
+              <span>Requisitados: {draftSummary.requested}</span>
+              <span>Elegíveis: {draftSummary.eligible}</span>
+              <span className="text-emerald-600 font-bold">Criados: {draftSummary.created}</span>
+              <span className="text-amber-600">Ignorados: {draftSummary.skipped}</span>
+            </div>
+          )}
+
+          <div className="pt-4 border-t border-gray-100">
+            {draftsLoading ? (
+              <p className="text-xs text-gray-400">Carregando rascunhos...</p>
+            ) : drafts.length === 0 ? (
+              <p className="text-xs text-gray-400">Nenhum rascunho de campanha gerado para esta busca.</p>
+            ) : (
+              <div className="space-y-3">
+                {drafts.map(d => (
+                  <div key={d.id} className="border border-gray-200 rounded-xl p-4 bg-gray-50 space-y-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${d.channel === 'email' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                          {d.channel}
+                        </span>
+                        <span className="text-sm font-semibold text-gray-800">{d.leadCandidate?.companyName}</span>
+                      </div>
+                      <span className="text-[10px] bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full font-bold uppercase">
+                        {d.status}
+                      </span>
+                    </div>
+                    {d.subject && (
+                      <p className="text-xs font-semibold text-gray-700">Assunto: <span className="font-normal">{d.subject}</span></p>
+                    )}
+                    <div className="bg-white border border-gray-200 rounded p-2 text-xs text-gray-600 whitespace-pre-wrap max-h-24 overflow-y-auto">
+                      {d.messageBody}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

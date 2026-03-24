@@ -108,6 +108,7 @@ model Tenant {
   leadCandidates            LeadCandidate[]
   leadScores                LeadScore[]
   leadEnrichmentAttempts    LeadEnrichmentAttempt[]
+  leadCampaignDrafts        LeadCampaignDraft[]
 }
 
 // ─── Contacts Module (Phase 1) ────────────────────────────────────────────────
@@ -1515,6 +1516,7 @@ model LeadSearchRun {
   tenant              Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   candidates          LeadCandidate[]
   enrichmentAttempts  LeadEnrichmentAttempt[]
+  campaignDrafts      LeadCampaignDraft[]
 
   @@index([tenantId, createdAt])
   @@index([tenantId, status])
@@ -1541,6 +1543,11 @@ model LeadCandidate {
   reviewsCount Int?
   source       String  @default("manual") // manual | google | import | unknown
   status       String  @default("pending_review") // pending_review | approved | rejected | archived
+  emailConsentStatus String @default("unknown") // unknown | granted | denied
+  whatsappConsentStatus String @default("unknown") // unknown | granted | denied
+  outreachStatus String @default("not_ready") // not_ready | ready_email | ready_whatsapp | ready_multichannel | blocked
+  outreachBlockReason String?
+  lastReadinessCheckedAt DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -1548,6 +1555,7 @@ model LeadCandidate {
   searchRun          LeadSearchRun           @relation(fields: [searchRunId], references: [id], onDelete: Cascade)
   score              LeadScore?
   enrichmentAttempts LeadEnrichmentAttempt[]
+  campaignDrafts     LeadCampaignDraft[]
 
   @@index([tenantId, searchRunId])
   @@index([tenantId, status])
@@ -1597,3 +1605,28 @@ model LeadEnrichmentAttempt {
   @@index([tenantId, status])
   @@map("lead_enrichment_attempts")
 }
+
+model LeadCampaignDraft {
+  id              String   @id @default(uuid())
+  tenantId        String
+  searchRunId     String
+  leadCandidateId String
+  channel         String   // email | whatsapp
+  status          String   @default("draft") // draft | approved | rejected
+  subject         String?
+  messageBody     String   @db.Text
+  personalization Json?
+  readinessSnapshot Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  searchRun     LeadSearchRun @relation(fields: [searchRunId], references: [id], onDelete: Cascade)
+  leadCandidate LeadCandidate @relation(fields: [leadCandidateId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, searchRunId])
+  @@index([tenantId, channel])
+  @@index([tenantId, status])
+  @@map("lead_campaign_drafts")
+}
+

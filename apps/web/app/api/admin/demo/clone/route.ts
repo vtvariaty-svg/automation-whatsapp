@@ -100,9 +100,10 @@ export async function POST(request: Request) {
     // Clone automation rules
     if (sourceRules.length > 0) {
       await prisma.automationRule.createMany({
-        data: sourceRules.map(({ id: _id, tenantId: _tid, createdAt: _ca, ...rest }) => ({
+        data: sourceRules.map(({ id: _id, tenantId: _tid, createdAt: _ca, actionConfig, ...rest }) => ({
           ...rest,
           tenantId: newTenant.id,
+          actionConfig: actionConfig ?? undefined,
         })),
       });
     }

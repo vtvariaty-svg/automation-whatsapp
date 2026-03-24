@@ -68,13 +68,13 @@ function HeroSection() {
               <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-600" />
             </span>
             <span className="text-xs sm:text-sm font-bold text-blue-700 uppercase tracking-wide">
-              API Oficial Meta · Powered by OpenAI
+              Infraestrutura Oficial Meta · Motor OpenAI
             </span>
           </div>
 
           {/* Headline */}
           <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold text-gray-900 tracking-tight leading-[1.08] mb-6">
-            Atenda, Qualifique e Venda
+            Automatize o atendimento
             <br className="hidden md:block" />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
               {" "}no WhatsApp com IA
@@ -82,10 +82,10 @@ function HeroSection() {
           </h1>
 
           {/* Subheadline */}
-          <p className="text-lg md:text-xl text-gray-600 leading-relaxed mb-10 max-w-3xl mx-auto font-medium">
-            Configure uma IA treinada com as regras do seu negócio e deixe ela responder clientes,{" "}
-            <strong className="text-gray-900">fechar vendas, gerar cobranças e agendar horários</strong>{" "}
-            — 24 horas por dia, no WhatsApp, Instagram e Facebook.
+          <p className="text-lg md:text-xl text-gray-600 leading-relaxed mb-10 max-w-2xl mx-auto font-medium">
+            Uma IA treinada com as regras do seu negócio que responde clientes em segundos,{" "}
+            <strong className="text-gray-900">qualifica leads e fecha vendas automaticamente</strong>{" "}
+            — 24 horas por dia, sem precisar aumentar o time.
           </p>
 
           {/* CTAs */}
@@ -94,7 +94,7 @@ function HeroSection() {
               href="/register"
               className="w-full sm:w-auto text-base font-bold bg-blue-600 text-white px-8 py-4 rounded-xl shadow-xl shadow-blue-500/20 hover:bg-blue-700 hover:shadow-blue-500/30 transition-all hover:-translate-y-1"
             >
-              Começar Gratuitamente
+              Ativar meu WhatsApp com IA
             </Link>
             <a
               href="#como-funciona"
@@ -116,7 +116,7 @@ function HeroSection() {
               <svg className="w-3.5 h-3.5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
               </svg>
-              Setup em menos de 5 minutos
+              Atendimento ativo em minutos
             </span>
             <span className="flex items-center gap-1.5">
               <svg className="w-3.5 h-3.5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
@@ -633,54 +633,62 @@ function AtivacaoSection() {
 function PrecosSection() {
   const planos = [
     {
-      nome: "Explorar",
+      nome: "Gratuito",
       preco: null,
-      descricao: "Para testar a plataforma antes de contratar",
+      descricao: "Para explorar a interface sem compromisso",
+      nota: "Sem acesso ao WhatsApp Oficial",
       trial: false,
       features: [
-        "Instagram DM automatizado",
+        "Instagram DM (sem WhatsApp Oficial)",
         "Até 1.000 contatos no CRM",
-        "500 respostas de IA por mês",
-        "Até 5 automações ativas",
+        "500 mensagens de IA por mês",
+        "Até 5 automações básicas",
         "Suporte via documentação",
       ],
-      ausentes: ["API Oficial WhatsApp", "Módulo de agendamentos", "Pagamentos integrados"],
-      botaoTexto: "Criar conta grátis",
-      botaoEstilo: "bg-white text-gray-900 border border-gray-300 hover:bg-gray-50",
+      ausentes: [
+        "WhatsApp Oficial API",
+        "Agendamentos automáticos",
+        "Pedidos, cobranças e pagamentos",
+      ],
+      botaoTexto: "Explorar sem compromisso",
+      botaoEstilo: "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50",
       popular: false,
     },
     {
       nome: "Essencial",
       preco: "49,90",
-      descricao: "Para negócios que querem organizar o atendimento",
+      descricao: "O plano completo para operar no WhatsApp com IA",
+      nota: "7 dias grátis · sem cartão",
       trial: true,
       features: [
-        "WhatsApp Oficial + Instagram + Facebook",
-        "Até 5.000 contatos no CRM",
+        "WhatsApp Oficial API ativada",
+        "Atendimento automático 24h no WhatsApp",
+        "Até 5.000 contatos com histórico completo",
         "3.000 respostas de IA por mês",
-        "Agendamentos automáticos",
-        "Catálogo de produtos e pedidos",
-        "Caixa de entrada unificada",
+        "Agendamentos automáticos pelo WhatsApp",
+        "Catálogo de produtos, pedidos e cobranças",
+        "Caixa de entrada: WhatsApp + Instagram + Facebook",
       ],
-      ausentes: ["Segmentação avançada"],
-      botaoTexto: "Testar 7 dias grátis",
+      ausentes: [],
+      botaoTexto: "Começar 7 dias grátis",
       botaoEstilo: "bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-500/25",
       popular: true,
     },
     {
       nome: "Crescimento",
       preco: "97,00",
-      descricao: "Para operações em escala com pipeline de vendas ativo",
+      descricao: "Para operações que precisam de escala e controle total",
+      nota: null,
       trial: false,
       features: [
         "Tudo do Essencial",
         "Até 20.000 contatos",
         "10.000 respostas de IA por mês",
-        "Agendamentos com profissionais e lembretes",
+        "Agendamentos por profissional com lembretes",
         "Pagamentos integrados (Stripe e Asaas)",
         "Atendentes ilimitados",
-        "Automações avançadas e handoff configurável",
-        "Analytics e atribuição de leads",
+        "Automações avançadas e escalação configurável",
+        "Analytics, funil de vendas e atribuição de leads",
       ],
       ausentes: ["Painel white-label"],
       botaoTexto: "Assinar Crescimento",
@@ -691,12 +699,13 @@ function PrecosSection() {
       nome: "Negócio",
       preco: "197,00",
       descricao: "Para agências, franquias e grandes operações",
+      nota: null,
       trial: false,
       features: [
         "Tudo do Crescimento",
         "Contatos e mensagens sem limite",
-        "White-label com sua marca",
-        "Painel para gestão de múltiplas contas",
+        "White-label com a sua marca",
+        "Painel de gestão de múltiplas contas",
         "Consultor de sucesso dedicado",
         "Suporte com SLA garantido",
       ],
@@ -733,19 +742,24 @@ function PrecosSection() {
               }`}
             >
               {plano.popular && (
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-blue-600 text-white text-xs font-bold uppercase tracking-wider py-1 px-4 rounded-full whitespace-nowrap">
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-blue-600 text-white text-xs font-bold uppercase tracking-wider py-1.5 px-5 rounded-full whitespace-nowrap shadow-md shadow-blue-500/30">
                   Mais escolhido
                 </div>
               )}
 
               <div className="mb-6">
                 <h3 className="text-xl font-bold text-gray-900 mb-1">{plano.nome}</h3>
-                <p className="text-sm text-gray-500">{plano.descricao}</p>
+                <p className={`text-sm ${plano.popular ? "text-blue-700 font-semibold" : "text-gray-500"}`}>
+                  {plano.descricao}
+                </p>
               </div>
 
               <div className="mb-8">
                 {plano.preco === null ? (
-                  <span className="text-4xl font-extrabold text-gray-900">Grátis</span>
+                  <div>
+                    <span className="text-4xl font-extrabold text-gray-400">Grátis</span>
+                    <p className="text-xs text-red-500 font-semibold mt-1">Sem acesso ao WhatsApp Oficial</p>
+                  </div>
                 ) : (
                   <div className="flex items-baseline gap-1">
                     <span className="text-xl font-bold text-gray-400">R$</span>
@@ -782,9 +796,9 @@ function PrecosSection() {
               >
                 {plano.botaoTexto}
               </Link>
-              {plano.trial && (
-                <p className="text-center text-xs font-semibold text-green-600 mt-3">
-                  Sem cartão de crédito no teste
+              {plano.nota && (
+                <p className={`text-center text-xs font-semibold mt-3 ${plano.popular ? "text-green-600" : "text-gray-400"}`}>
+                  {plano.nota}
                 </p>
               )}
             </div>

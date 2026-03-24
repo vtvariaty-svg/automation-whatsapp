@@ -106,6 +106,26 @@ export async function executeOrderAutomations(
 
     triggered = rules.length;
 
+    // Resolve phone: if caller passed empty string, look it up from the order's contactId
+    let resolvedPhone = contactPhone?.trim() ?? '';
+    if (!resolvedPhone) {
+      const order = await prisma.order.findFirst({
+        where: { id: orderId, tenantId },
+        select: { contactId: true },
+      });
+      if (order?.contactId) {
+        const contact = await prisma.contact.findFirst({
+          where: { id: order.contactId, tenantId },
+          select: { phone: true },
+        });
+        resolvedPhone = contact?.phone?.trim() ?? '';
+      }
+      if (!resolvedPhone) {
+        console.warn(`[OrderAutomation] No phone for order ${orderId.slice(0, 8)} — ${triggered} rule(s) skipped`);
+        return { triggered, sent: 0 };
+      }
+    }
+
     // Get tenant WhatsApp credentials
     const tenant = await prisma.tenant.findUnique({
       where: { id: tenantId },
@@ -133,7 +153,7 @@ export async function executeOrderAutomations(
       try {
         if (rule.responseType === 'template') {
           // Enviar template via Meta Graph API
-          await sendTemplateMessage(contactPhone, rule.responseText, phoneId, token, [
+          await sendTemplateMessage(resolvedPhone, rule.responseText, phoneId, token, [
             context?.origin || '',
             orderId.slice(0, 8),
           ]);
@@ -142,14 +162,14 @@ export async function executeOrderAutomations(
           const message = rule.responseText
             .replace(/\{status\}/g, newStatus)
             .replace(/\{orderId\}/g, orderId.slice(0, 8));
-          await sendWhatsAppMessage(contactPhone, message, phoneId, token);
+          await sendWhatsAppMessage(resolvedPhone, message, phoneId, token);
         }
         success = true;
         sent++;
-        console.log(`[OrderAutomation] Enviado "${rule.name}" (${rule.responseType}) para ${contactPhone}`);
+        console.log(`[OrderAutomation] Enviado "${rule.name}" (${rule.responseType}) para ${resolvedPhone}`);
       } catch (err: any) {
         errorMessage = err?.message || 'Erro desconhecido';
-        console.error(`[OrderAutomation] Falha ao enviar regra "${rule.name}" para ${contactPhone}:`, err);
+        console.error(`[OrderAutomation] Falha ao enviar regra "${rule.name}" para ${resolvedPhone}:`, err);
       }
 
       // Persist automation log
@@ -160,7 +180,7 @@ export async function executeOrderAutomations(
           orderId,
           triggerType: 'order_status',
           triggerValue: newStatus,
-          contactPhone,
+          contactPhone: resolvedPhone,
           success,
           errorMessage,
         },

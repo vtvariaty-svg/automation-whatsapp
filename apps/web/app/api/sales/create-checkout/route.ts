@@ -81,14 +81,21 @@ export async function POST(req: Request) {
 
     // Create draft order linked to checkout
     const { createOrder } = await import('@/src/services/orderService');
+
+    // Resolve real phone and conversation — contact_id is a UUID, never a phone number
+    const checkoutContact = await prisma.contact.findFirst({
+      where: { id: contact_id, tenantId: auth.tenantId },
+      select: { phone: true, name: true },
+    });
     const conversation = await prisma.conversation.findFirst({
-      where: { tenantId: auth.tenantId, customerPhone: contact_id },
+      where: { tenantId: auth.tenantId, customerPhone: checkoutContact?.phone ?? '' },
       orderBy: { lastMessageAt: 'desc' },
     });
 
     await createOrder({
       tenantId: auth.tenantId,
-      customerPhone: contact_id,
+      customerPhone: checkoutContact?.phone ?? '',
+      customerName: checkoutContact?.name ?? undefined,
       contactId: contact_id,
       conversationId: conversation?.id,
       origin: 'checkout',

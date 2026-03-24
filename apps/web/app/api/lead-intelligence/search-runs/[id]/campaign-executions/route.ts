@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getAuthTenant } from '@/lib/getAuthTenant';
 import { dispatchEmailCampaign } from '@/lib/services/lead-intelligence/emailCampaignDispatchService';
 import { dispatchWhatsAppCampaign } from '@/lib/services/lead-intelligence/whatsappCampaignDispatchService';
+import { Prisma } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
 
@@ -192,7 +193,7 @@ export async function POST(
           sentAt: new Date(),
           providerMessageId: dispatchResult.providerMessageId,
           providerChannel: channel,
-          deliveryMeta: deliveredToValue ? { deliveredTo: deliveredToValue } : null,
+          deliveryMeta: deliveredToValue ? { deliveredTo: deliveredToValue } : Prisma.DbNull,
           errorMessage: null,
         }
       });

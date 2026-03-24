@@ -58,8 +58,13 @@ export async function POST(req: Request) {
             const stripeSessionId = session.id ?? session.payment_intent ?? `stripe_${Date.now()}`;
 
             // Find conversation for this contact to link the order
+            // contactId is a UUID — resolve real phone first, then query by phone
+            const billingContact = await prisma.contact.findFirst({
+              where: { id: contactId, tenantId },
+              select: { phone: true },
+            });
             const conversation = await prisma.conversation.findFirst({
-              where: { tenantId, customerPhone: contactId },
+              where: { tenantId, customerPhone: billingContact?.phone ?? '' },
               orderBy: { lastMessageAt: 'desc' },
             });
 

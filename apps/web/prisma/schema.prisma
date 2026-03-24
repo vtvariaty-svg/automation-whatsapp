@@ -115,7 +115,8 @@ model Tenant {
   leadProviderEventLogs   LeadProviderEventLog[]
   leadProspectingTemplates LeadProspectingTemplate[]
   leadFollowUpLogs        LeadFollowUpLog[]
-  leadOperationalAlerts   LeadOperationalAlert[]
+  leadOperationalAlerts           LeadOperationalAlert[]
+  leadCompanyRegistrySnapshots    LeadCompanyRegistrySnapshot[]
 }
 
 // ─── Contacts Module (Phase 1) ────────────────────────────────────────────────
@@ -1565,6 +1566,12 @@ model LeadCandidate {
   nextActionAt   DateTime?
   lastContactAt  DateTime?
   internalNotes  String?
+  // Company registry (LEAD6)
+  legalName                    String?
+  cnpjStatus                   String?   // active | inactive | unknown
+  cnpjSource                   String?   // brasilapi | manual | other
+  registryConfidence           Int?      // 0-100
+  companyRegistryLastCheckedAt DateTime?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -1577,7 +1584,8 @@ model LeadCandidate {
   suppressions       LeadSuppression[]
   followUpLogs       LeadFollowUpLog[]
   owner              User?                   @relation(fields: [ownerUserId], references: [id], onDelete: SetNull)
-  operationalAlerts  LeadOperationalAlert[]
+  operationalAlerts           LeadOperationalAlert[]
+  companyRegistrySnapshots    LeadCompanyRegistrySnapshot[]
 
   @@index([tenantId, searchRunId])
   @@index([tenantId, status])
@@ -1842,4 +1850,32 @@ model LeadOperationalAlert {
   @@index([tenantId, alertType, status])
   @@index([leadCandidateId, status])
   @@map("lead_operational_alerts")
+}
+
+// ─── LEAD6 — Company Registry / CNPJ Enrichment ──────────────────────────────
+
+model LeadCompanyRegistrySnapshot {
+  id               String   @id @default(uuid())
+  tenantId         String
+  leadCandidateId  String
+  provider         String   // brasilapi | manual
+  matched          Boolean  @default(false)
+  confidence       Int?     // 0-100
+  cnpj             String?
+  legalName        String?
+  tradeName        String?
+  companyType      String?
+  mainActivity     String?
+  city             String?
+  state            String?
+  cnpjStatus       String?  // active | inactive | unknown
+  rawSummary       String?
+  notes            Json?    // String[]
+  createdAt        DateTime @default(now())
+
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  leadCandidate LeadCandidate @relation(fields: [leadCandidateId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, leadCandidateId, createdAt])
+  @@map("lead_company_registry_snapshots")
 }

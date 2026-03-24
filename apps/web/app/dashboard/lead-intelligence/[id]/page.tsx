@@ -56,6 +56,31 @@ interface LeadCandidate {
   nextActionAt: string | null;
   lastContactAt: string | null;
   internalNotes: string | null;
+  // Company registry (LEAD6)
+  cnpj?: string | null;
+  legalName?: string | null;
+  cnpjStatus?: string | null;
+  cnpjSource?: string | null;
+  registryConfidence?: number | null;
+  companyRegistryLastCheckedAt?: string | null;
+}
+
+interface LeadCompanyRegistrySnapshot {
+  id: string;
+  provider: string;
+  matched: boolean;
+  confidence: number | null;
+  cnpj: string | null;
+  legalName: string | null;
+  tradeName: string | null;
+  companyType: string | null;
+  mainActivity: string | null;
+  city: string | null;
+  state: string | null;
+  cnpjStatus: string | null;
+  rawSummary: string | null;
+  notes: string[] | null;
+  createdAt: string;
 }
 
 interface LeadSuppression {
@@ -282,6 +307,11 @@ export default function SearchRunDetailPage() {
   const [followUpNote, setFollowUpNote] = useState<Record<string, string>>({});
   const [followUpSubmitting, setFollowUpSubmitting] = useState<Record<string, boolean>>({});
 
+  // ── Company Registry state (LEAD6) ────────────────────────────────────────
+  const [registryLoadingIds, setRegistryLoadingIds] = useState<Record<string, boolean>>({});
+  const [registrySnapshots, setRegistrySnapshots] = useState<Record<string, LeadCompanyRegistrySnapshot[]>>({});
+  const [registrySnapshotsOpen, setRegistrySnapshotsOpen] = useState<Record<string, boolean>>({});
+
   async function handleEnrich(candidateId: string) {
     setEnrichingIds(prev => ({ ...prev, [candidateId]: true }));
     try {
@@ -293,6 +323,39 @@ export default function SearchRunDetailPage() {
       await loadRun();
     } finally {
       setEnrichingIds(prev => ({ ...prev, [candidateId]: false }));
+    }
+  }
+
+  async function handleRegistryValidate(candidateId: string) {
+    setRegistryLoadingIds(prev => ({ ...prev, [candidateId]: true }));
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`/api/lead-intelligence/candidates/${candidateId}/company-registry`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        // Update candidate in run state
+        setRun(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            candidates: prev.candidates.map(c =>
+              c.id === candidateId ? { ...c, ...data.candidate } : c,
+            ),
+          };
+        });
+        // Prepend new snapshot
+        if (data.snapshot) {
+          setRegistrySnapshots(prev => ({
+            ...prev,
+            [candidateId]: [data.snapshot, ...(prev[candidateId] ?? [])].slice(0, 10),
+          }));
+        }
+      }
+    } finally {
+      setRegistryLoadingIds(prev => ({ ...prev, [candidateId]: false }));
     }
   }
 
@@ -1677,6 +1740,106 @@ export default function SearchRunDetailPage() {
                             </div>
                           )}
                         </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── Validação Empresa / CNPJ (LEAD6) ──────────────────── */}
+                  <div className="border-t border-gray-100 pt-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Validação Empresa / CNPJ</p>
+                      <button
+                        onClick={() => handleRegistryValidate(c.id)}
+                        disabled={registryLoadingIds[c.id]}
+                        className="text-[10px] font-bold text-indigo-600 hover:underline disabled:opacity-50"
+                      >
+                        {registryLoadingIds[c.id] ? '⏳ Validando...' : '🏛 Validar via Receita Federal'}
+                      </button>
+                    </div>
+
+                    {/* Current registry data */}
+                    <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1 text-[10px] text-gray-600">
+                      <div>
+                        <span className="font-semibold text-gray-500">CNPJ: </span>
+                        {c.cnpj ? (
+                          <span className="font-mono">{c.cnpj}</span>
+                        ) : (
+                          <span className="text-gray-400 italic">Não informado</span>
+                        )}
+                      </div>
+                      {c.legalName && (
+                        <div className="col-span-2">
+                          <span className="font-semibold text-gray-500">Razão Social: </span>
+                          <span>{c.legalName}</span>
+                        </div>
+                      )}
+                      {c.cnpjStatus && (
+                        <div>
+                          <span className="font-semibold text-gray-500">Situação: </span>
+                          <span className={
+                            c.cnpjStatus === 'active'   ? 'text-green-600 font-bold' :
+                            c.cnpjStatus === 'inactive' ? 'text-red-600 font-bold'   : 'text-gray-500'
+                          }>
+                            {c.cnpjStatus === 'active' ? 'Ativa' : c.cnpjStatus === 'inactive' ? 'Inativa' : 'Desconhecida'}
+                          </span>
+                        </div>
+                      )}
+                      {c.registryConfidence != null && (
+                        <div>
+                          <span className="font-semibold text-gray-500">Confiança: </span>
+                          <span className={c.registryConfidence >= 80 ? 'text-green-600 font-bold' : c.registryConfidence >= 50 ? 'text-amber-600 font-bold' : 'text-red-600 font-bold'}>
+                            {c.registryConfidence}%
+                          </span>
+                        </div>
+                      )}
+                      {c.companyRegistryLastCheckedAt && (
+                        <div>
+                          <span className="font-semibold text-gray-500">Última validação: </span>
+                          <span>{formatDate(c.companyRegistryLastCheckedAt)}</span>
+                        </div>
+                      )}
+                      {!c.cnpj && (
+                        <div className="col-span-3 mt-1 text-[9px] text-amber-600">
+                          Adicione o CNPJ ao candidato para validar automaticamente via Receita Federal (BrasilAPI).
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Snapshots history toggle */}
+                    {(registrySnapshots[c.id]?.length ?? 0) > 0 && (
+                      <div className="mt-2">
+                        <button
+                          onClick={() => setRegistrySnapshotsOpen(prev => ({ ...prev, [c.id]: !prev[c.id] }))}
+                          className="text-[10px] font-bold text-gray-500 hover:text-indigo-600 hover:underline"
+                        >
+                          {registrySnapshotsOpen[c.id] ? 'Esconder histórico' : `Ver histórico (${registrySnapshots[c.id].length} consulta${registrySnapshots[c.id].length !== 1 ? 's' : ''})`}
+                        </button>
+
+                        {registrySnapshotsOpen[c.id] && (
+                          <div className="mt-2 space-y-2 max-h-64 overflow-y-auto pr-1">
+                            {registrySnapshots[c.id].map(snap => (
+                              <div key={snap.id} className="bg-gray-50 border border-gray-100 rounded-lg px-3 py-2 text-[10px] text-gray-600 space-y-0.5">
+                                <div className="flex items-center gap-2">
+                                  <span className={`font-bold ${snap.matched ? 'text-green-600' : 'text-gray-400'}`}>
+                                    {snap.matched ? '✓ Match' : '✗ Sem match'}
+                                  </span>
+                                  {snap.confidence != null && (
+                                    <span className="text-gray-400">{snap.confidence}% confiança</span>
+                                  )}
+                                  <span className="ml-auto text-gray-400">{formatDate(snap.createdAt)}</span>
+                                </div>
+                                {snap.cnpj      && <div><span className="font-semibold">CNPJ:</span> <span className="font-mono">{snap.cnpj}</span></div>}
+                                {snap.legalName && <div><span className="font-semibold">Razão Social:</span> {snap.legalName}</div>}
+                                {snap.tradeName && <div><span className="font-semibold">Nome Fantasia:</span> {snap.tradeName}</div>}
+                                {(snap.city || snap.state) && <div><span className="font-semibold">Localização:</span> {[snap.city, snap.state].filter(Boolean).join('/')}</div>}
+                                {snap.cnpjStatus && <div><span className="font-semibold">Situação:</span> {snap.cnpjStatus === 'active' ? 'Ativa' : snap.cnpjStatus === 'inactive' ? 'Inativa' : 'Desconhecida'}</div>}
+                                {snap.notes && snap.notes.length > 0 && (
+                                  <div className="text-amber-600">{snap.notes.join(' | ')}</div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

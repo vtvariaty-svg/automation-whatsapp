@@ -96,6 +96,8 @@ export default function BillingPage() {
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
   const [loading, setLoading] = useState(true);
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
+  const [confirmFreeDowngrade, setConfirmFreeDowngrade] = useState(false);
+  const [actionMessage, setActionMessage] = useState<{ text: string; ok: boolean } | null>(null);
 
   useEffect(() => { loadSubscription(); }, []);
 
@@ -110,14 +112,39 @@ export default function BillingPage() {
     }
   };
 
+  const showMessage = (text: string, ok: boolean) => {
+    setActionMessage({ text, ok });
+    setTimeout(() => setActionMessage(null), 5000);
+  };
+
+  const handleConfirmDowngradeToFree = async () => {
+    setConfirmFreeDowngrade(false);
+    setCheckoutLoading('free');
+    try {
+      await billingApi.createCheckout('free');
+      showMessage('Plano alterado para Free. Sua assinatura paga foi cancelada no Stripe.', true);
+      // Reload subscription state so the UI reflects the new plan immediately.
+      await loadSubscription();
+    } catch (err: any) {
+      showMessage(err?.message || 'Erro ao alterar plano. Tente novamente.', false);
+    } finally {
+      setCheckoutLoading(null);
+    }
+  };
+
   const handleCheckout = async (planSlug: string) => {
-    if (planSlug === 'free') return; // Free has no Stripe checkout
+    if (planSlug === 'free') {
+      // Show a confirmation dialog before canceling the paid subscription.
+      setConfirmFreeDowngrade(true);
+      return;
+    }
+
     setCheckoutLoading(planSlug);
     try {
       const data = await billingApi.createCheckout(planSlug);
       if (data.checkoutUrl) window.location.href = data.checkoutUrl;
-    } catch {
-      /* noop */
+    } catch (err: any) {
+      showMessage(err?.message || 'Erro ao criar sessão de pagamento. Tente novamente.', false);
     } finally {
       setCheckoutLoading(null);
     }
@@ -147,6 +174,7 @@ export default function BillingPage() {
   const isTrialExpired = subscription?.status === 'trialing' && trialDaysLeft <= 0;
   const isCanceled = subscription?.status === 'canceled';
   const showUrgentUpgrade = isTrialExpired || isCanceled;
+  const isPaidPlan = subscription?.plan && subscription.plan !== 'free' && subscription.plan !== 'starter';
 
   if (loading) {
     return (
@@ -162,6 +190,17 @@ export default function BillingPage() {
         <h1 className="text-2xl font-bold text-gray-900">Assinatura</h1>
         <p className="text-sm text-gray-500 mt-1">Gerencie seu plano e acompanhe seu uso.</p>
       </div>
+
+      {/* Action feedback banner */}
+      {actionMessage && (
+        <div className={`p-4 rounded-xl text-sm font-medium border ${
+          actionMessage.ok
+            ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+            : 'bg-red-50 text-red-700 border-red-100'
+        }`}>
+          {actionMessage.text}
+        </div>
+      )}
 
       {/* Urgent upgrade banner */}
       {showUrgentUpgrade && (
@@ -317,8 +356,17 @@ export default function BillingPage() {
                 </ul>
 
                 {plan.slug === 'free' ? (
-                  <Button className="w-full" variant="secondary" disabled={isCurrent}>
-                    {isCurrent ? 'Plano atual' : 'Usar grátis'}
+                  <Button
+                    className="w-full"
+                    variant="secondary"
+                    disabled={isCurrent || checkoutLoading === 'free'}
+                    onClick={() => handleCheckout('free')}
+                  >
+                    {checkoutLoading === 'free'
+                      ? 'Processando...'
+                      : isCurrent
+                      ? 'Plano atual'
+                      : 'Usar grátis'}
                   </Button>
                 ) : (
                   <Button
@@ -346,6 +394,50 @@ export default function BillingPage() {
       <p className="text-xs text-gray-400 text-center">
         O período de teste de 7 dias é exclusivo do plano Standard. Nenhuma cobrança durante o trial — cancele quando quiser.
       </p>
+
+      {/* Free downgrade confirmation modal */}
+      {confirmFreeDowngrade && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-rose-100 rounded-full flex items-center justify-center text-rose-600 text-xl shrink-0">
+                ⚠️
+              </div>
+              <h3 className="text-xl font-bold text-gray-900">Mudar para plano Free?</h3>
+            </div>
+
+            {isPaidPlan ? (
+              <p className="text-gray-600 text-sm mb-2">
+                Sua assinatura paga será <strong>cancelada imediatamente</strong> no Stripe.
+                Você perderá acesso aos recursos do plano atual ao final do período vigente.
+              </p>
+            ) : (
+              <p className="text-gray-600 text-sm mb-2">
+                Você voltará para o plano gratuito com recursos limitados.
+              </p>
+            )}
+
+            <p className="text-gray-400 text-xs mb-6">
+              Você pode fazer upgrade novamente a qualquer momento.
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmFreeDowngrade(false)}
+                className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmDowngradeToFree}
+                className="flex-1 px-4 py-2.5 bg-rose-600 text-white rounded-xl text-sm font-bold hover:bg-rose-700 transition-colors"
+              >
+                Confirmar downgrade
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

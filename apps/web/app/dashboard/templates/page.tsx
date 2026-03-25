@@ -74,6 +74,16 @@ function formatDate(iso?: string | null) {
   });
 }
 
+async function safeReadJson(res: Response) {
+  try {
+    const text = await res.text();
+    if (!text) return { error: `Resposta vazia da API (Status ${res.status})` };
+    return JSON.parse(text);
+  } catch (e: any) {
+    return { error: `Falha ao processar resposta do servidor (Status ${res.status}): JSON inválido.` };
+  }
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function TemplatesPage() {
@@ -125,11 +135,11 @@ export default function TemplatesPage() {
       const res = await fetch('/api/whatsapp/templates', {
         headers: { Authorization: `Bearer ${token}` }
       });
+      const data = await safeReadJson(res);
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Erro ao carregar templates');
+        throw new Error(data.error || 'Erro ao carregar templates');
       }
-      setTemplates(await res.json());
+      setTemplates(data);
     } catch (e: any) {
       setFetchError(e.message);
     } finally {
@@ -146,11 +156,11 @@ export default function TemplatesPage() {
       const res = await fetch('/api/whatsapp/templates/custom', {
         headers: { Authorization: `Bearer ${token}` }
       });
+      const data = await safeReadJson(res);
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Erro ao carregar templates locais');
+        throw new Error(data.error || 'Erro ao carregar templates locais');
       }
-      setCustomTemplates(await res.json());
+      setCustomTemplates(data);
     } catch (e: any) {
       setCustomError(e.message);
     } finally {
@@ -166,7 +176,7 @@ export default function TemplatesPage() {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${token}` },
       });
-      const data = await res.json();
+      const data = await safeReadJson(res);
       if (!res.ok) throw new Error(data.error || 'Falha ao sincronizar');
       setCustomTemplates(prev => prev.map(t => t.id === id ? data : t));
     } catch (e: any) {
@@ -184,7 +194,7 @@ export default function TemplatesPage() {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });
-      const data = await res.json();
+      const data = await safeReadJson(res);
       if (!res.ok) throw new Error(data.error || 'Falha ao reenviar');
       setCustomTemplates(prev => prev.map(t => t.id === id ? data : t));
     } catch (e: any) {
@@ -203,8 +213,8 @@ export default function TemplatesPage() {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
+      const data = await safeReadJson(res);
       if (!res.ok) {
-        const data = await res.json();
         throw new Error(data.error || 'Falha ao excluir');
       }
       setCustomTemplates(prev => prev.filter(t => t.id !== id));
@@ -269,7 +279,7 @@ export default function TemplatesPage() {
           variables: variables.filter(v => v.length > 0),
         })
       });
-      const data = await res.json();
+      const data = await safeReadJson(res);
       if (!res.ok || !data.success) throw new Error(data.error || 'Falha ao enviar template');
       setSendStatus('success');
       setSendResult({ messageId: data.messageId });

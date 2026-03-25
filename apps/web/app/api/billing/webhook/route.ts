@@ -82,7 +82,7 @@ export async function POST(req: Request) {
             const { touchAttribution, markConverted } = await import('@/lib/attribution');
             const order = await prisma.order.findUnique({ where: { externalPaymentRef: stripeSessionId } });
             if (order) {
-              await touchAttribution(tenantId, contactId, 'whatsapp', 'direct', undefined, { orderId: order.id });
+              await touchAttribution(tenantId, contactId, 'whatsapp', 'direct', undefined, { orderId: order.id, opportunityId: opportunity?.id });
               await markConverted(tenantId, contactId, order.price);
             }
           } catch (orderErr) {

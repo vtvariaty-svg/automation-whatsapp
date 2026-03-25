@@ -343,6 +343,19 @@ async function buildProductDecision(
         });
       } catch { /* duplicate or no contactId — non-blocking */ }
 
+      // Persist SalesOpportunity so billing webhook can advance it to 'pago' on payment
+      try {
+        await prisma.salesOpportunity.create({
+          data: {
+            tenantId,
+            contactId,
+            productId: product.id,
+            status: 'checkout_enviado',
+            value: product.price,
+          },
+        });
+      } catch { /* duplicate — non-blocking */ }
+
       return {
         action: 'send_checkout',
         message: msg,

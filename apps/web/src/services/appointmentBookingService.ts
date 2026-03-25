@@ -14,6 +14,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { suggestNextSlots, createAppointment, rescheduleAppointment, cancelAppointment } from './schedulingService';
 import { sendBookingConfirmation } from './appointmentReminderService';
+import { upsertContactByPhone, addContactEvent } from '@/lib/services/contactService';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -188,6 +189,18 @@ export async function handleBookingFlow(
           });
           await clearPendingState(tenantId, phone);
 
+          // Link appointment to Contact + emit lifecycle event (non-blocking)
+          upsertContactByPhone({ tenantId, phone, name: memory?.name ?? undefined, source: 'whatsapp' })
+            .then(async (contact) => {
+              if (!contact) return;
+              await prisma.appointment.update({ where: { id: appt.id }, data: { contactId: contact.id } }).catch(() => {});
+              await addContactEvent(tenantId, contact.id, 'appointment_created',
+                `Agendamento: ${pending.service} em ${chosen.date} às ${chosen.time}h`,
+                { appointmentId: appt.id, service: pending.service, date: chosen.date, time: chosen.time }
+              ).catch(() => {});
+            })
+            .catch(() => {});
+
           // AG3 — fire-and-forget booking confirmation notification (logged in history)
           sendBookingConfirmation(tenantId, appt.id).catch(e =>
             console.error('[BookingFlow] Erro ao enviar confirmação de booking:', e)
@@ -297,6 +310,14 @@ async function tryHandlePresenceConfirmation(
     data: { confirmationReceivedAt: new Date(), status: 'confirmado', confirmedAt: new Date() },
   });
 
+  // Emit confirmation event on Contact timeline (non-blocking)
+  if (appt.contactId) {
+    addContactEvent(tenantId, appt.contactId, 'appointment_confirmed',
+      `Presença confirmada: ${appt.service ?? 'Serviço'} em ${appt.date} às ${appt.time}h`,
+      { appointmentId: appt.id }
+    ).catch(() => {});
+  }
+
   const dayLabel = appt.date
     ? format(new Date(`${appt.date}T12:00:00`), "EEEE',' dd/MM", { locale: ptBR })
     : '';
@@ -360,7 +381,15 @@ export async function handleAppointmentMessage(
     if (isYes) {
       await clearPendingKey(tenantId, phone, 'pendingCancel');
       try {
+        const canceledAppt = await prisma.appointment.findUnique({ where: { id: ps.appointmentId }, select: { contactId: true } }).catch(() => null);
         await cancelAppointment(tenantId, ps.appointmentId);
+        // Emit cancellation event (non-blocking)
+        if (canceledAppt?.contactId) {
+          addContactEvent(tenantId, canceledAppt.contactId, 'appointment_cancelled',
+            `Agendamento cancelado: ${ps.service} em ${ps.date} às ${ps.time}h`,
+            { appointmentId: ps.appointmentId }
+          ).catch(() => {});
+        }
         const dayLabel = format(new Date(`${ps.date}T12:00:00`), "EEEE',' dd/MM", { locale: ptBR });
         return `✅ Agendamento cancelado.\n\nSeu *${ps.service}* em ${dayLabel} às ${ps.time}h foi cancelado.\n\nSe quiser reagendar, é só nos avisar! 😊`;
       } catch {
@@ -386,7 +415,15 @@ export async function handleAppointmentMessage(
         const chosen = ps.slots[idx];
         await clearPendingKey(tenantId, phone, 'pendingReschedule');
         try {
+          const rescheduledAppt = await prisma.appointment.findUnique({ where: { id: ps.appointmentId }, select: { contactId: true } }).catch(() => null);
           await rescheduleAppointment(tenantId, ps.appointmentId, chosen.date, chosen.time);
+          // Emit reschedule event (non-blocking)
+          if (rescheduledAppt?.contactId) {
+            addContactEvent(tenantId, rescheduledAppt.contactId, 'appointment_rescheduled',
+              `Agendamento remarcado: ${ps.service} para ${chosen.date} às ${chosen.time}h`,
+              { appointmentId: ps.appointmentId, newDate: chosen.date, newTime: chosen.time }
+            ).catch(() => {});
+          }
           const dayLabel = format(new Date(`${chosen.date}T12:00:00`), "EEEE',' dd/MM", { locale: ptBR });
           return `✅ *Remarcação confirmada!*\n\n📋 *Serviço:* ${ps.service}\n📅 *Nova data:* ${dayLabel}\n🕐 *Horário:* ${chosen.time}h\n\nTe esperamos! 😊`;
         } catch (e: any) {

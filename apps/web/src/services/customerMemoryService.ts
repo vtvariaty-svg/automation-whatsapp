@@ -39,23 +39,36 @@ export function extractNameFromText(text: string): string | null {
 /**
  * Monta o bloco de contexto do cliente para injetar no prompt da IA.
  * Agrega: perfil salvo + histórico recente + oportunidades + compras + pedidos.
+ *
+ * NOTE: SalesOpportunity and SalesEvent store a real Contact UUID in contactId,
+ * not a phone number. We resolve the UUID from the phone before querying them.
+ * All other entities (Conversation, Order, Appointment, CustomerMemory) are
+ * queried directly by phone number.
  */
 export async function buildCustomerContext(
   tenantId: string,
-  contactId: string
+  phone: string
 ): Promise<string> {
   const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
 
+  // Resolve real Contact UUID so SalesOpportunity / SalesEvent FK queries return data.
+  // These entities store Contact.id (UUID), not a phone string.
+  const contactRecord = await prisma.contact.findFirst({
+    where: { tenantId, normalizedPhone: phone.replace(/\D/g, '') },
+    select: { id: true },
+  }).catch(() => null);
+  const resolvedContactId = contactRecord?.id ?? null;
+
   const [memory, conversation, openOpportunities, paidEvents, recentOrders, upcomingAppointments] =
     await Promise.all([
-      // Perfil salvo
+      // Perfil salvo — keyed by phone (legacy design)
       prisma.customerMemory.findUnique({
-        where: { tenantId_contactId: { tenantId, contactId } }
+        where: { tenantId_contactId: { tenantId, contactId: phone } }
       }),
 
-      // Últimas mensagens da conversa
+      // Últimas mensagens da conversa — keyed by phone
       prisma.conversation.findFirst({
-        where: { customerPhone: contactId, tenantId },
+        where: { customerPhone: phone, tenantId },
         include: {
           messages: {
             orderBy: { createdAt: 'desc' },
@@ -64,38 +77,42 @@ export async function buildCustomerContext(
         }
       }),
 
-      // Oportunidades em aberto (ainda não pagas)
-      prisma.salesOpportunity.findMany({
-        where: {
-          tenantId,
-          contactId,
-          status: { in: ['novo_lead', 'interessado', 'checkout_enviado'] }
-        },
-        include: { product: true },
-        orderBy: { updatedAt: 'desc' },
-        take: 3
-      }),
+      // Oportunidades em aberto — requires real Contact UUID
+      resolvedContactId
+        ? prisma.salesOpportunity.findMany({
+            where: {
+              tenantId,
+              contactId: resolvedContactId,
+              status: { in: ['novo_lead', 'interessado', 'checkout_enviado'] },
+            },
+            include: { product: true },
+            orderBy: { updatedAt: 'desc' },
+            take: 3,
+          })
+        : Promise.resolve([]),
 
-      // Compras confirmadas pelo Stripe
-      prisma.salesEvent.findMany({
-        where: { tenantId, contactId, status: 'paid' },
-        include: { product: true },
-        orderBy: { createdAt: 'desc' },
-        take: 5
-      }),
+      // Compras confirmadas pelo Stripe — requires real Contact UUID
+      resolvedContactId
+        ? prisma.salesEvent.findMany({
+            where: { tenantId, contactId: resolvedContactId, status: 'paid' },
+            include: { product: true },
+            orderBy: { createdAt: 'desc' },
+            take: 5,
+          })
+        : Promise.resolve([]),
 
-      // Pedidos recentes
+      // Pedidos recentes — keyed by phone
       prisma.order.findMany({
-        where: { tenantId, customerPhone: contactId },
+        where: { tenantId, customerPhone: phone },
         orderBy: { createdAt: 'desc' },
         take: 3
       }),
 
-      // AG2 — Agendamentos futuros/ativos
+      // AG2 — Agendamentos futuros/ativos — keyed by phone
       prisma.appointment.findMany({
         where: {
           tenantId,
-          customerPhone: contactId,
+          customerPhone: phone,
           status: { in: ['agendado', 'confirmado'] },
           date: { gte: today },
         },
@@ -128,9 +145,9 @@ export async function buildCustomerContext(
   if (openOpportunities.length > 0) {
     lines.push('\nOportunidades em andamento:');
     for (const opp of openOpportunities) {
-      const productName = opp.product?.name ?? 'produto não identificado';
-      const value = opp.value ? ` (R$ ${opp.value.toFixed(2)})` : '';
-      lines.push(`- ${productName}${value} [${opp.status}]`);
+      const productName = (opp as any).product?.name ?? 'produto não identificado';
+      const value = (opp as any).value ? ` (R$ ${(opp as any).value.toFixed(2)})` : '';
+      lines.push(`- ${productName}${value} [${(opp as any).status}]`);
     }
   }
 
@@ -138,7 +155,7 @@ export async function buildCustomerContext(
   if (paidEvents.length > 0) {
     lines.push('\nCompras realizadas:');
     for (const event of paidEvents) {
-      const productName = event.product?.name ?? 'produto não identificado';
+      const productName = (event as any).product?.name ?? 'produto não identificado';
       lines.push(`- ${productName}`);
     }
   }

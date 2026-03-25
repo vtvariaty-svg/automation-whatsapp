@@ -12,7 +12,8 @@ export async function getTenantByPhoneId(phoneId: string) {
           { whatsappPhoneNumberId: phoneId },
           { whatsappPhoneId: phoneId }
         ]
-      }
+      },
+      include: { whatsappConnection: true },
     });
     return tenant;
   } catch (error) {

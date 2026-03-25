@@ -414,7 +414,8 @@ export async function isFirstInboundCustomerMessage(tenantId: string, customerPh
     return count === 0;
   } catch (error) {
     console.error('[ConversationService] Erro ao contar inbounds messages para firstInteraction:', error);
-    // Em caso de erro do banco de dados, retornar "false" para previnir spam duplicado acidental de boas vindas
-    return false;
+    // Em caso de erro do banco de dados, assumir primeiro contato (true).
+    // É mais seguro arriscar uma boas-vindas duplicada do que deixar o cliente sem resposta.
+    return true;
   }
 }

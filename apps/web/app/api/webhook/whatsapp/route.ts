@@ -44,7 +44,7 @@ function substitutePlaceholders(
 
 /** Returns the phone_number_id to use when sending outbound replies. */
 function resolveReplyPhoneId(tenant: any): string | undefined {
-  return tenant.whatsappPhoneNumberId || tenant.whatsappPhoneId;
+  return tenant.whatsappConnection?.phoneNumberId || tenant.whatsappPhoneNumberId || tenant.whatsappPhoneId;
 }
 
 // ── HMAC validation ──────────────────────────────────────────────────────────
@@ -741,8 +741,16 @@ export async function POST(req: Request) {
     return new Response('OK', { status: 200 });
   }
 
-  // 10. Decrypt legacy token
-  if (tenant.whatsappToken) tenant.whatsappToken = decrypt(tenant.whatsappToken);
+  // 10. Decrypt tokens — normalize onto tenant.whatsappToken so all downstream
+  //     code works transparently regardless of whether credentials come from the
+  //     legacy fields or the embedded-signup WhatsAppConnection record.
+  if (tenant.whatsappToken) {
+    tenant.whatsappToken = decrypt(tenant.whatsappToken);
+  } else if (tenant.whatsappConnection?.accessToken) {
+    // Embedded-signup only: expose decrypted token in the legacy field so
+    // every send call below can use tenant.whatsappToken without change.
+    tenant.whatsappToken = decrypt(tenant.whatsappConnection.accessToken);
+  }
 
   // 10.5 Delivery status events — handle and short-circuit (no inbound processing needed)
   if (event.isStatus) {

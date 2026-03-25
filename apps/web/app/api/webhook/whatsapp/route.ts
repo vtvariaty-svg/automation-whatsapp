@@ -14,7 +14,7 @@ import { generateAIResponse } from "@/src/services/aiService";
 // @ts-ignore - Importing from JS file
 import { sendWhatsAppMessage } from "@/src/services/whatsappService";
 // @ts-ignore - Importing from JS file
-import { saveUserMessage, saveAIMessage, getConversationHistory, getConversationStatus, IdentityContext } from "@/src/services/conversationService";
+import { saveUserMessage, saveAIMessage, getConversationHistory, getConversationStatus, IdentityContext, isFirstInboundCustomerMessage } from "@/src/services/conversationService";
 import { getTenantByPhoneId } from "@/src/services/tenantService";
 import { buildCustomerContext, upsertCustomerMemory, extractNameFromText } from "@/src/services/customerMemoryService";
 import { checkAutomationMatch } from "@/src/services/automationService";
@@ -182,24 +182,34 @@ export async function POST(req: Request) {
 
           console.log(`[Webhook] Mensagem de ${maskPhone(from)} — tenant: ${tenant.id}`);
 
-          // Verificar mensagem de boas-vindas
-          try {
-            const history = await getConversationHistory(from, tenant.id, 'whatsapp', resolvedIdentityContext);
-            if (history.length === 0 && tenant.welcomeMessage) {
-              const sendPhoneId = tenant.whatsappPhoneNumberId || tenant.whatsappPhoneId;
-              await sendWhatsAppMessage(from, tenant.welcomeMessage, sendPhoneId, tenant.whatsappToken);
-              await saveAIMessage(from, tenant.welcomeMessage, tenant.id, 'ai', true, 'whatsapp', resolvedIdentityContext);
-              console.log(`[Webhook] Boas-vindas enviadas para ${maskPhone(from)}`);
-            }
-          } catch (e) {
-            console.error('[Webhook] Erro ao enviar boas-vindas:', e);
-          }
+          // ── Detecção Estrita de Primeira Interação ───────────────────────────
+          const isFirstInbound = await isFirstInboundCustomerMessage(tenant.id, from, 'whatsapp');
 
           // Verificar status da conversa
           let status = await getConversationStatus(from, tenant.id);
           if (status === 'closed') status = 'open';
 
+          // Salvar a mensagem do usuário PRIMEIRO
           await saveUserMessage(from, textBody, tenant.id, status, 'whatsapp', resolvedIdentityContext);
+
+          // ── REGRA 1: Enviar mensagem exata de Boas-Vindas e ENCERRAR ───────
+          if (isFirstInbound && tenant.welcomeMessage) {
+            console.log(`[Webhook] firstInteractionDetected=true welcomeSent=true`);
+            try {
+              const sendPhoneId = tenant.whatsappPhoneNumberId || tenant.whatsappPhoneId;
+              await sendWhatsAppMessage(from, tenant.welcomeMessage, sendPhoneId, tenant.whatsappToken);
+              await saveAIMessage(from, tenant.welcomeMessage, tenant.id, status, true, 'whatsapp', resolvedIdentityContext);
+              
+              console.log(`[Webhook] aiSkippedAfterWelcome=true automationSkippedAfterWelcome=true`);
+              // EARLY RETURN: Não processa IA, nem orquestrador nem automação.
+              return new Response('OK', { status: 200 });
+            } catch (e) {
+              console.error('[Webhook] Erro ao enviar boas-vindas:', e);
+            }
+          } else {
+            console.log(`[Webhook] firstInteractionDetected=${isFirstInbound} welcomeSent=false welcomeSkippedReason=${isFirstInbound ? 'no_welcome_configured' : 'not_first_interaction'}`);
+          }
+          // ───────────────────────────────────────────────────────────────────
 
           if (status !== 'open' && status !== 'ai') {
             console.log(`[Webhook] Conversa ${maskPhone(from)} em status "${status}" — IA ignorada`);

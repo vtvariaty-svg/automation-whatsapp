@@ -72,13 +72,18 @@ export async function POST(request: Request) {
 
     // 4. Atualizar tenant com novo prompt, welcome e activeBotKey
     // IMPORTANTE: businessType não é alterado aqui — pertence ao onboarding do tenant
+    const updateData: any = {
+      aiPrompt: systemPrompt,
+      activeBotKey: bot.id,
+    };
+
+    if (!tenant.welcomeMessage || tenant.welcomeMessage.trim() === '') {
+      updateData.welcomeMessage = bot.welcomeMessage;
+    }
+
     await prisma.tenant.update({
       where: { id: auth.tenantId },
-      data: {
-        aiPrompt: systemPrompt,
-        welcomeMessage: bot.welcomeMessage,
-        activeBotKey: bot.id,
-      },
+      data: updateData,
     });
 
     // 5. Calcular itens pendentes para o checklist de ativação

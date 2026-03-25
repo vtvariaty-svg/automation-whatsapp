@@ -393,3 +393,28 @@ export async function takeoverConversation(phoneNumber: string, tenantId: string
     throw error;
   }
 }
+
+/**
+ * Detecta se esta é a primeiríssima mensagem inbound recebida de um cliente em um canal específico.
+ * Garante que a mensagem de boas vindas só seja disparada uma vez na vida útil daquele contato, ou
+ * valida precisamente ausência total de inbounds anteriores caso haja quebras de conversas no BD.
+ */
+export async function isFirstInboundCustomerMessage(tenantId: string, customerPhone: string, channel: string = 'whatsapp'): Promise<boolean> {
+  try {
+    const count = await prisma.message.count({
+      where: {
+        direction: 'inbound',
+        channel: channel,
+        conversation: {
+          tenantId: tenantId,
+          customerPhone: customerPhone,
+        }
+      }
+    });
+    return count === 0;
+  } catch (error) {
+    console.error('[ConversationService] Erro ao contar inbounds messages para firstInteraction:', error);
+    // Em caso de erro do banco de dados, retornar "false" para previnir spam duplicado acidental de boas vindas
+    return false;
+  }
+}

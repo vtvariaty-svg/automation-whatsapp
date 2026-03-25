@@ -644,6 +644,10 @@ function ComportamentoTab({ user }: { user: any }) {
               placeholder="Ex: Olá! 👋 Sou a secretária virtual da Boutique Fashion. Como posso te ajudar?"
               className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500/40 transition-all placeholder:text-gray-400 resize-none leading-relaxed"
             />
+            <div className="mt-3 text-[11px] text-amber-600 font-medium bg-amber-50 p-2.5 rounded-xl border border-amber-100 flex items-start gap-2">
+              <span className="text-sm">⚠️</span>
+              <p>Esta mensagem será enviada <b>exatamente como digitada acima</b> no primeiro contato do cliente. A inteligência artificial só passará a responder a partir da <b>segunda mensagem</b> recebida do cliente.</p>
+            </div>
             {welcomeMessage && (
               <div className="mt-4 p-4 bg-gradient-to-r from-[#4f46e5] to-[#5b51e0] rounded-xl text-white text-sm leading-relaxed">
                 <p className="text-[10px] text-indigo-200 font-bold uppercase tracking-wider mb-1">Prévia</p>

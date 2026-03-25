@@ -46,17 +46,18 @@ export async function createTenant({ name, whatsapp_phone_id, whatsapp_token, op
 
 /**
  * Atualiza configurações da IA do tenant.
+ * Apenas campos explicitamente presentes no payload são atualizados.
+ * String vazia ("") é normalizada para null para que a flag de boas-vindas
+ * continue funcionando corretamente no webhook (falsy check).
  */
 export async function updateTenantAISettings(id: string, { ai_prompt, welcome_message, business_hours }: any) {
   try {
-    const tenant = await prisma.tenant.update({
-      where: { id },
-      data: {
-        aiPrompt: ai_prompt,
-        welcomeMessage: welcome_message,
-        businessHours: business_hours
-      }
-    });
+    const data: Record<string, unknown> = {};
+    if (ai_prompt !== undefined)      data.aiPrompt      = ai_prompt      || null;
+    if (welcome_message !== undefined) data.welcomeMessage = welcome_message?.trim() || null;
+    if (business_hours !== undefined)  data.businessHours  = business_hours || null;
+
+    const tenant = await prisma.tenant.update({ where: { id }, data });
     return tenant;
   } catch (error) {
     console.error('Erro ao atualizar configurações da IA do tenant:', error);

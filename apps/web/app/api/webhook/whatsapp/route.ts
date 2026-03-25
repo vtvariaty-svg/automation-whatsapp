@@ -32,6 +32,20 @@ function maskPhone(phone: string): string {
 }
 
 /**
+ * Substitui placeholders da mensagem de boas-vindas com dados reais do tenant/contato.
+ * Placeholders suportados: [Nome do Cliente], [Nome da Empresa], [Seu Nome]
+ */
+function substitutePlaceholders(
+  template: string,
+  vars: { customerName?: string | null; tenantName?: string | null }
+): string {
+  return template
+    .replace(/\[Nome do Cliente\]/gi, vars.customerName?.trim() || 'Cliente')
+    .replace(/\[Nome da Empresa\]/gi, vars.tenantName?.trim() || 'nossa empresa')
+    .replace(/\[Seu Nome\]/gi, vars.tenantName?.trim() || 'Assistente');
+}
+
+/**
  * Valida a assinatura HMAC-SHA256 enviada pela Meta.
  * Retorna true se válida ou se WHATSAPP_APP_SECRET não estiver configurado (modo dev).
  */
@@ -193,21 +207,53 @@ export async function POST(req: Request) {
           await saveUserMessage(from, textBody, tenant.id, status, 'whatsapp', resolvedIdentityContext);
 
           // ── REGRA 1: Enviar mensagem exata de Boas-Vindas e ENCERRAR ───────
-          if (isFirstInbound && tenant.welcomeMessage) {
-            console.log(`[Webhook] firstInteractionDetected=true welcomeSent=true`);
+          const welcomeTemplate = tenant.welcomeMessage?.trim() || null;
+          channelLog.info({
+            channel: 'whatsapp',
+            tenantId: tenant.id,
+            customerPhone: maskPhone(from),
+            source: isFirstInbound && welcomeTemplate ? 'welcome_message' : (isFirstInbound ? 'fallback_default' : 'ai_response'),
+            firstContactDetected: isFirstInbound,
+            customWelcomeExists: !!welcomeTemplate,
+          }, '[Webhook] First-interaction check');
+
+          if (isFirstInbound && welcomeTemplate) {
+            // Buscar nome do contato para substituição de placeholders
+            let customerName: string | null = null;
+            if (resolvedIdentityContext?.contactId) {
+              try {
+                const contact = await prisma.contact.findUnique({
+                  where: { id: resolvedIdentityContext.contactId },
+                  select: { name: true },
+                });
+                customerName = contact?.name?.trim() || null;
+              } catch { /* best-effort */ }
+            }
+
+            const resolvedWelcome = substitutePlaceholders(welcomeTemplate, {
+              customerName,
+              tenantName: (tenant as any).name ?? null,
+            });
+
             try {
               const sendPhoneId = tenant.whatsappPhoneNumberId || tenant.whatsappPhoneId;
-              await sendWhatsAppMessage(from, tenant.welcomeMessage, sendPhoneId, tenant.whatsappToken);
-              await saveAIMessage(from, tenant.welcomeMessage, tenant.id, status, true, 'whatsapp', resolvedIdentityContext);
-              
-              console.log(`[Webhook] aiSkippedAfterWelcome=true automationSkippedAfterWelcome=true`);
+              await sendWhatsAppMessage(from, resolvedWelcome, sendPhoneId, tenant.whatsappToken);
+              await saveAIMessage(from, resolvedWelcome, tenant.id, status, true, 'whatsapp', resolvedIdentityContext);
+
+              channelLog.info({
+                channel: 'whatsapp',
+                tenantId: tenant.id,
+                customerPhone: maskPhone(from),
+                source: 'welcome_message',
+                aiSkippedAfterWelcome: true,
+                hasCustomerName: !!customerName,
+              }, '[Webhook] Welcome message sent — AI skipped');
+
               // EARLY RETURN: Não processa IA, nem orquestrador nem automação.
               return new Response('OK', { status: 200 });
             } catch (e) {
-              console.error('[Webhook] Erro ao enviar boas-vindas:', e);
+              channelLog.error({ channel: 'whatsapp', tenantId: tenant.id, error: e }, '[Webhook] Erro ao enviar boas-vindas');
             }
-          } else {
-            console.log(`[Webhook] firstInteractionDetected=${isFirstInbound} welcomeSent=false welcomeSkippedReason=${isFirstInbound ? 'no_welcome_configured' : 'not_first_interaction'}`);
           }
           // ───────────────────────────────────────────────────────────────────
 

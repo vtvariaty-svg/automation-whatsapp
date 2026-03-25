@@ -65,13 +65,14 @@ type ViewMode = 'list' | 'create' | 'detail' | 'templates';
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
-  draft:            { label: 'Rascunho',    color: 'bg-gray-500/20 text-gray-400 border-gray-500/30' },
-  scheduled:        { label: 'Agendado',    color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
-  processing:       { label: 'Processando', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
-  completed:        { label: 'Concluído',   color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
-  partially_failed: { label: 'Parcial',     color: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
-  failed:           { label: 'Falhou',      color: 'bg-red-500/20 text-red-400 border-red-500/30' },
-  cancelled:        { label: 'Cancelado',   color: 'bg-gray-500/20 text-gray-400 border-gray-500/30' },
+  draft:            { label: 'Rascunho',             color: 'bg-gray-500/20 text-gray-400 border-gray-500/30' },
+  scheduled:        { label: 'Agendado',             color: 'bg-blue-500/20 text-blue-400 border-blue-500/30' },
+  processing:       { label: 'Processando',          color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
+  transmitted:      { label: 'Transmitido à Meta',   color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
+  completed:        { label: 'Transmitido à Meta',   color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' }, // legacy alias
+  partially_failed: { label: 'Parcial',              color: 'bg-orange-500/20 text-orange-400 border-orange-500/30' },
+  failed:           { label: 'Falhou',               color: 'bg-red-500/20 text-red-400 border-red-500/30' },
+  cancelled:        { label: 'Cancelado',            color: 'bg-gray-500/20 text-gray-400 border-gray-500/30' },
 };
 
 const TMPL_STATUS: Record<string, { label: string; color: string }> = {
@@ -82,10 +83,11 @@ const TMPL_STATUS: Record<string, { label: string; color: string }> = {
 };
 
 const RCPT_STATUS: Record<string, { label: string; color: string }> = {
-  pending: { label: 'Pendente', color: 'text-gray-400' },
-  sent:    { label: 'Enviado',  color: 'text-emerald-400' },
-  failed:  { label: 'Falhou',  color: 'text-red-400' },
-  skipped: { label: 'Ignorado', color: 'text-gray-500' },
+  pending:  { label: 'Pendente',         color: 'text-gray-400' },
+  accepted: { label: 'Aceito pela Meta', color: 'text-blue-400' },
+  sent:     { label: 'Aceito pela Meta', color: 'text-blue-400' }, // legacy alias
+  failed:   { label: 'Falhou',           color: 'text-red-400' },
+  skipped:  { label: 'Ignorado',         color: 'text-gray-500' },
 };
 
 const CATEGORIES = [
@@ -421,7 +423,7 @@ export default function BroadcastsPage() {
                   </div>
                   <div className="flex items-center gap-6 text-xs text-gray-500">
                     <span>👥 {b.totalRecipients} destinatário{b.totalRecipients !== 1 ? 's' : ''}</span>
-                    <span>✅ {b.sentCount} enviado{b.sentCount !== 1 ? 's' : ''}</span>
+                    <span>✅ {b.sentCount} aceito{b.sentCount !== 1 ? 's' : ''} pela Meta</span>
                     {b.failedCount > 0 && <span className="text-red-400">❌ {b.failedCount} falha{b.failedCount !== 1 ? 's' : ''}</span>}
                     {b.scheduledAt && <span>🕐 {new Date(b.scheduledAt).toLocaleString('pt-BR')}</span>}
                     <span>📅 {new Date(b.createdAt).toLocaleString('pt-BR')}</span>
@@ -794,10 +796,10 @@ export default function BroadcastsPage() {
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {[
-                { label: 'Total',    value: detail.totalRecipients,                                          color: 'text-blue-400' },
-                { label: 'Enviados', value: detail.sentCount,                                                color: 'text-emerald-400' },
-                { label: 'Falhas',   value: detail.failedCount,                                              color: 'text-red-400' },
-                { label: 'Pendentes',value: detail.totalRecipients - detail.sentCount - detail.failedCount,  color: 'text-gray-400' },
+                { label: 'Total',           value: detail.totalRecipients,                                          color: 'text-blue-400' },
+                { label: 'Aceitos (Meta)', value: detail.sentCount,                                                color: 'text-emerald-400' },
+                { label: 'Falhas',          value: detail.failedCount,                                              color: 'text-red-400' },
+                { label: 'Pendentes',       value: detail.totalRecipients - detail.sentCount - detail.failedCount,  color: 'text-gray-400' },
               ].map(s => (
                 <div key={s.label} className="bg-[#1a1a1a] rounded-xl p-3">
                   <p className="text-[10px] text-gray-500 uppercase font-bold">{s.label}</p>

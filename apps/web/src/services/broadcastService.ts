@@ -198,7 +198,8 @@ export async function processPendingBroadcasts(): Promise<{
 
         await prisma.templateBroadcastRecipient.update({
           where: { id: recipient.id },
-          data: { status: 'sent', sentAt: new Date() },
+          // 'accepted' = Meta Graph API accepted the request; real delivery is async via webhook
+          data: { status: 'accepted', sentAt: new Date() },
         });
         sent++;
       } catch (err: any) {
@@ -214,8 +215,9 @@ export async function processPendingBroadcasts(): Promise<{
     }
 
     // Atualizar contadores do broadcast
+    // 'transmitted' = all messages accepted by Meta; not the same as delivered
     const finalStatus = failed === 0
-      ? 'completed'
+      ? 'transmitted'
       : sent === 0
         ? 'failed'
         : 'partially_failed';

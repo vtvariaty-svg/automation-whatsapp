@@ -153,11 +153,21 @@ export async function GET(request: Request) {
       where: { tenantId: auth.tenantId, status: 'APPROVED' },
     });
 
-    // Merge: Meta live first, then seeds not already present, then custom not already present
+    // Merge: Meta live first, then seeds not already present, then custom not already present.
+    // Custom templates are only eligible if they have a metaTemplateId (confirmed by Meta at
+    // submission time). Locally-APPROVED templates without metaTemplateId were never acknowledged
+    // by Meta and must not be presented as usable.
     const liveNames = new Set(liveTemplates.map((t: any) => t.name));
     const seedsToAdd = SEED_TEMPLATES.filter(s => !liveNames.has(s.name));
     const customToAdd = customTemplates
       .filter(c => !liveNames.has(c.name))
+      .filter(c => {
+        if (!c.metaTemplateId) {
+          console.warn(`[Templates] Custom template "${c.name}" is APPROVED locally but has no metaTemplateId — not confirmed by Meta, skipping`);
+          return false;
+        }
+        return true;
+      })
       .map(customTemplateToShape);
 
     const allTemplates = [...liveTemplates, ...seedsToAdd, ...customToAdd];

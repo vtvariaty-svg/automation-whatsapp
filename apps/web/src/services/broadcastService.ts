@@ -34,7 +34,9 @@ export async function createBroadcast(input: CreateBroadcastInput) {
     if (existing) return existing;
   }
 
-  const status = scheduledAt ? 'scheduled' : 'draft';
+  // Immediate sends (no scheduledAt) are treated as scheduled at current time
+  // so processPendingBroadcasts() can claim them immediately.
+  const effectiveScheduledAt = scheduledAt ?? new Date();
 
   const broadcast = await prisma.templateBroadcast.create({
     data: {
@@ -42,8 +44,8 @@ export async function createBroadcast(input: CreateBroadcastInput) {
       templateName,
       templateLang,
       variables: variables || undefined,
-      status,
-      scheduledAt,
+      status: 'scheduled',
+      scheduledAt: effectiveScheduledAt,
       totalRecipients: recipients.length,
       createdBy,
       source: source || 'manual',

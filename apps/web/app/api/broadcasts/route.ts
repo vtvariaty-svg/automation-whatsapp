@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAuthTenant } from '@/lib/getAuthTenant';
-import { getBroadcasts, createBroadcast } from '@/src/services/broadcastService';
+import { getBroadcasts, createBroadcast, processPendingBroadcasts } from '@/src/services/broadcastService';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,6 +51,14 @@ export async function POST(request: Request) {
       source,
       idempotencyKey,
     });
+
+    // For immediate sends (no scheduledAt), trigger processing right away
+    // without blocking the response — cron will also pick up any missed ones.
+    if (!scheduledAt) {
+      processPendingBroadcasts().catch(err =>
+        console.error('[Broadcast] Auto-process error:', err)
+      );
+    }
 
     return NextResponse.json(broadcast, { status: 201 });
   } catch (error: any) {

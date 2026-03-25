@@ -123,6 +123,7 @@ export default function BroadcastsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [submitImmediate, setSubmitImmediate] = useState(false);
 
   // Custom templates management
   const [customTemplates, setCustomTemplates] = useState<CustomTemplate[]>([]);
@@ -233,6 +234,7 @@ export default function BroadcastsPage() {
         }),
       });
       if (!res.ok) { const e = await res.json(); throw new Error(e.error || 'Erro ao criar envio'); }
+      setSubmitImmediate(!scheduleDate);
       setSubmitSuccess(true);
       setRecipientInput('');
       setSelectedTemplate(null);
@@ -764,7 +766,11 @@ export default function BroadcastsPage() {
 
             {submitSuccess && (
               <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4">
-                <p className="text-emerald-400 font-medium">✅ Envio criado com sucesso!</p>
+                <p className="text-emerald-400 font-medium">
+                  {submitImmediate
+                    ? '📨 Enviando agora! O envio foi para processamento.'
+                    : '🕐 Envio agendado com sucesso!'}
+                </p>
               </div>
             )}
             {submitError && (

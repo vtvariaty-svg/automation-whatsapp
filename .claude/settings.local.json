@@ -1,4 +1,5 @@
 {
+  "model": "claude-opus-4-6",
   "permissions": {
     "allow": [
       "Bash(git add:*)",
@@ -70,7 +71,12 @@
       "Bash(cmd.exe /c \"cd /d C:\\\\Users\\\\vinic\\\\Documents\\\\automation-whatsapp && git log --oneline -3\" 2>&1)",
       "Bash(cmd.exe /c \"git add apps/web/lib/services/lead-intelligence/googlePlacesProvider.ts apps/web/app/api/lead-intelligence/team/route.ts && git status\")",
       "Bash(cmd.exe /c \"git push origin main && echo DONE\")",
-      "Bash(cmd.exe /c \"git push origin main 2>&1 && echo PUSHED\")"
+      "Bash(cmd.exe /c \"git push origin main 2>&1 && echo PUSHED\")",
+      "Bash(cmd.exe /c \"git diff --stat\")",
+      "Bash(cmd.exe /c \"cd C:\\\\\\\\Users\\\\\\\\vinic\\\\\\\\Documents\\\\\\\\automation-whatsapp && git diff --stat\")",
+      "Bash(cmd.exe /c \"cd C:\\\\\\\\Users\\\\\\\\vinic\\\\\\\\Documents\\\\\\\\automation-whatsapp && git status && git diff --name-only\")",
+      "Bash(cmd.exe /c \"git log --oneline origin/main -3 2>&1\")",
+      "Bash(cmd.exe /c \"git fetch origin && git log --oneline origin/main -3\")"
     ]
   }
 }

@@ -19,10 +19,11 @@ import { getTenantByPhoneId } from '@/src/services/tenantService';
 import { buildCustomerContext, upsertCustomerMemory, extractNameFromText } from '@/src/services/customerMemoryService';
 import { checkAutomationMatch, sendTemplateMessage } from '@/src/services/automationService';
 import { verifyAiLimits } from '@/src/services/billingService';
-import { handleAppointmentMessage } from '@/src/services/appointmentBookingService';
+import { handleAppointmentMessage, hasPendingAppointmentState, handleBookingFlow } from '@/src/services/appointmentBookingService';
 import { resolveWhatsAppIdentity } from '@/lib/services/identityResolver';
 import { runCommercialOrchestrator } from '@/src/services/commercialOrchestratorService';
 import { detectExplicitRequest, detectAiLowConfidence, executeHandoff } from '@/src/services/handoffService';
+import type { HandoffContext } from '@/src/services/handoffService';
 import { sendAndSave } from '@/lib/webhook/outboundSender';
 
 // ── Utilities ────────────────────────────────────────────────────────────────
@@ -391,15 +392,18 @@ async function handleAutomationBranch(
  * Processes a single inbound customer text message after all guards have passed
  * (idempotency, tenant resolution, channel check, self-echo guard).
  *
- * Decision tree (first branch that fires wins):
- *   1. Welcome message (first ever contact)
- *   2. Status gate (human/waiting → ignore AI)
- *   3. Explicit handoff request
- *   4. Keyword automation
- *   5. Appointment booking
- *   6. Commercial orchestrator
- *   7. AI limit guard
- *   8. AI generation (default path)
+ * Orchestration order — first branch that fires wins:
+ *   A. Identity resolution (done before this function)
+ *   B. Message persistence
+ *   C. Welcome message (first ever contact)
+ *   D. Status gate (human/waiting → ignore AI)
+ *   E. Explicit handoff request
+ *   F. Pending business-state flows (selecting_slot, confirming_cancel, selecting_new_slot)
+ *   G. Keyword automation (only after pending states are cleared)
+ *   H. Appointment booking intent (new intent, not pending state)
+ *   I. Commercial orchestrator (schedule_service, catalog, checkout, handoffs)
+ *   J. AI limit guard
+ *   K. AI generation (fallback — language layer only)
  */
 async function processInboundMessage(
   tenant: any,
@@ -416,17 +420,15 @@ async function processInboundMessage(
   let status = await getConversationStatus(from, tenant.id);
   if (status === 'closed') status = 'open';
 
-  // Persist the inbound message unconditionally.
+  // ── B. Persist the inbound message unconditionally ────────────────────────
   await saveUserMessage(from, textBody, tenant.id, status, 'whatsapp', resolvedIdentityContext);
 
-  // ── 1. Welcome message ────────────────────────────────────────────────────
+  // ── C. Welcome message ────────────────────────────────────────────────────
   const welcomeTriggered = await handleWelcomeBranch(
     tenant, from, status, isFirstInbound, resolvedIdentityContext
   );
   if (welcomeTriggered) return;
 
-  // Diagnostic: warn clearly when first-contact falls through to normal pipeline.
-  // This means either no welcome is configured (expected/allowed) or welcome was null.
   if (isFirstInbound) {
     channelLog.warn({
       channel: 'whatsapp',
@@ -437,13 +439,13 @@ async function processInboundMessage(
     }, '[Webhook] First contact — welcome branch skipped (no welcome configured). AI/automation pipeline will respond.');
   }
 
-  // ── 2. Status gate ────────────────────────────────────────────────────────
+  // ── D. Status gate ────────────────────────────────────────────────────────
   if (status !== 'open' && status !== 'ai') {
     console.log(`[Webhook] Conversa ${maskPhone(from)} em status "${status}" — IA ignorada`);
     return;
   }
 
-  // ── 3. Explicit handoff request ───────────────────────────────────────────
+  // ── E. Explicit handoff request ───────────────────────────────────────────
   if (detectExplicitRequest(textBody)) {
     try {
       const handoffResult = await executeHandoff({
@@ -460,13 +462,38 @@ async function processInboundMessage(
     }
   }
 
-  // ── 4. Keyword automation ─────────────────────────────────────────────────
+  // ── F. Pending business-state flows (PRIORITY over keyword automations) ──
+  // If the customer is mid-flow (selecting slot, confirming cancel, etc.),
+  // that state MUST be handled before any keyword automation can hijack.
+  try {
+    const hasPending = await hasPendingAppointmentState(tenant.id, from);
+    if (hasPending) {
+      const conv = await prisma.conversation.findFirst({
+        where: { tenantId: tenant.id, customerPhone: from },
+        orderBy: { lastMessageAt: 'desc' },
+        select: { id: true },
+      });
+      const apptReply = await handleAppointmentMessage(tenant.id, from, textBody, conv?.id);
+      if (apptReply) {
+        await sendAndSave({
+          to: from, message: apptReply, phoneId, token: tenant.whatsappToken,
+          tenantId: tenant.id, status, aiGenerated: false, channel: 'whatsapp',
+          logContext: { source: 'appointment_pending_state' },
+        });
+        return;
+      }
+    }
+  } catch (pendingErr) {
+    console.error('[Webhook] Erro ao verificar estado pendente de agendamento:', pendingErr);
+  }
+
+  // ── G. Keyword automation (safe — no business state can be hijacked) ──────
   const automationHandled = await handleAutomationBranch(
     tenant, from, textBody, status, resolvedIdentityContext
   );
   if (automationHandled) return;
 
-  // ── 5. Appointment booking ────────────────────────────────────────────────
+  // ── H. Appointment booking intent (new intent, not pending) ───────────────
   try {
     const conv = await prisma.conversation.findFirst({
       where: { tenantId: tenant.id, customerPhone: from },
@@ -478,54 +505,107 @@ async function processInboundMessage(
       await sendAndSave({
         to: from, message: apptReply, phoneId, token: tenant.whatsappToken,
         tenantId: tenant.id, status, aiGenerated: false, channel: 'whatsapp',
-        logContext: { source: 'appointment' },
+        logContext: { source: 'appointment_new_intent' },
       });
       return;
     }
   } catch (apptErr) {
-    console.error('[Webhook] Erro no fluxo de agendamentos (continuando para IA):', apptErr);
+    console.error('[Webhook] Erro no fluxo de agendamentos (continuando para orchestrator):', apptErr);
   }
 
-  // ── 6. Commercial orchestrator ────────────────────────────────────────────
+  // ── I. Commercial orchestrator ────────────────────────────────────────────
   try {
     const orchDecision = await runCommercialOrchestrator(
       tenant.id, from, textBody, resolvedIdentityContext?.contactId, 'whatsapp'
     );
 
-    if (orchDecision.action !== 'none' && orchDecision.message) {
+    if (orchDecision.action !== 'none') {
       console.log(`[Webhook] Orchestrator: action=${orchDecision.action} reason=${orchDecision.reason}`);
 
+      // ── I.1 Handoff (human approval, repetition, checkout_error, no_product) ──
       if (orchDecision.action === 'handoff_human') {
-        await executeHandoff({
-          tenantId: tenant.id,
-          customerPhone: from,
-          channel: 'whatsapp',
-          triggerReason: 'explicit_request',
-          lastMessage: textBody,
-          contactId: resolvedIdentityContext?.contactId,
-        });
+        const triggerReason = orchDecision.handoffTrigger ?? 'explicit_request';
+        try {
+          await executeHandoff({
+            tenantId: tenant.id,
+            customerPhone: from,
+            channel: 'whatsapp',
+            triggerReason: triggerReason as HandoffContext['triggerReason'],
+            lastMessage: textBody,
+            contactId: resolvedIdentityContext?.contactId,
+          });
+        } catch (hErr) {
+          console.error(`[Webhook] Handoff ${triggerReason} error:`, hErr);
+        }
         return;
       }
 
-      await sendAndSave({
-        to: from,
-        message: orchDecision.message,
-        phoneId,
-        token: tenant.whatsappToken,
-        tenantId: tenant.id,
-        status,
-        aiGenerated: false,
-        channel: 'whatsapp',
-        identity: resolvedIdentityContext,
-        logContext: { source: 'commercial_orchestrator', action: orchDecision.action },
-      });
-      return;
+      // ── I.2 Schedule service — route to deterministic booking flow ────────
+      if (orchDecision.action === 'schedule_service') {
+        const serviceName = orchDecision.serviceName ?? 'serviço';
+        try {
+          const conv = await prisma.conversation.findFirst({
+            where: { tenantId: tenant.id, customerPhone: from },
+            orderBy: { lastMessageAt: 'desc' },
+            select: { id: true },
+          });
+          // Inject synthetic booking message with the service name
+          const bookingReply = await handleBookingFlow(
+            tenant.id, from, `agendar ${serviceName}`, conv?.id
+          );
+          if (bookingReply) {
+            // Prepend orchestrator context message if available
+            const fullMessage = orchDecision.message
+              ? `${orchDecision.message}\n\n${bookingReply}`
+              : bookingReply;
+            await sendAndSave({
+              to: from, message: fullMessage, phoneId, token: tenant.whatsappToken,
+              tenantId: tenant.id, status, aiGenerated: false, channel: 'whatsapp',
+              logContext: { source: 'commercial_schedule_service', serviceId: orchDecision.serviceId },
+            });
+            return;
+          }
+        } catch (schedErr) {
+          console.error('[Webhook] schedule_service booking flow error:', schedErr);
+        }
+        // If booking flow returned null (no services configured), send the orchestrator message
+        if (orchDecision.message) {
+          await sendAndSave({
+            to: from, message: orchDecision.message, phoneId, token: tenant.whatsappToken,
+            tenantId: tenant.id, status, aiGenerated: false, channel: 'whatsapp',
+            logContext: { source: 'commercial_schedule_service_fallback' },
+          });
+        }
+        return;
+      }
+
+      // ── I.3 All other actions with message (catalog, checkout, offer, etc.) ──
+      if (orchDecision.message) {
+        await sendAndSave({
+          to: from,
+          message: orchDecision.message,
+          phoneId,
+          token: tenant.whatsappToken,
+          tenantId: tenant.id,
+          status,
+          aiGenerated: false,
+          channel: 'whatsapp',
+          identity: resolvedIdentityContext,
+          logContext: {
+            source: 'commercial_orchestrator',
+            action: orchDecision.action,
+            orderId: orchDecision.orderId,
+            paymentId: orchDecision.paymentId,
+          },
+        });
+        return;
+      }
     }
   } catch (orchErr) {
     console.error('[Webhook] Commercial orchestrator error (falling through to AI):', orchErr);
   }
 
-  // ── 7. AI limit guard ─────────────────────────────────────────────────────
+  // ── J. AI limit guard ─────────────────────────────────────────────────────
   let canUseAI = true;
   try {
     canUseAI = await verifyAiLimits(tenant.id);
@@ -544,7 +624,7 @@ async function processInboundMessage(
     return;
   }
 
-  // ── 8. AI generation (default path) ──────────────────────────────────────
+  // ── K. AI generation (fallback — language and persuasion layer only) ──────
 
   // Detect customer name from message and persist to memory (fire-and-forget).
   const detectedName = extractNameFromText(textBody);
@@ -575,7 +655,6 @@ async function processInboundMessage(
     hasWelcomeConfigured: !!(tenant.welcomeMessage?.trim()),
   }, `[Webhook] AI responded — ${aiResponse?.length ?? 0} chars${isFirstInbound ? ' [FIRST CONTACT — welcome was not configured]' : ''}`);
 
-  // Send-first, save-after (consistent outbound rule).
   await sendAndSave({
     to: from,
     message: aiResponse,

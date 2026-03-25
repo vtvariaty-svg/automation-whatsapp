@@ -148,6 +148,16 @@ async function clearPendingState(tenantId: string, phone: string, _rawNotes?: st
   await clearPendingKey(tenantId, phone, 'pendingBooking');
 }
 
+/**
+ * Returns true if the customer has any active pending appointment state
+ * (selecting_slot, confirming_cancel, selecting_new_slot).
+ * Used by the webhook pipeline to give business-state flows priority over automations.
+ */
+export async function hasPendingAppointmentState(tenantId: string, phone: string): Promise<boolean> {
+  const pending = await getPendingState(tenantId, phone);
+  return pending !== null;
+}
+
 // ─── Main handler ─────────────────────────────────────────────────────────────
 
 /**

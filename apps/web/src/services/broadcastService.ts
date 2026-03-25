@@ -187,7 +187,7 @@ export async function processPendingBroadcasts(): Promise<{
         };
         const varArray = Object.values(vars);
 
-        await sendTemplateMessage(
+        const sendResult = await sendTemplateMessage(
           recipient.phone,
           broadcast.templateName,
           phoneId,
@@ -196,10 +196,13 @@ export async function processPendingBroadcasts(): Promise<{
           broadcast.templateLang,
         );
 
+        // Persist the wamid returned by Meta so the delivery webhook can correlate back
+        const wamid: string | null = (sendResult as any)?.messages?.[0]?.id ?? null;
+
         await prisma.templateBroadcastRecipient.update({
           where: { id: recipient.id },
-          // 'accepted' = Meta Graph API accepted the request; real delivery is async via webhook
-          data: { status: 'accepted', sentAt: new Date() },
+          // 'accepted' = Meta Graph API accepted the request; real delivery confirmed async via webhook
+          data: { status: 'accepted', sentAt: new Date(), metaMessageId: wamid },
         });
         sent++;
       } catch (err: any) {

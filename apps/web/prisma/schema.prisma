@@ -1286,10 +1286,11 @@ model TemplateBroadcastRecipient {
   phone        String
   customerName String?
   variables    Json?
-  status       String    @default("pending") // pending|sent|failed|skipped
-  errorMessage String?
-  sentAt       DateTime?
-  createdAt    DateTime  @default(now())
+  status        String    @default("pending") // pending|accepted|sent|delivered|read|failed|skipped
+  metaMessageId String?   // wamid returned by Meta Graph API — used to correlate delivery webhook events
+  errorMessage  String?
+  sentAt        DateTime?
+  createdAt     DateTime  @default(now())
 
   broadcast TemplateBroadcast @relation(fields: [broadcastId], references: [id], onDelete: Cascade)
 

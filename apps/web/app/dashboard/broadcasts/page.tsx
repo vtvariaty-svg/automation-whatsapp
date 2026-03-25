@@ -83,11 +83,13 @@ const TMPL_STATUS: Record<string, { label: string; color: string }> = {
 };
 
 const RCPT_STATUS: Record<string, { label: string; color: string }> = {
-  pending:  { label: 'Pendente',         color: 'text-gray-400' },
-  accepted: { label: 'Aceito pela Meta', color: 'text-blue-400' },
-  sent:     { label: 'Aceito pela Meta', color: 'text-blue-400' }, // legacy alias
-  failed:   { label: 'Falhou',           color: 'text-red-400' },
-  skipped:  { label: 'Ignorado',         color: 'text-gray-500' },
+  pending:   { label: 'Pendente',             color: 'text-gray-400' },
+  accepted:  { label: 'Aceito pela Meta',     color: 'text-blue-400' },
+  sent:      { label: 'Enviado ao disp.',     color: 'text-cyan-400' },   // webhook: sent
+  delivered: { label: 'Entregue',             color: 'text-emerald-400' }, // webhook: delivered
+  read:      { label: 'Lido',                 color: 'text-purple-400' },  // webhook: read
+  failed:    { label: 'Falhou',               color: 'text-red-400' },
+  skipped:   { label: 'Ignorado',             color: 'text-gray-500' },
 };
 
 const CATEGORIES = [

@@ -562,6 +562,97 @@ async function processInboundMessage(
   }
 }
 
+// ── Delivery status handler ───────────────────────────────────────────────────
+
+/**
+ * Status progression order — used to prevent downgrade (e.g. read → delivered).
+ * 'failed' is always terminal and overrides any current status.
+ */
+const STATUS_ORDER = ['pending', 'accepted', 'sent', 'delivered', 'read'];
+
+function shouldUpgradeStatus(current: string, next: string): boolean {
+  if (next === 'failed') return true; // always record failures
+  return STATUS_ORDER.indexOf(next) > STATUS_ORDER.indexOf(current);
+}
+
+function mapMetaDeliveryStatus(statusType: string): string | null {
+  switch (statusType) {
+    case 'sent':      return 'sent';       // Meta confirmed send to device
+    case 'delivered': return 'delivered';  // Device received
+    case 'read':      return 'read';       // User opened
+    case 'failed':    return 'failed';
+    default:          return null;         // 'deleted', etc. — ignore
+  }
+}
+
+function extractDeliveryError(raw: any): string | null {
+  try {
+    const errors = raw?.entry?.[0]?.changes?.[0]?.value?.statuses?.[0]?.errors;
+    if (!errors?.length) return 'Falha de entrega não especificada';
+    const e = errors[0];
+    const code = e.code ? `[${e.code}] ` : '';
+    const title = e.title || e.message || 'Erro desconhecido';
+    return `${code}${title}`.slice(0, 500);
+  } catch {
+    return 'Falha de entrega';
+  }
+}
+
+/**
+ * Processes Meta delivery-status webhook events (sent/delivered/read/failed).
+ * Correlates via metaMessageId (wamid) stored at send time in TemplateBroadcastRecipient.
+ * Non-throwing — all errors are logged and swallowed so the webhook always returns 200.
+ */
+async function handleDeliveryStatus(
+  event: any,
+  tenantId: string
+): Promise<void> {
+  const { messageId: wamid, statusType, recipientId } = event;
+  if (!wamid || !statusType) return;
+
+  const newStatus = mapMetaDeliveryStatus(statusType);
+  if (!newStatus) return; // ignore unrecognised status types
+
+  try {
+    const recipient = await prisma.templateBroadcastRecipient.findFirst({
+      where: { metaMessageId: wamid },
+      include: { broadcast: { select: { tenantId: true } } },
+    });
+
+    if (!recipient) {
+      // Not a broadcast recipient — individual template or unknown message; silently ignore
+      return;
+    }
+
+    // Tenant ownership guard
+    if (recipient.broadcast.tenantId !== tenantId) {
+      console.warn(`[Webhook][delivery] wamid ${wamid.slice(0, 20)} tenantId mismatch — ignored`);
+      return;
+    }
+
+    if (!shouldUpgradeStatus(recipient.status, newStatus)) return;
+
+    const errorMsg = newStatus === 'failed' ? extractDeliveryError(event.raw) : undefined;
+
+    await prisma.templateBroadcastRecipient.update({
+      where: { id: recipient.id },
+      data: {
+        status: newStatus,
+        ...(errorMsg !== undefined ? { errorMessage: errorMsg } : {}),
+      },
+    });
+
+    if (newStatus === 'failed') {
+      console.warn(
+        `[Webhook][delivery] Cold outbound failed — phone:${maskPhone(recipientId ?? '')} ` +
+        `broadcast:${recipient.broadcastId.slice(0, 8)} error:${errorMsg}`
+      );
+    }
+  } catch (err) {
+    console.error('[Webhook][delivery] Error updating broadcast recipient status:', err);
+  }
+}
+
 // ── GET: webhook verification (Meta handshake) ────────────────────────────────
 
 export async function GET(req: Request) {
@@ -652,6 +743,12 @@ export async function POST(req: Request) {
 
   // 10. Decrypt legacy token
   if (tenant.whatsappToken) tenant.whatsappToken = decrypt(tenant.whatsappToken);
+
+  // 10.5 Delivery status events — handle and short-circuit (no inbound processing needed)
+  if (event.isStatus) {
+    await handleDeliveryStatus(event, tenant.id);
+    return new Response('OK', { status: 200 });
+  }
 
   // 11. Identity resolution (best-effort, silent — never blocks processing)
   let resolvedIdentityContext: IdentityContext | undefined;

@@ -67,7 +67,10 @@
       "Bash(cmd.exe /c \"cd /d C:\\\\Users\\\\vinic\\\\Documents\\\\automation-whatsapp && git add \"\"apps/web/app/api/conversations/[phone]/send/route.ts\"\"\")",
       "Bash(cmd.exe /c \"cd /d C:\\\\Users\\\\vinic\\\\Documents\\\\automation-whatsapp && git add apps/web/components/orders/OrderFormDialog.tsx\")",
       "Bash(cmd.exe /c \"cd /d C:\\\\Users\\\\vinic\\\\Documents\\\\automation-whatsapp && git commit -m \\\\\"fix\\(etapa7\\): persist template to history, pass channel in send, fix contactId FK\\\\\"\" 2>&1)",
-      "Bash(cmd.exe /c \"cd /d C:\\\\Users\\\\vinic\\\\Documents\\\\automation-whatsapp && git log --oneline -3\" 2>&1)"
+      "Bash(cmd.exe /c \"cd /d C:\\\\Users\\\\vinic\\\\Documents\\\\automation-whatsapp && git log --oneline -3\" 2>&1)",
+      "Bash(cmd.exe /c \"git add apps/web/lib/services/lead-intelligence/googlePlacesProvider.ts apps/web/app/api/lead-intelligence/team/route.ts && git status\")",
+      "Bash(cmd.exe /c \"git push origin main && echo DONE\")",
+      "Bash(cmd.exe /c \"git push origin main 2>&1 && echo PUSHED\")"
     ]
   }
 }

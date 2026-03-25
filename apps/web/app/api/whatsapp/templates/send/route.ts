@@ -91,6 +91,26 @@ export async function POST(request: Request) {
     const messageId = responseData.messages?.[0]?.id || null;
     const messageStatus = responseData.messages?.[0]?.message_status || 'accepted';
 
+    // Persist template message to conversation history (non-blocking)
+    try {
+      const dbTemplate = await prisma.customTemplate.findFirst({
+        where: { tenantId: auth.tenantId, name: templateName },
+        select: { body: true },
+      });
+      let messageText = `[Template: ${templateName}]`;
+      if (dbTemplate?.body) {
+        let body = dbTemplate.body;
+        if (variables?.length) {
+          variables.forEach((val: string, i: number) => {
+            body = body.replace(new RegExp(`\\{\\{${i + 1}\\}\\}`, 'g'), val);
+          });
+        }
+        messageText = body;
+      }
+      const { saveAIMessage } = await import('@/src/services/conversationService');
+      await (saveAIMessage as any)(to, messageText, auth.tenantId, 'human', false, 'whatsapp');
+    } catch { /* non-blocking */ }
+
     return NextResponse.json({
       success: true,
       messageId,

@@ -86,8 +86,9 @@ export async function POST(
     // Send message via WhatsApp API (from tenant)
     await sendWhatsAppMessage(phone, message, sendPhoneId, sendToken);
 
-    // Save as human response (aiGenerated = false)
-    await saveAIMessage(phone, message, auth.tenantId, 'human', false);
+    // Save as human response (aiGenerated = false) — use conversation channel
+    const channel = conversation.channel ?? 'whatsapp';
+    await saveAIMessage(phone, message, auth.tenantId, 'human', false, channel);
 
     return NextResponse.json({ success: true });
   } catch (error: any) {

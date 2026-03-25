@@ -140,7 +140,7 @@ export function OrderFormDialog({
         customerPhone: form.customerPhone,
         origin: form.origin,
         notes: form.notes || undefined,
-        contactId: contactId ?? form.customerPhone,
+        contactId: contactId || undefined,
         conversationId,
         items: items
           .filter((it) => it.name.trim())

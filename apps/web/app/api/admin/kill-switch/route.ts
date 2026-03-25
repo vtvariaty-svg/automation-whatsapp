@@ -6,7 +6,7 @@
  * GET /api/admin/kill-switch?tenantId=  — returns current kill-switch state + circuit status.
  */
 import { NextResponse } from 'next/server';
-import { verifyToken } from '@/lib/services/authService';
+import { requireAuth } from '@/lib/auth/session';
 import { isSuperAdmin, logSuperAdminAction } from '@/lib/superadmin';
 import { prisma } from '@/lib/prisma';
 import { getCircuitSnapshot } from '@/lib/resilience/circuitBreaker';
@@ -20,10 +20,7 @@ function toggleChannel(current: string | null, channel: Channel, add: boolean): 
 }
 
 export async function PATCH(request: Request) {
-  const token = request.headers.get('authorization')?.replace('Bearer ', '');
-  if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-  const payload = verifyToken(token);
+  const payload = await requireAuth(request);
   if (!payload || !isSuperAdmin(payload.role))
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
@@ -48,10 +45,7 @@ export async function PATCH(request: Request) {
 }
 
 export async function GET(request: Request) {
-  const token = request.headers.get('authorization')?.replace('Bearer ', '');
-  if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-  const payload = verifyToken(token);
+  const payload = await requireAuth(request);
   if (!payload || !isSuperAdmin(payload.role))
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 

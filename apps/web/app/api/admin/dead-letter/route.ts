@@ -3,7 +3,7 @@
  * PATCH /api/admin/dead-letter                         — resolve by id
  */
 import { NextResponse } from 'next/server';
-import { verifyToken } from '@/lib/services/authService';
+import { requireAuth } from '@/lib/auth/session';
 import { isSuperAdmin } from '@/lib/superadmin';
 import { prisma } from '@/lib/prisma';
 import { resolveDeadLetter } from '@/lib/resilience/deadLetter';
@@ -14,10 +14,7 @@ function isSuperOrAdmin(role?: string) {
 }
 
 export async function GET(request: Request) {
-  const token = request.headers.get('authorization')?.replace('Bearer ', '');
-  if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-  const payload = verifyToken(token);
+  const payload = await requireAuth(request);
   if (!payload || !isSuperOrAdmin(payload.role))
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
@@ -42,10 +39,7 @@ export async function GET(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const token = request.headers.get('authorization')?.replace('Bearer ', '');
-  if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-  const payload = verifyToken(token);
+  const payload = await requireAuth(request);
   if (!payload || !isSuperOrAdmin(payload.role))
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 

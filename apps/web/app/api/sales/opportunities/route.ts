@@ -1,23 +1,18 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { verifyToken } from '@/lib/services/authService';
+import { requireAuth } from '@/lib/auth/session';
 import { checkFeature } from '@/lib/services/entitlementsService';
 
 export async function GET(req: Request) {
   try {
-    const authHeader = req.headers.get('authorization');
-    if (!authHeader) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const session = await requireAuth(req);
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const token = authHeader.replace('Bearer ', '');
-    const decoded = verifyToken(token);
-
-    if (!decoded) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-
-    const check = await checkFeature(decoded.tenantId, 'advancedCRM', decoded.role);
+    const check = await checkFeature(session.tenantId, 'advancedCRM', session.role);
     if (!check.allowed) return NextResponse.json({ error: check.upgradeMessage }, { status: 403 });
 
     const opportunities = await prisma.salesOpportunity.findMany({
-      where: { tenantId: decoded.tenantId },
+      where: { tenantId: session.tenantId },
       include: {
         product: { select: { name: true, price: true } }
       },

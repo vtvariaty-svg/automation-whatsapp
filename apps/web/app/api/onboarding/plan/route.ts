@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { verifyToken } from '@/lib/services/authService';
+import { requireAuth } from '@/lib/auth/session';
 import { createSubscription, getSubscription } from '@/lib/services/subscriptionService';
 import { createCustomer, createCheckoutSession } from '@/lib/services/stripeService';
 import { prisma } from '@/lib/prisma';
@@ -7,16 +7,13 @@ import { PLANS } from '@/lib/config/plans';
 
 export async function POST(req: Request) {
   try {
-    const token = req.headers.get('authorization')?.replace('Bearer ', '');
-    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-    const payload = verifyToken(token);
-    if (!payload) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    const auth = await requireAuth(req);
+    if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { plan } = await req.json();
     if (!PLANS[plan]) return NextResponse.json({ error: 'Invalid plan' }, { status: 400 });
 
-    const existing = await getSubscription(payload.tenantId);
+    const existing = await getSubscription(auth.tenantId);
 
     // Free and Standard (trial): create/update subscription directly, no Stripe checkout needed
     if (plan === 'free' || plan === 'standard') {
@@ -24,10 +21,10 @@ export async function POST(req: Request) {
       const trialEnd = hasTrial ? new Date(Date.now() + 7 * 86_400_000) : null;
 
       if (!existing) {
-        await createSubscription(payload.tenantId, plan);
+        await createSubscription(auth.tenantId, plan);
       } else {
         await prisma.subscription.update({
-          where: { tenantId: payload.tenantId },
+          where: { tenantId: auth.tenantId },
           data: {
             plan,
             status: hasTrial ? 'trialing' : 'active',
@@ -41,7 +38,7 @@ export async function POST(req: Request) {
     // Pro / Business: redirect to Stripe checkout
     // Success URL returns to onboarding step 1 to continue setup
     const tenant = await prisma.tenant.findUnique({
-      where: { id: payload.tenantId },
+      where: { id: auth.tenantId },
       include: { users: true },
     });
     if (!tenant) return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
@@ -54,15 +51,15 @@ export async function POST(req: Request) {
     }
 
     const origin = req.headers.get('origin') || 'http://localhost:3000';
-    const session = await createCheckoutSession(
+    const checkoutSession = await createCheckoutSession(
       stripeCustomerId,
       plan,
       `${origin}/onboarding/step/1`,
       `${origin}/onboarding/plan`,
-      payload.tenantId
+      auth.tenantId
     );
 
-    return NextResponse.json({ checkoutUrl: session.url });
+    return NextResponse.json({ checkoutUrl: checkoutSession.url });
   } catch (error: any) {
     console.error('[Onboarding plan] Error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });

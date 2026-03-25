@@ -1,20 +1,17 @@
 import { NextResponse } from 'next/server';
-import { verifyToken } from '@/lib/services/authService';
+import { requireAuth } from '@/lib/auth/session';
 import { getSubscription } from '@/lib/services/subscriptionService';
 import { PLANS } from '@/lib/config/plans';
 import { isSuperAdmin, logSuperAdminAction } from '@/lib/superadmin';
 
 export async function GET(req: Request) {
   try {
-    const token = req.headers.get('authorization')?.replace('Bearer ', '');
-    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-    const payload = verifyToken(token);
-    if (!payload) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    const session = await requireAuth(req);
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     // SUPERADMIN: bypass completo — retorna plano ilimitado sem tocar em dados reais
-    if (isSuperAdmin(payload.role)) {
-      logSuperAdminAction(payload.userId, 'view_billing', payload.tenantId);
+    if (isSuperAdmin(session.role)) {
+      logSuperAdminAction(session.userId, 'view_billing', session.tenantId);
       return NextResponse.json({
         hasSubscription: true,
         plan: 'superadmin',
@@ -28,7 +25,7 @@ export async function GET(req: Request) {
       });
     }
 
-    const subscription = await getSubscription(payload.tenantId);
+    const subscription = await getSubscription(session.tenantId);
 
     if (!subscription) {
       return NextResponse.json({

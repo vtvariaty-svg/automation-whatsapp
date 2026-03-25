@@ -5,7 +5,7 @@
  * Pass null to clear the override and restore plan defaults.
  */
 import { NextResponse } from 'next/server';
-import { verifyToken } from '@/lib/services/authService';
+import { requireAuth } from '@/lib/auth/session';
 import { isSuperAdmin, logSuperAdminAction } from '@/lib/superadmin';
 import { prisma } from '@/lib/prisma';
 
@@ -13,10 +13,7 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const token = request.headers.get('authorization')?.replace('Bearer ', '');
-  if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-  const payload = verifyToken(token);
+  const payload = await requireAuth(request);
   if (!payload || !isSuperAdmin(payload.role))
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
@@ -37,10 +34,7 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const token = request.headers.get('authorization')?.replace('Bearer ', '');
-  if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-  const payload = verifyToken(token);
+  const payload = await requireAuth(request);
   if (!payload || !isSuperAdmin(payload.role))
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 

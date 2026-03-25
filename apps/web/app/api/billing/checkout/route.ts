@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
-import { verifyToken } from '@/lib/services/authService';
+import { requireAuth } from '@/lib/auth/session';
 import { getSubscription, createSubscription } from '@/lib/services/subscriptionService';
 import { createCustomer, createCheckoutSession } from '@/lib/services/stripeService';
 import { prisma } from '@/lib/prisma';
@@ -10,11 +10,8 @@ import { PLANS } from '@/lib/config/plans';
 
 export async function POST(req: Request) {
   try {
-    const token = req.headers.get('authorization')?.replace('Bearer ', '');
-    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-    const payload = verifyToken(token);
-    if (!payload) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    const session = await requireAuth(req);
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { plan } = await req.json();
     if (!PLANS[plan]) {
@@ -23,13 +20,13 @@ export async function POST(req: Request) {
 
     // Free plan: no Stripe checkout needed — just upsert the subscription record directly
     if (plan === 'free') {
-      const existing = await getSubscription(payload.tenantId);
+      const existing = await getSubscription(session.tenantId);
       if (!existing) {
-        await createSubscription(payload.tenantId, 'free');
+        await createSubscription(session.tenantId, 'free');
       } else {
         // Downgrade to free: update plan, clear Stripe fields, set active status
         await prisma.subscription.update({
-          where: { tenantId: payload.tenantId },
+          where: { tenantId: session.tenantId },
           data: { plan: 'free', status: 'active', trialEnd: null },
         });
       }
@@ -37,12 +34,12 @@ export async function POST(req: Request) {
     }
 
     const tenant = await prisma.tenant.findUnique({
-      where: { id: payload.tenantId },
+      where: { id: session.tenantId },
       include: { users: true },
     });
     if (!tenant) return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
 
-    let subscription = await getSubscription(payload.tenantId);
+    let subscription = await getSubscription(session.tenantId);
     let stripeCustomerId = subscription?.stripeCustomerId;
 
     if (!stripeCustomerId) {
@@ -52,15 +49,15 @@ export async function POST(req: Request) {
     }
 
     const origin = req.headers.get('origin') || 'http://localhost:3000';
-    const session = await createCheckoutSession(
+    const checkoutSession = await createCheckoutSession(
       stripeCustomerId,
       plan,
       `${origin}/dashboard/billing?success=true`,
       `${origin}/dashboard/billing?canceled=true`,
-      payload.tenantId
+      session.tenantId
     );
 
-    return NextResponse.json({ checkoutUrl: session.url });
+    return NextResponse.json({ checkoutUrl: checkoutSession.url });
   } catch (error: any) {
     console.error('Billing checkout error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });

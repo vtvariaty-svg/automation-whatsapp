@@ -6,8 +6,19 @@ if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET environment variable is
 const JWT_SECRET = process.env.JWT_SECRET;
 
 export async function POST(req: Request) {
+  // Extract token from Bearer header first, fall back to auth_token cookie.
+  // This handles both: (a) explicit Bearer logout from client, and (b) cases
+  // where the client's localStorage was cleared but the httpOnly cookie remains.
+  let token: string | null = null;
+
   const authHeader = req.headers.get('authorization');
-  const token = authHeader?.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
+  if (authHeader?.startsWith('Bearer ')) {
+    token = authHeader.slice(7).trim();
+  } else {
+    const cookieHeader = req.headers.get('cookie') ?? '';
+    const m = cookieHeader.match(/(?:^|;\s*)auth_token=([^;]+)/);
+    if (m) token = decodeURIComponent(m[1]);
+  }
 
   if (token) {
     try {
@@ -17,18 +28,20 @@ export async function POST(req: Request) {
         : new Date(Date.now() + 24 * 60 * 60 * 1000); // fallback: +24h
       await revokeToken(token, expiresAt);
     } catch {
-      // Token inválido ou expirado — não precisa revogar, mas prosseguir com o logout
+      // Invalid or already-expired token — no need to revoke, still proceed.
     }
   }
 
   const response = NextResponse.json({ ok: true });
-  // Limpar cookie server-side (cobre fluxo de login social)
+
+  // Clear cookie with the same attributes used on login so the browser removes it.
   response.cookies.set('auth_token', '', {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
     path: '/',
     maxAge: 0,
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
   });
+
   return response;
 }

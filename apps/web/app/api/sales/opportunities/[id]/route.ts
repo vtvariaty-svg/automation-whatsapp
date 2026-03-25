@@ -1,18 +1,13 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { verifyToken } from '@/lib/services/authService';
+import { requireAuth } from '@/lib/auth/session';
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id: oppId } = await params;
 
-    const authHeader = req.headers.get('authorization');
-    if (!authHeader) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-    const token = authHeader.replace('Bearer ', '');
-    const decoded = verifyToken(token);
-    
-    if (!decoded) return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    const session = await requireAuth(req);
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
     const { status } = body;
@@ -22,7 +17,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       where: { id: oppId }
     });
 
-    if (!existing || existing.tenantId !== decoded.tenantId) {
+    if (!existing || existing.tenantId !== session.tenantId) {
       return NextResponse.json({ error: 'Not found or unauthorized' }, { status: 404 });
     }
 

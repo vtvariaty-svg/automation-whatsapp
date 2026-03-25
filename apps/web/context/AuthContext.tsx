@@ -5,8 +5,17 @@ import { useRouter } from 'next/navigation';
 import { authStorage } from '@/lib/auth/auth';
 import { authApi } from '@/lib/api/client';
 
+interface AuthUser {
+  id: string;
+  email: string;
+  name?: string | null;
+  tenantId: string;
+  role: string;
+  forcePasswordReset?: boolean;
+}
+
 interface AuthContextType {
-  user: any;
+  user: AuthUser | null;
   token: string | null;
   loading: boolean;
   isSuperAdmin: boolean;
@@ -18,46 +27,62 @@ interface AuthContextType {
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    const savedToken = authStorage.getToken();
-    if (savedToken) {
+    /**
+     * Bootstrap session from the server.
+     *
+     * Calls /api/auth/me which uses requireAuth() — validates JWT signature,
+     * revocation, sessionVersion, and isActive. Returns real user data from DB.
+     *
+     * The Bearer token from localStorage is sent by apiClient automatically.
+     * The httpOnly cookie is sent via credentials: 'include'.
+     * Either one is sufficient for the server to authenticate the request.
+     */
+    const bootstrap = async () => {
+      const savedToken = authStorage.getToken();
+
+      // If neither localStorage token nor a potential cookie exists, skip the call.
+      // We can't check the httpOnly cookie from JS, so attempt the call regardless
+      // when a savedToken exists; also attempt without it in case cookie is valid.
       try {
-        const base64Url = savedToken.split('.')[1];
-        if (!base64Url) throw new Error("Invalid JWT format (possibly old mock token)");
-        
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-        }).join(''));
-        const payload = JSON.parse(jsonPayload);
-        
-        setToken(savedToken);
-        setUser({ 
-          id: payload.userId, 
-          tenantId: payload.tenantId, 
-          role: payload.role || 'user',
-          email: 'user@empresa.com', 
-          name: 'Usuário' 
+        const meRes = await fetch('/api/auth/me', {
+          headers: savedToken ? { Authorization: `Bearer ${savedToken}` } : {},
+          credentials: 'include',
         });
-      } catch (e) {
-        console.warn("Token inválido ou antigo. Forçando logout...");
+
+        if (meRes.ok) {
+          const userData: AuthUser = await meRes.json();
+          setUser(userData);
+          setToken(savedToken);
+        } else {
+          // Session is invalid — clean up
+          authStorage.logout();
+          setToken(null);
+          setUser(null);
+        }
+      } catch {
+        // Network error — clear state to be safe
         authStorage.logout();
         setToken(null);
         setUser(null);
+      } finally {
+        setLoading(false);
       }
-    }
-    setLoading(false);
+    };
+
+    bootstrap();
   }, []);
 
   const redirectAfterAuth = async (token: string) => {
     try {
       const res = await fetch('/api/onboarding/status', {
         headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
       });
       if (res.ok) {
         const data = await res.json();
@@ -74,10 +99,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     try {
       const response = await authApi.login(credentials);
+      // Server sets the httpOnly auth_token cookie automatically.
+      // Store token in localStorage for Bearer auth in apiClient (dual-track).
+      authStorage.saveToken(response.token);
       setToken(response.token);
       setUser(response.user);
-      authStorage.saveToken(response.token);
-      document.cookie = `auth_token=${response.token}; path=/; max-age=86400; Secure; SameSite=Lax`;
       await redirectAfterAuth(response.token);
     } catch (error) {
       console.error('Login failed', error);
@@ -96,10 +122,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         router.push('/verify-email-pending');
         return;
       }
+      // Server sets the httpOnly auth_token cookie automatically.
+      authStorage.saveToken(response.token);
       setToken(response.token);
       setUser(response.user);
-      authStorage.saveToken(response.token);
-      document.cookie = `auth_token=${response.token}; path=/; max-age=86400; Secure; SameSite=Lax`;
       await redirectAfterAuth(response.token);
     } catch (error) {
       console.error('Register failed', error);
@@ -111,17 +137,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     const currentToken = authStorage.getToken();
-    // Revogar token no servidor (non-blocking: logout prossegue mesmo se falhar)
-    if (currentToken) {
-      fetch('/api/auth/logout', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${currentToken}` },
-      }).catch(() => {});
-    }
+
+    // Clear client state immediately for instant UX
     authStorage.logout();
     setToken(null);
     setUser(null);
-    document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+
+    // Revoke token and clear httpOnly cookie server-side.
+    // Must be awaited so the cookie is cleared before the redirect.
+    try {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: currentToken ? { Authorization: `Bearer ${currentToken}` } : {},
+        credentials: 'include',
+      });
+    } catch {
+      // Best-effort — user is already logged out client-side
+    }
+
     router.push('/login');
   };
 

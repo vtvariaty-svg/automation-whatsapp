@@ -25,21 +25,20 @@ export default function DashboardPage() {
   const [whatsappStatus, setWhatsappStatus] = useState<"connected" | "disconnected" | "loading">("loading");
 
   useEffect(() => {
-    // Load basic stats
+    // Load rich stats
     const loadStats = async () => {
       try {
         const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
-        const res = await fetch(`/api/conversations?tenantId=${user?.tenantId}`, {
+        const res = await fetch(`/api/dashboard/stats?tenantId=${user?.tenantId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (res.ok) {
-          const convs = await res.json();
-          const active = convs.filter((c: any) => c.status === "ai" || c.status === "human").length;
+          const data = await res.json();
           setStats({
-            totalConversations: convs.length,
-            activeConversations: active,
-            messagesThisMonth: convs.length * 12, // approximate
-            aiResponseRate: convs.length > 0 ? 94 : 0,
+            totalConversations: data.totalConversations || 0,
+            activeConversations: data.activeConversations || 0,
+            messagesThisMonth: data.messagesThisMonth || 0,
+            aiResponseRate: data.aiResponseRate || 0,
           });
         }
       } catch { /* ignore */ }

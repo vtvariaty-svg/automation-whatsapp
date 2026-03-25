@@ -56,7 +56,18 @@
       "Bash(sed -i 's/className=\"\"h-28 w-auto\"\"/className=\"\"h-20 w-auto\"\"/g' apps/web/app/onboarding/layout.tsx apps/web/app/terms/page.tsx apps/web/app/privacy/page.tsx)",
       "Bash(del appswebbackfill_check.js backfill_check.mjs)",
       "Bash(magick --version)",
-      "Bash(convert --version)"
+      "Bash(convert --version)",
+      "Bash(grep -r \"welcomeMessage\\\\|welcome_message\" C:UsersvinicDocumentsautomation-whatsappappsweb --include=*.ts --include=*.tsx --include=*.js)",
+      "Bash(grep -r isFirstInbound C:UsersvinicDocumentsautomation-whatsapp --include=*.ts --include=*.tsx --include=*.js)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d.get\\(''''version'''',''''none''''\\)\\)\")",
+      "Bash(cmd.exe /c \"cd /d C:\\\\Users\\\\vinic\\\\Documents\\\\automation-whatsapp && git add apps/web/src/services/customerMemoryService.ts apps/web/src/services/commercialOrchestratorService.ts apps/web/src/services/appointmentBookingService.ts apps/web/app/api/billing/webhook/route.ts && git status --short\")",
+      "Bash(cmd.exe /c \"cd /d C:\\\\Users\\\\vinic\\\\Documents\\\\automation-whatsapp && git add apps/web/src/services/customerMemoryService.ts && git add apps/web/src/services/commercialOrchestratorService.ts && git add apps/web/src/services/appointmentBookingService.ts && git add apps/web/app/api/billing/webhook/route.ts && git status --short\")",
+      "Bash(grep -o \"/api/[^''''\"\"\\)\\\\`]*\")",
+      "Bash(cmd.exe /c \"cd /d C:\\\\Users\\\\vinic\\\\Documents\\\\automation-whatsapp && git add apps/web/app/api/whatsapp/templates/send/route.ts\")",
+      "Bash(cmd.exe /c \"cd /d C:\\\\Users\\\\vinic\\\\Documents\\\\automation-whatsapp && git add \"\"apps/web/app/api/conversations/[phone]/send/route.ts\"\"\")",
+      "Bash(cmd.exe /c \"cd /d C:\\\\Users\\\\vinic\\\\Documents\\\\automation-whatsapp && git add apps/web/components/orders/OrderFormDialog.tsx\")",
+      "Bash(cmd.exe /c \"cd /d C:\\\\Users\\\\vinic\\\\Documents\\\\automation-whatsapp && git commit -m \\\\\"fix\\(etapa7\\): persist template to history, pass channel in send, fix contactId FK\\\\\"\" 2>&1)",
+      "Bash(cmd.exe /c \"cd /d C:\\\\Users\\\\vinic\\\\Documents\\\\automation-whatsapp && git log --oneline -3\" 2>&1)"
     ]
   }
 }

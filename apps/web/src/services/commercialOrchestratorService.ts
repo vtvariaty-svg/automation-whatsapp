@@ -320,7 +320,32 @@ async function buildProductDecision(
       }
     }
 
-    // Generate checkout
+    // Check if we generated a checkout for this exact product recently (2 hours cache)
+    const recentlySent =
+      state.lastOfferedProductId === product.id &&
+      state.lastCheckoutUrl &&
+      state.lastCheckoutSentAt &&
+      (new Date().getTime() - new Date(state.lastCheckoutSentAt).getTime() < 1000 * 60 * 60 * 2);
+
+    if (recentlySent) {
+      const msg = buildCheckoutMessage(
+        product.name,
+        product.price,
+        product.currency,
+        state.lastCheckoutUrl,
+        product.salesCtaText
+      );
+      console.info(`[CommercialOrchestrator] Checkout cached/reused for tenant=${tenantId} product=${product.id}`);
+      return {
+        action: 'send_checkout',
+        message: msg,
+        checkoutUrl: state.lastCheckoutUrl,
+        productId: product.id,
+        reason: 'dynamic_checkout_reused',
+      };
+    }
+
+    // Generate new checkout
     try {
       const { checkoutUrl } = await generateCheckoutUrl(tenantId, product.id, contactId);
       const msg = buildCheckoutMessage(
@@ -333,6 +358,7 @@ async function buildProductDecision(
       await setCommercialState(tenantId, customerPhone, {
         lastOfferedProductId: product.id,
         lastCheckoutSentAt: new Date().toISOString(),
+        lastCheckoutUrl: checkoutUrl,
         awaitingChoice: false,
       }, channel);
 
@@ -341,7 +367,9 @@ async function buildProductDecision(
         await prisma.salesEvent.create({
           data: { tenantId, contactId, productId: product.id, checkoutUrl, status: 'created' },
         });
-      } catch { /* duplicate or no contactId — non-blocking */ }
+      } catch (err: any) { 
+        console.warn(`[CommercialOrchestrator] Silently skipped duplicate SalesEvent: ${err.message}`);
+      }
 
       // Persist SalesOpportunity so billing webhook can advance it to 'pago' on payment
       try {
@@ -354,7 +382,9 @@ async function buildProductDecision(
             value: product.price,
           },
         });
-      } catch { /* duplicate — non-blocking */ }
+      } catch (err: any) { 
+        console.warn(`[CommercialOrchestrator] Silently skipped duplicate SalesOpportunity: ${err.message}`);
+      }
 
       return {
         action: 'send_checkout',

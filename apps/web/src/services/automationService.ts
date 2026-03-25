@@ -144,6 +144,7 @@ export async function executeOrderAutomations(
     const { decrypt } = await import('@/lib/utils/crypto');
     // @ts-ignore
     const { sendWhatsAppMessage } = await import('@/src/services/whatsappService');
+    const { saveAIMessage } = await import('@/src/services/conversationService');
     const token = decrypt(rawToken);
 
     for (const rule of rules) {
@@ -151,19 +152,27 @@ export async function executeOrderAutomations(
       let errorMessage: string | undefined;
 
       try {
+        let finalMessage = '';
         if (rule.responseType === 'template') {
           // Enviar template via Meta Graph API
           await sendTemplateMessage(resolvedPhone, rule.responseText, phoneId, token, [
             context?.origin || '',
             orderId.slice(0, 8),
           ]);
+          finalMessage = `[Template: ${rule.responseText}] - Pedido: ${orderId.slice(0,8)}`;
         } else {
           // Enviar texto normal com placeholders substituídos
-          const message = rule.responseText
+          finalMessage = rule.responseText
             .replace(/\{status\}/g, newStatus)
             .replace(/\{orderId\}/g, orderId.slice(0, 8));
-          await sendWhatsAppMessage(resolvedPhone, message, phoneId, token);
+          await sendWhatsAppMessage(resolvedPhone, finalMessage, phoneId, token);
         }
+
+        // Persist message in chat history so humans can see what the bot sent
+        await saveAIMessage(resolvedPhone, finalMessage, tenantId, 'open', false, 'whatsapp').catch((e: any) => {
+            console.error('[OrderAutomation] Failed to save message to history:', e.message);
+        });
+
         success = true;
         sent++;
         console.log(`[OrderAutomation] Enviado "${rule.name}" (${rule.responseType}) para ${resolvedPhone}`);

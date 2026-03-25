@@ -13,6 +13,7 @@ export interface CommercialState {
   candidateProductIds?: string[];    // products listed for disambiguation
   lastOfferedProductId?: string;     // last product for which offer was sent
   lastCheckoutSentAt?: string;       // ISO datetime of last checkout URL sent
+  lastCheckoutUrl?: string;          // Cached URL for deduplication
   handoffTriggered?: boolean;        // true if handoff was already triggered in this session
   unresolvedCount?: number;          // how many consecutive unresolved intents
   updatedAt?: string;                // ISO datetime — used for TTL check

@@ -143,7 +143,7 @@ export default function InboxPage() {
           pendingPhoneRef.current = null;
           const match = data.find((c) => c.phone_number === pending);
           if (match) {
-            loadMessages(match.phone_number, match.status);
+            loadMessages(match.phone_number, match.status, match.channel);
           } else {
             // Conversation not in list yet — try to start/create it
             openOrCreateConversation(pending, data);
@@ -161,7 +161,7 @@ export default function InboxPage() {
     // Check list first (may have just loaded)
     const match = currentList.find((c) => c.phone_number === phone);
     if (match) {
-      loadMessages(match.phone_number, match.status);
+      loadMessages(match.phone_number, match.status, match.channel);
       return;
     }
     try {
@@ -179,7 +179,7 @@ export default function InboxPage() {
           const refreshed: Conversation[] = await listRes.json();
           setConversations(refreshed);
           const found = refreshed.find((c) => c.phone_number === phone);
-          if (found) loadMessages(found.phone_number, found.status);
+          if (found) loadMessages(found.phone_number, found.status, found.channel);
         }
       }
     } catch (err) {
@@ -256,7 +256,7 @@ export default function InboxPage() {
         const refreshed: Conversation[] = await listRes.json();
         setConversations(refreshed);
         const found = refreshed.find((c) => c.phone_number === phone);
-        if (found) loadMessages(found.phone_number, found.status);
+        if (found) loadMessages(found.phone_number, found.status, found.channel);
       }
       showFeedback("success", "Conversa iniciada");
     } catch (err: unknown) {
@@ -349,14 +349,20 @@ export default function InboxPage() {
     }
   }, [canCreatePayment]);
 
-  const loadMessages = async (phone: string, status: string) => {
+  const loadMessages = async (phone: string, status: string, channelHint?: string) => {
     setSelectedPhone(phone);
     setCurrentStatus(status);
     setLoadingChat(true);
+    // Resolve channel: caller hint → conversation list lookup → fallback whatsapp
+    const channel =
+      channelHint ??
+      conversations.find((c) => c.phone_number === phone)?.channel ??
+      'whatsapp';
     try {
-      const res = await fetch(`/api/conversations/${phone}/messages?tenantId=${tenantId}`, {
-        headers: authHeaders(),
-      });
+      const res = await fetch(
+        `/api/conversations/${phone}/messages?tenantId=${tenantId}&channel=${encodeURIComponent(channel)}`,
+        { headers: authHeaders() }
+      );
       if (res.ok) {
         const data = await res.json();
         setMessages(data);
@@ -607,7 +613,7 @@ export default function InboxPage() {
                 return (
                   <div
                     key={conv.phone_number}
-                    onClick={() => loadMessages(conv.phone_number, conv.status)}
+                    onClick={() => loadMessages(conv.phone_number, conv.status, conv.channel)}
                     className={`flex items-start gap-3 p-3.5 rounded-xl cursor-pointer transition-all duration-200 ${
                       isSelected
                         ? "bg-[#4f46e5]/[0.08] border border-[#4f46e5]/15"

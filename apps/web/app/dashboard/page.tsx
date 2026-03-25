@@ -28,7 +28,10 @@ export default function DashboardPage() {
     // Load basic stats
     const loadStats = async () => {
       try {
-        const res = await fetch(`/api/conversations?tenantId=${user?.tenantId}`);
+        const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+        const res = await fetch(`/api/conversations?tenantId=${user?.tenantId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         if (res.ok) {
           const convs = await res.json();
           const active = convs.filter((c: any) => c.status === "ai" || c.status === "human").length;

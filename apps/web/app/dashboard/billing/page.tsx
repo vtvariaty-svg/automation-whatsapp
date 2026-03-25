@@ -121,8 +121,11 @@ export default function BillingPage() {
     setConfirmFreeDowngrade(false);
     setCheckoutLoading('free');
     try {
-      await billingApi.createCheckout('free');
-      showMessage('Plano alterado para Free. Sua assinatura paga foi cancelada no Stripe.', true);
+      const data = await billingApi.createCheckout('free');
+      const msg = data?.canceledStripeSubscription
+        ? 'Plano alterado para Free. Sua assinatura paga foi cancelada no Stripe.'
+        : 'Plano alterado para Free com sucesso.';
+      showMessage(msg, true);
       // Reload subscription state so the UI reflects the new plan immediately.
       await loadSubscription();
     } catch (err: any) {
@@ -408,8 +411,8 @@ export default function BillingPage() {
 
             {isPaidPlan ? (
               <p className="text-gray-600 text-sm mb-2">
-                Sua assinatura paga será <strong>cancelada imediatamente</strong> no Stripe.
-                Você perderá acesso aos recursos do plano atual ao final do período vigente.
+                Sua assinatura paga será <strong>cancelada imediatamente</strong> no Stripe e
+                você perderá acesso aos recursos do plano atual <strong>agora mesmo</strong>.
               </p>
             ) : (
               <p className="text-gray-600 text-sm mb-2">

@@ -23,49 +23,58 @@ export async function POST(req: Request) {
       const existing = await getSubscription(session.tenantId);
 
       if (!existing) {
-        // No subscription yet — just create a free one
+        // No subscription yet — just create a free one.
         await createSubscription(session.tenantId, 'free');
-      } else {
-        // Cancel active Stripe subscription BEFORE clearing stripeSubscriptionId
-        // in the DB. This order matters:
-        //   1. Cancel in Stripe → prevents continued billing.
-        //   2. Clear stripeSubscriptionId in DB → when Stripe fires
-        //      customer.subscription.deleted, our webhook will not find the record
-        //      (findFirst by stripeSubscriptionId returns null) and will silently
-        //      ignore the event, avoiding a status overwrite conflict.
-        //
-        // stripeCustomerId is intentionally retained so future upgrades can reuse
-        // the existing Stripe customer record instead of creating a duplicate.
-        if (existing.stripeSubscriptionId) {
-          try {
-            await cancelSubscription(existing.stripeSubscriptionId);
-          } catch (stripeErr: any) {
-            // 'resource_missing' (404) = subscription already canceled/deleted in Stripe.
-            // Safe to ignore — we still need to clean up the local state.
-            if (stripeErr?.code !== 'resource_missing' && stripeErr?.statusCode !== 404) {
-              console.error('[Billing] Stripe cancel error on free downgrade:', stripeErr?.message);
-              // Still proceed with the local downgrade to keep DB consistent.
-            }
-          }
-        }
-
-        await prisma.subscription.update({
-          where: { tenantId: session.tenantId },
-          data: {
-            plan: 'free',
-            status: 'active',
-            // Clear all period/plan fields that belong to the canceled paid subscription.
-            stripeSubscriptionId: null,
-            planId: null,
-            trialEnd: null,
-            currentPeriodStart: null,
-            currentPeriodEnd: null,
-            // stripeCustomerId intentionally kept — see comment above.
-          },
-        });
+        return NextResponse.json({ plan: 'free', price: 0, noCheckout: true, downgraded: true, canceledStripeSubscription: false });
       }
 
-      return NextResponse.json({ plan: 'free', price: 0, noCheckout: true, downgraded: true });
+      // canceledStripeSubscription tracks whether we actually canceled a live
+      // Stripe subscription in this request (used by the UI for accurate messaging).
+      let canceledStripeSubscription = false;
+
+      if (existing.stripeSubscriptionId) {
+        try {
+          await cancelSubscription(existing.stripeSubscriptionId);
+          // Order matters:
+          //   1. Cancel in Stripe → stops continued billing.
+          //   2. Clear stripeSubscriptionId in DB (below) → when Stripe fires
+          //      customer.subscription.deleted, findFirst returns null and the
+          //      webhook silently ignores the event, preventing a status conflict.
+          //
+          // stripeCustomerId is intentionally retained for future upgrades.
+          canceledStripeSubscription = true;
+        } catch (stripeErr: any) {
+          if (stripeErr?.code === 'resource_missing' || stripeErr?.statusCode === 404) {
+            // Subscription already canceled/deleted in Stripe — safe to clean up locally.
+            canceledStripeSubscription = false;
+          } else {
+            // Real Stripe error: ABORT the local downgrade to prevent DB ↔ Stripe divergence.
+            // The subscription remains active in both systems; user can retry.
+            console.error('[Billing] Stripe cancel error on free downgrade:', stripeErr?.message);
+            return NextResponse.json(
+              { error: 'Não foi possível cancelar a assinatura no Stripe. Tente novamente ou entre em contato com o suporte.' },
+              { status: 502 }
+            );
+          }
+        }
+      }
+
+      await prisma.subscription.update({
+        where: { tenantId: session.tenantId },
+        data: {
+          plan: 'free',
+          status: 'active',
+          // Clear all period/plan fields that belong to the canceled paid subscription.
+          stripeSubscriptionId: null,
+          planId: null,
+          trialEnd: null,
+          currentPeriodStart: null,
+          currentPeriodEnd: null,
+          // stripeCustomerId intentionally kept — see comment above.
+        },
+      });
+
+      return NextResponse.json({ plan: 'free', price: 0, noCheckout: true, downgraded: true, canceledStripeSubscription });
     }
 
     // ── Paid plan checkout (Standard / Pro / Business) ────────────────────────

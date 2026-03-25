@@ -230,7 +230,19 @@ async function handleWelcomeBranch(
     hasCustomerName: !!customerName,
   }, '[Webhook] Welcome message sent — AI skipped');
 
-  return true; // always stop here after welcome, even if send failed
+  if (result === 'send_failed') {
+    // Welcome delivery failed — do NOT silence the customer.
+    // Return false so processInboundMessage continues to the AI/automation pipeline.
+    channelLog.warn({
+      channel: 'whatsapp',
+      tenantId: tenant.id,
+      customerPhone: maskPhone(from),
+      source: 'welcome_message',
+    }, '[Webhook] Welcome message failed to send — falling through to AI pipeline');
+    return false;
+  }
+
+  return true; // welcome sent successfully — stop pipeline
 }
 
 /**
@@ -310,21 +322,37 @@ async function handleAutomationBranch(
 
   // ── ResponseType handlers (template or plain text) ────────────────────────
   if (automation.responseType === 'template') {
+    // Phase 1: send the template.
+    // The fallback to plain text is ONLY triggered when the send itself fails.
+    // A save failure after a successful send must NOT re-send — that would duplicate
+    // the message from the customer's perspective.
+    let templateSent = false;
     try {
-      // Template sends are opaque — log the template name, not its rendered content.
-      // Rule note: sendTemplateMessage is a specialized API call; we save AFTER it
-      // succeeds (consistent with the send-first rule), but the saved content is a
-      // marker string rather than the actual message body.
       await sendTemplateMessage(from, automation.responseText, phoneId!, tenant.whatsappToken!);
-      await saveAIMessage(from, `[Template: ${automation.responseText}]`, tenant.id, status, false);
+      templateSent = true;
     } catch (tplErr) {
       console.error(`[Webhook] Falha ao enviar template "${automation.responseText}":`, tplErr);
-      // Fallback: send as plain text using the standard sendAndSave rule.
+      // Fallback fires only when the SEND failed — no template was delivered.
       await sendAndSave({
         to: from, message: automation.responseText, phoneId, token: tenant.whatsappToken,
         tenantId: tenant.id, status, aiGenerated: false,
         logContext: { source: 'automation_template_fallback', automationName: automation.name },
       });
+    }
+
+    // Phase 2: persist the marker (only reached when template was sent).
+    // If this fails, log for reconciliation — no re-send.
+    if (templateSent) {
+      try {
+        await saveAIMessage(from, `[Template: ${automation.responseText}]`, tenant.id, status, false);
+      } catch (saveErr: any) {
+        channelLog.error({
+          channel: 'whatsapp' as any,
+          tenantId: tenant.id,
+          error: saveErr?.message ?? String(saveErr),
+          automationName: automation.name,
+        }, '[Webhook] Template enviado mas marcador não salvo — reconciliação manual necessária');
+      }
     }
   } else {
     await sendAndSave({

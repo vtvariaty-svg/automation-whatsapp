@@ -48,15 +48,30 @@ export async function createTenant({ name, whatsapp_phone_id, whatsapp_token, op
 /**
  * Atualiza configurações da IA do tenant.
  * Apenas campos explicitamente presentes no payload são atualizados.
- * String vazia ("") é normalizada para null para que a flag de boas-vindas
- * continue funcionando corretamente no webhook (falsy check).
+ *
+ * REGRA CRÍTICA: welcomeMessage nunca é sobrescrita com null/vazio silenciosamente.
+ * - Se welcome_message é uma string não-vazia → salva o valor fornecido.
+ * - Se welcome_message é string vazia ou null → preserva o valor atual do banco.
+ *   (Para apagar intencionalmente a welcome, use welcome_message = '__clear__' ou uma rota específica.)
+ * - Se welcome_message é undefined → campo ignorado (sem alteração).
  */
 export async function updateTenantAISettings(id: string, { ai_prompt, welcome_message, business_hours }: any) {
   try {
     const data: Record<string, unknown> = {};
     if (ai_prompt !== undefined)      data.aiPrompt      = ai_prompt      || null;
-    if (welcome_message !== undefined) data.welcomeMessage = welcome_message?.trim() || null;
     if (business_hours !== undefined)  data.businessHours  = business_hours || null;
+
+    // welcomeMessage: only update when a real non-empty value is provided.
+    // Empty string from the UI (e.g., unloaded form saved early) must NOT overwrite a valid welcome.
+    if (welcome_message !== undefined) {
+      const trimmed = welcome_message?.trim();
+      if (trimmed) {
+        data.welcomeMessage = trimmed;
+      } else {
+        // Empty string submitted — preserve existing value. Log so operators can trace.
+        console.warn(`[TenantService] updateTenantAISettings: welcome_message submitted as empty for tenant ${id} — preserving existing value. To explicitly clear, send '__clear__'.`);
+      }
+    }
 
     const tenant = await prisma.tenant.update({ where: { id }, data });
     return tenant;

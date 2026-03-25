@@ -185,12 +185,26 @@ async function handleWelcomeBranch(
     channel: 'whatsapp',
     tenantId: tenant.id,
     customerPhone: maskPhone(from),
-    source: isFirstInbound && welcomeTemplate ? 'welcome_message' : isFirstInbound ? 'fallback_default' : 'ai_response',
+    source: isFirstInbound && welcomeTemplate ? 'welcome_message' : isFirstInbound ? 'no_welcome_configured' : 'returning_customer',
     firstContactDetected: isFirstInbound,
     customWelcomeExists: !!welcomeTemplate,
+    welcomeLength: welcomeTemplate?.length ?? 0,
   }, '[Webhook] First-interaction check');
 
-  if (!isFirstInbound || !welcomeTemplate) return false;
+  if (!isFirstInbound) return false;
+
+  // FIRST CONTACT but NO welcome configured — AI will respond.
+  // This is allowed (opt-in behavior) but logged loudly so operators notice.
+  if (!welcomeTemplate) {
+    channelLog.warn({
+      channel: 'whatsapp',
+      tenantId: tenant.id,
+      customerPhone: maskPhone(from),
+      source: 'no_welcome_configured',
+      firstContactDetected: true,
+    }, '[Webhook] WARNING: First contact detected but welcomeMessage is null/empty — AI will respond. Configure a welcome message to prevent this.');
+    return false;
+  }
 
   let customerName: string | null = null;
   if (resolvedIdentityContext?.contactId) {
@@ -221,26 +235,32 @@ async function handleWelcomeBranch(
     logContext: { source: 'welcome_message', hasCustomerName: !!customerName },
   });
 
+  if (result === 'send_failed') {
+    // Welcome delivery failed on the customer's FIRST CONTACT.
+    // CRITICAL: Do NOT fall through to AI — that would replace the configured welcome
+    // with a generic AI response, breaking the UI promise.
+    // The customer receives nothing this turn; their next message will route normally through AI.
+    channelLog.error({
+      channel: 'whatsapp',
+      tenantId: tenant.id,
+      customerPhone: maskPhone(from),
+      source: 'welcome_send_failed',
+      welcomeLength: resolvedWelcome.length,
+      hasCustomerName: !!customerName,
+      action: 'pipeline_stopped',
+    }, '[Webhook] CRITICAL: Welcome message FAILED to send on first contact — AI pipeline blocked. Customer received nothing. Verify whatsappToken and phoneId immediately.');
+    return true; // stop pipeline — AI must NOT replace a failed welcome with a generic response
+  }
+
   channelLog.info({
     channel: 'whatsapp',
     tenantId: tenant.id,
     customerPhone: maskPhone(from),
     source: 'welcome_message',
-    sent: result === 'sent',
+    sent: true,
     hasCustomerName: !!customerName,
-  }, '[Webhook] Welcome message sent — AI skipped');
-
-  if (result === 'send_failed') {
-    // Welcome delivery failed — do NOT silence the customer.
-    // Return false so processInboundMessage continues to the AI/automation pipeline.
-    channelLog.warn({
-      channel: 'whatsapp',
-      tenantId: tenant.id,
-      customerPhone: maskPhone(from),
-      source: 'welcome_message',
-    }, '[Webhook] Welcome message failed to send — falling through to AI pipeline');
-    return false;
-  }
+    welcomeLength: resolvedWelcome.length,
+  }, '[Webhook] Welcome message sent successfully — AI pipeline skipped');
 
   return true; // welcome sent successfully — stop pipeline
 }
@@ -405,6 +425,18 @@ async function processInboundMessage(
   );
   if (welcomeTriggered) return;
 
+  // Diagnostic: warn clearly when first-contact falls through to normal pipeline.
+  // This means either no welcome is configured (expected/allowed) or welcome was null.
+  if (isFirstInbound) {
+    channelLog.warn({
+      channel: 'whatsapp',
+      tenantId: tenant.id,
+      customerPhone: maskPhone(from),
+      hasWelcomeConfigured: !!(tenant.welcomeMessage?.trim()),
+      source: 'first_contact_no_welcome',
+    }, '[Webhook] First contact — welcome branch skipped (no welcome configured). AI/automation pipeline will respond.');
+  }
+
   // ── 2. Status gate ────────────────────────────────────────────────────────
   if (status !== 'open' && status !== 'ai') {
     console.log(`[Webhook] Conversa ${maskPhone(from)} em status "${status}" — IA ignorada`);
@@ -533,7 +565,15 @@ async function processInboundMessage(
     from,
     customerContext
   );
-  console.log(`[Webhook] IA respondeu para ${maskPhone(from)} — ${aiResponse?.length ?? 0} chars`);
+  channelLog.info({
+    channel: 'whatsapp',
+    tenantId: tenant.id,
+    customerPhone: maskPhone(from),
+    source: 'ai_response',
+    responseLength: aiResponse?.length ?? 0,
+    isFirstContact: isFirstInbound,
+    hasWelcomeConfigured: !!(tenant.welcomeMessage?.trim()),
+  }, `[Webhook] AI responded — ${aiResponse?.length ?? 0} chars${isFirstInbound ? ' [FIRST CONTACT — welcome was not configured]' : ''}`);
 
   // Send-first, save-after (consistent outbound rule).
   await sendAndSave({
@@ -546,7 +586,7 @@ async function processInboundMessage(
     aiGenerated: true,
     channel: 'whatsapp',
     identity: resolvedIdentityContext,
-    logContext: { source: 'ai_response' },
+    logContext: { source: 'ai_response', isFirstContact: isFirstInbound },
   });
 
   // ── ai_low_confidence handoff (non-blocking) ──────────────────────────────

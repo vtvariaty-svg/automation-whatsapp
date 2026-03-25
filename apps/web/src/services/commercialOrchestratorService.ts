@@ -338,10 +338,43 @@ async function buildProductDecision(
   channel: string,
   state: Record<string, any>
 ): Promise<OrchestratorDecision> {
-  // Reset unresolved counter on successful match
-  await setCommercialState(tenantId, customerPhone, { unresolvedCount: 0, awaitingChoice: false }, channel);
+  // ── Repetition handoff ──────────────────────────────────────────────────────
+  //
+  // Distinction:
+  //   no_product  = customer has commercial intent but no matching product exists in catalog
+  //                 → tracked by unresolvedCount (already implemented)
+  //   repetition  = product found and offer/checkout already sent, but customer keeps repeating
+  //                 the same commercial intent without completing the purchase
+  //                 → tracked by repetitionCount (this block)
+  //
+  // When the same product was already offered last turn, increment repetitionCount.
+  // When a DIFFERENT product is matched, or this is the first contact for this product,
+  // reset repetitionCount to 0 so the counter does not carry over across product switches.
+  const wasAlreadyOffered = state.lastOfferedProductId === product.id;
 
-  // Human approval required
+  if (wasAlreadyOffered) {
+    const repetitionCount = (state.repetitionCount ?? 0) + 1;
+    await setCommercialState(tenantId, customerPhone, { repetitionCount, unresolvedCount: 0 }, channel);
+
+    if (repetitionCount >= UNRESOLVED_HANDOFF_THRESHOLD) {
+      // Reset counter before handoff so a subsequent conversation starts clean.
+      await setCommercialState(tenantId, customerPhone, { repetitionCount: 0, unresolvedCount: 0, awaitingChoice: false }, channel);
+      console.log(
+        `[CommercialOrchestrator] repetition threshold reached (${repetitionCount}) for product ${product.id.slice(0, 8)} — triggering handoff`
+      );
+      return {
+        action: 'handoff_human',
+        productId: product.id,
+        reason: `repetition_threshold_reached (count=${repetitionCount})`,
+        handoffTrigger: 'repetition',
+      };
+    }
+  } else {
+    // Different product matched — reset both counters and clear choice flag.
+    await setCommercialState(tenantId, customerPhone, { repetitionCount: 0, unresolvedCount: 0, awaitingChoice: false }, channel);
+  }
+
+
   if (product.requiresHumanApproval) {
     await setCommercialState(tenantId, customerPhone, { lastOfferedProductId: product.id }, channel);
     return {

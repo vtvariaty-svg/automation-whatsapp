@@ -317,28 +317,56 @@ async function handleAutomationBranch(
       const contactId = resolvedIdentityContext?.contactId;
       if (contactId) {
         try {
-          const { generateCheckoutUrl, buildCheckoutMessage } = await import('@/lib/services/checkoutService');
-          const { checkoutUrl } = await generateCheckoutUrl(tenant.id, actionCfg.productId, contactId);
-          const product = await prisma.product.findUnique({ where: { id: actionCfg.productId } });
-          const msg = buildCheckoutMessage(
-            product?.name ?? 'Produto',
-            product?.price ?? 0,
-            product?.currency ?? 'BRL',
-            checkoutUrl,
-            actionCfg.ctaText
-          );
-          await sendAndSave({
-            to: from, message: msg, phoneId, token: tenant.whatsappToken,
-            tenantId: tenant.id, status, aiGenerated: false,
-            logContext: { source: 'automation_checkout', automationName: automation.name },
+          const product = await prisma.product.findUnique({
+            where: { id: actionCfg.productId },
+            select: { id: true, name: true, price: true, currency: true, description: true, salesCtaText: true },
           });
-          return true;
+          if (!product) throw new Error(`Product ${actionCfg.productId} not found`);
+
+          const { executeConversationalCheckout } = await import('@/lib/services/conversationalCheckoutService');
+          const checkoutResult = await executeConversationalCheckout({
+            tenantId: tenant.id,
+            product: {
+              id: product.id,
+              name: product.name,
+              price: product.price,
+              currency: product.currency,
+              description: product.description,
+              salesCtaText: actionCfg.ctaText ?? product.salesCtaText,
+            },
+            customerPhone: from,
+            contactId,
+            channel: 'whatsapp',
+          });
+
+          if (checkoutResult.success && checkoutResult.message) {
+            await sendAndSave({
+              to: from, message: checkoutResult.message, phoneId, token: tenant.whatsappToken,
+              tenantId: tenant.id, status, aiGenerated: false,
+              logContext: {
+                source: 'automation_checkout',
+                automationName: automation.name,
+                orderId: checkoutResult.orderId,
+                paymentId: checkoutResult.paymentId,
+                provider: checkoutResult.provider,
+              },
+            });
+            return true;
+          }
+
+          if (!checkoutResult.success) {
+            console.error(
+              `[Webhook] Automation send_checkout failed via conversationalCheckoutService: ${checkoutResult.error}`
+            );
+          }
+          // Fall through to responseType handling below if checkout failed.
         } catch (checkoutErr) {
           console.error('[Webhook] Automation send_checkout error:', checkoutErr);
           // Fall through to responseType handling below.
         }
       }
     }
+
   }
 
   // ── ResponseType handlers (template or plain text) ────────────────────────

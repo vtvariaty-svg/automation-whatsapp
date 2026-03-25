@@ -39,9 +39,7 @@ const NICHOS = [
 export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [applyingNiche, setApplyingNiche] = useState(false);
   const [message, setMessage] = useState("");
-  const [nicheMessage, setNicheMessage] = useState("");
   const [selectedNiche, setSelectedNiche] = useState("");
   const [config, setConfig] = useState({
     name: "",
@@ -75,34 +73,6 @@ export default function SettingsPage() {
     };
     loadConfig();
   }, []);
-
-  const handleApplyNiche = async () => {
-    if (!selectedNiche) return;
-    setApplyingNiche(true);
-    setNicheMessage("");
-    try {
-      const token = localStorage.getItem("auth_token");
-      const res = await fetch("/api/tenant/apply-niche", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ businessType: selectedNiche }),
-      });
-      if (res.ok) {
-        setNicheMessage("✅ Preset aplicado! Prompt da IA e mensagem de boas-vindas atualizados.");
-      } else {
-        const err = await res.json();
-        setNicheMessage(`❌ Erro: ${err.error}`);
-      }
-    } catch {
-      setNicheMessage("❌ Erro ao aplicar o preset.");
-    } finally {
-      setApplyingNiche(false);
-      setTimeout(() => setNicheMessage(""), 5000);
-    }
-  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -286,7 +256,7 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Nicho de Negócio */}
+        {/* Nicho de Negócio — read-only, gerenciado na Central de Atendimento IA */}
         <div className="bg-white rounded-2xl border border-gray-200/60 shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-violet-50/50 to-purple-50/50">
             <div className="flex items-center gap-3">
@@ -296,64 +266,37 @@ export default function SettingsPage() {
               <div>
                 <h3 className="font-bold text-gray-900">Nicho de Negócio</h3>
                 <p className="text-xs text-gray-500">
-                  Aplica um preset de prompt da IA e mensagem de boas-vindas para o seu segmento
+                  Preset de IA e mensagem de boas-vindas do seu segmento
                 </p>
               </div>
             </div>
           </div>
           <div className="p-6 space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {NICHOS.map((nicho) => (
-                <button
-                  key={nicho.id}
-                  type="button"
-                  onClick={() => setSelectedNiche(nicho.id)}
-                  className={`p-4 rounded-xl border transition-all text-left ${
-                    selectedNiche === nicho.id
-                      ? "bg-violet-50 border-violet-400 ring-2 ring-violet-500/10 shadow-sm"
-                      : "bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300"
-                  }`}
-                >
-                  <span className="text-2xl">{nicho.emoji}</span>
-                  <p className={`font-bold text-sm mt-2 ${selectedNiche === nicho.id ? "text-violet-700" : "text-gray-800"}`}>
-                    {nicho.label}
+            {selectedNiche ? (
+              <div className="flex items-center gap-3 p-4 bg-violet-50 border border-violet-200 rounded-xl">
+                <span className="text-2xl">{NICHOS.find(n => n.id === selectedNiche)?.emoji ?? "🎯"}</span>
+                <div>
+                  <p className="font-semibold text-violet-800 text-sm">
+                    {NICHOS.find(n => n.id === selectedNiche)?.label ?? selectedNiche}
                   </p>
-                  <p className={`text-xs mt-0.5 ${selectedNiche === nicho.id ? "text-violet-600/80" : "text-gray-500"}`}>
-                    {nicho.desc}
+                  <p className="text-xs text-violet-600/80">
+                    {NICHOS.find(n => n.id === selectedNiche)?.desc}
                   </p>
-                </button>
-              ))}
-            </div>
-
-            {nicheMessage && (
-              <div className={`p-3 rounded-xl text-sm font-medium border ${
-                nicheMessage.includes("✅")
-                  ? "bg-emerald-50 text-emerald-700 border-emerald-100"
-                  : "bg-red-50 text-red-700 border-red-100"
-              }`}>
-                {nicheMessage}
+                </div>
               </div>
+            ) : (
+              <p className="text-sm text-gray-500">Nenhum nicho configurado.</p>
             )}
-
             <div className="flex items-center justify-between pt-1">
               <p className="text-xs text-gray-400">
-                Atualiza somente o prompt da IA e a mensagem de boas-vindas. Seus dados, serviços e automações existentes <strong>não serão apagados</strong>.
+                A troca de nicho e aplicação de preset é gerenciada na Central de Atendimento IA.
               </p>
-              <button
-                type="button"
-                onClick={handleApplyNiche}
-                disabled={applyingNiche || !selectedNiche}
-                className="ml-4 shrink-0 inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-xl font-semibold text-sm hover:shadow-lg hover:shadow-violet-200/50 transition-all disabled:opacity-50"
+              <a
+                href="/dashboard/atendimento-ia#bot-preset"
+                className="ml-4 shrink-0 inline-flex items-center gap-1.5 px-4 py-2 bg-violet-100 text-violet-700 text-sm font-semibold rounded-xl hover:bg-violet-200 transition-colors"
               >
-                {applyingNiche ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Aplicando...
-                  </>
-                ) : (
-                  "Aplicar Preset"
-                )}
-              </button>
+                Gerenciar na Central →
+              </a>
             </div>
           </div>
         </div>

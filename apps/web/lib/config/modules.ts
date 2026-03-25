@@ -68,7 +68,7 @@ export interface SidebarSection {
 export const SIDEBAR_SECTIONS: SidebarSection[] = [
   { id: 'principal',      label: 'Principal',     moduleIds: ['dashboard', 'analytics'] },
   { id: 'atendimento',    label: 'Atendimento',   moduleIds: ['conversations', 'contacts', 'sales', 'appointments', 'orders', 'payments', 'catalog', 'services', 'professionals', 'handoff'] },
-  { id: 'canais',         label: 'Canais & IA',   moduleIds: ['channels', 'instagram_comments', 'bots', 'templates', 'broadcasts', 'insights'] },
+  { id: 'canais',         label: 'Canais & IA',   moduleIds: ['channels', 'instagram_comments', 'atendimento_ia', 'bots', 'templates', 'broadcasts', 'insights'] },
   { id: 'crescimento',    label: 'Crescimento',   moduleIds: ['setup', 'metrics', 'attribution', 'referral', 'go_live', 'lead_intelligence'] },
   { id: 'fiscal',         label: 'Fiscal',        moduleIds: ['fiscal', 'fiscal_new', 'fiscal_history', 'fiscal_whatsapp'] },
   { id: 'administracao',  label: 'Administração', moduleIds: ['agency', 'billing', 'settings'] },
@@ -264,6 +264,16 @@ export const MODULE_CATALOG: AppModule[] = [
   },
 
   // ── Canais & IA ───────────────────────────────────────────────────────────
+  {
+    id: 'atendimento_ia',
+    label: 'Atendimento IA',
+    icon: '🧠',
+    href: '/dashboard/atendimento-ia',
+    category: 'canais',
+    description: 'Configuração central do comportamento conversacional: IA, automações, handoff e simulação.',
+    pinnedByDefaultFor: ['free', 'standard', 'pro', 'business'],
+    sidebarOrder: 29,
+  },
   {
     id: 'channels',
     label: 'Canais',

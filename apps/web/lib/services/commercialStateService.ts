@@ -16,7 +16,8 @@ export interface CommercialState {
   lastCheckoutUrl?: string;          // Cached URL for deduplication
   lastOrderId?: string;             // Order ID from last transactional checkout
   handoffTriggered?: boolean;        // true if handoff was already triggered in this session
-  unresolvedCount?: number;          // how many consecutive unresolved intents
+  unresolvedCount?: number;          // consecutive intents with no product match (no_product trigger)
+  repetitionCount?: number;          // consecutive intents where same product was already offered (repetition trigger)
   updatedAt?: string;                // ISO datetime — used for TTL check
 }
 

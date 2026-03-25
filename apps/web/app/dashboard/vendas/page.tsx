@@ -7,7 +7,6 @@ import { useEntitlements } from "@/hooks/useEntitlements";
 import { planAtLeast } from "@/lib/config/plans";
 import UpgradeGate from "@/components/UpgradeGate";
 import { Modal } from "@/components/ui/Modal";
-import { PlusIcon, TrashIcon, PencilIcon } from "@heroicons/react/24/outline";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -431,267 +430,72 @@ function CatalogoTab({ onCriarAutomacao }: { onCriarAutomacao: (text: string) =>
 
 function AutomacoesTab({
   tenantId,
-  prefillText,
-  onPrefillConsumed,
+  prefillText: _prefillText,
+  onPrefillConsumed: _onPrefillConsumed,
 }: {
   tenantId: string;
   prefillText: string;
   onPrefillConsumed: () => void;
 }) {
-  const ent = useEntitlements();
   const [rules, setRules] = useState<AutomationRule[]>([]);
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [toast, setToast] = useState("");
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingRule, setEditingRule] = useState<AutomationRule | null>(null);
-  const [formData, setFormData] = useState({
-    name: "",
-    triggerType: "keyword",
-    triggerValue: "",
-    matchType: "exact",
-    responseType: "text",
-    responseText: "",
-  });
-
-  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 3000); };
-
-  const loadRules = async () => {
-    setLoading(true);
-    try {
-      const res = await authFetch(`/api/automations`);
-      if (res.ok) setRules(await res.json());
-      else showToast(`Erro ao carregar automações (${res.status})`);
-    } catch { showToast("Erro de conexão ao carregar automações."); }
-    finally { setLoading(false); }
-  };
-
-  useEffect(() => { if (tenantId) loadRules(); }, [tenantId]);
 
   useEffect(() => {
-    if (!prefillText) return;
-    setEditingRule(null);
-    setFormData({ name: "", triggerType: "keyword", triggerValue: "", matchType: "contains", responseType: "text", responseText: prefillText });
-    setIsModalOpen(true);
-    onPrefillConsumed();
-  }, [prefillText]);
-
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      const url = editingRule ? `/api/automations/${editingRule.id}` : `/api/automations`;
-      const method = editingRule ? "PATCH" : "POST";
-      const res = await authFetch(url, {
-        method,
-        body: JSON.stringify({ ...formData, active: editingRule ? editingRule.active : true }),
-      });
-      if (res.ok) {
-        setIsModalOpen(false);
-        setEditingRule(null);
-        setFormData({ name: "", triggerType: "keyword", triggerValue: "", matchType: "exact", responseType: "text", responseText: "" });
-        loadRules();
-        showToast(editingRule ? "Automação atualizada" : "Automação criada");
-      } else {
-        alert("Erro ao salvar automação.");
-      }
-    } catch { alert("Erro ao salvar automação."); }
-    finally { setSaving(false); }
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!confirm("Remover esta automação?")) return;
-    try {
-      const res = await authFetch(`/api/automations/${id}`, { method: "DELETE" });
-      if (res.ok) loadRules();
-      else showToast("Erro ao remover automação.");
-    } catch { showToast("Erro ao remover automação."); }
-  };
-
-  const toggleActive = async (rule: AutomationRule) => {
-    try {
-      const res = await authFetch(`/api/automations/${rule.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ active: !rule.active }),
-      });
-      if (res.ok) { showToast(rule.active ? "Desativada" : "Ativada"); loadRules(); }
-      else showToast("Erro ao alterar status da automação.");
-    } catch { showToast("Erro ao alterar status da automação."); }
-  };
-
-  const openEditModal = (rule: AutomationRule) => {
-    setEditingRule(rule);
-    setFormData({ name: rule.name, triggerType: rule.triggerType, triggerValue: rule.triggerValue, matchType: rule.matchType, responseType: rule.responseType, responseText: rule.responseText });
-    setIsModalOpen(true);
-  };
-
-  const canAdd = ent.loading || ent.limits.automations === -1 || rules.length < ent.limits.automations;
+    if (!tenantId) return;
+    setLoading(true);
+    authFetch("/api/automations")
+      .then(r => r.ok ? r.json() : [])
+      .then(setRules)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [tenantId]);
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-gray-500">
-          {rules.length} automação{rules.length !== 1 ? "ões" : ""}
-          {!ent.loading && ent.limits.automations !== -1 && ` / ${ent.limits.automations}`}
-        </p>
-        {canAdd ? (
-          <button
-            onClick={() => { setEditingRule(null); setFormData({ name: "", triggerType: "keyword", triggerValue: "", matchType: "exact", responseType: "text", responseText: "" }); setIsModalOpen(true); }}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-[#4f46e5] text-white rounded-xl font-semibold text-sm hover:bg-[#4338ca] transition-all"
-          >
-            <PlusIcon className="w-4 h-4" />
-            Nova Automação
-          </button>
-        ) : (
-          <Link href="/dashboard/billing" className="inline-flex items-center gap-2 px-4 py-2 bg-gray-200 text-gray-500 rounded-xl text-sm font-semibold">
-            Limite atingido. Upgrade →
-          </Link>
-        )}
-      </div>
-
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="overflow-x-auto">
-          <div className="min-w-[700px] divide-y divide-gray-200">
-            <div className="bg-gray-50 px-6 py-3">
-              <div className="grid grid-cols-12 gap-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                <div className="col-span-3">Nome</div>
-                <div className="col-span-3">Gatilho</div>
-                <div className="col-span-1">Tipo</div>
-                <div className="col-span-3">Resposta</div>
-                <div className="col-span-1 text-center">Status</div>
-                <div className="col-span-1 text-right">Ações</div>
-              </div>
-            </div>
-            <div className="divide-y divide-gray-100 bg-white">
-              {loading ? (
-                <div className="px-6 py-12 text-center">
-                  <div className="w-8 h-8 border-2 border-gray-200 border-t-[#4f46e5] rounded-full animate-spin mx-auto mb-2" />
-                  <p className="text-sm text-gray-400">Carregando...</p>
-                </div>
-              ) : rules.length === 0 ? (
-                <div className="px-6 py-16 text-center">
-                  <span className="text-2xl block mb-3">⚡</span>
-                  <h3 className="font-medium text-gray-900 mb-1">Nenhuma automação</h3>
-                  <p className="text-sm text-gray-500">Crie respostas automáticas por palavra-chave ou status de pedido.</p>
-                </div>
-              ) : (
-                rules.map(rule => (
-                  <div key={rule.id} className="grid grid-cols-12 gap-4 items-center px-6 py-4 hover:bg-gray-50/50 transition-colors">
-                    <div className="col-span-3 font-medium text-gray-900 truncate">{rule.name}</div>
-                    <div className="col-span-3">
-                      {rule.triggerType === "order_status" ? (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">🛍️ {rule.triggerValue}</span>
-                      ) : (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">"{rule.triggerValue}"</span>
-                      )}
-                    </div>
-                    <div className="col-span-1 text-xs text-gray-500">
-                      {rule.triggerType === "order_status" ? "Pedido" : rule.matchType === "exact" ? "Exata" : "Contém"}
-                    </div>
-                    <div className="col-span-3 text-sm text-gray-500 truncate" title={rule.responseText}>{rule.responseText}</div>
-                    <div className="col-span-1 flex justify-center">
-                      <button
-                        onClick={() => toggleActive(rule)}
-                        role="switch"
-                        aria-checked={rule.active}
-                        className={`relative inline-flex h-6 w-11 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#4f46e5] focus:ring-offset-2 ${rule.active ? "bg-[#4f46e5]" : "bg-gray-200"}`}
-                      >
-                        <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200 ${rule.active ? "translate-x-5" : "translate-x-0"}`} />
-                      </button>
-                    </div>
-                    <div className="col-span-1 flex items-center justify-end gap-1">
-                      <button onClick={() => openEditModal(rule)} className="p-1.5 text-gray-400 hover:text-[#4f46e5] hover:bg-indigo-50 rounded-lg transition-colors">
-                        <PencilIcon className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => handleDelete(rule.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                        <TrashIcon className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
+      {/* Banner */}
+      <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-5 py-4">
+        <span className="text-xl mt-0.5">🔒</span>
+        <div>
+          <p className="text-sm font-semibold text-amber-800">Automações gerenciadas na Central de Atendimento IA</p>
+          <p className="text-xs text-amber-700 mt-0.5">
+            A criação, edição e exclusão de automações foi unificada.{" "}
+            <a href="/dashboard/atendimento-ia#automacoes" className="underline font-medium hover:text-amber-900">
+              Acessar Central →
+            </a>
+          </p>
         </div>
       </div>
 
-      {toast && (
-        <div className="fixed bottom-6 right-6 z-50 bg-gray-900 text-white text-sm font-medium px-5 py-3 rounded-xl shadow-lg">{toast}</div>
-      )}
-
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-gray-900">{editingRule ? "Editar Automação" : "Nova Automação"}</h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <form onSubmit={handleSave} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-1.5">Nome da Regra</label>
-                <input required type="text" placeholder="Ex: Tabela de Preços" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20 focus:border-[#4f46e5]/50 transition-all placeholder:text-gray-400" />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-1.5">Tipo de Gatilho</label>
-                <select
-                  value={formData.triggerType}
-                  onChange={e => setFormData({ ...formData, triggerType: e.target.value, triggerValue: "", matchType: e.target.value === "order_status" ? "exact" : formData.matchType })}
-                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20 focus:border-[#4f46e5]/50 appearance-none"
-                >
-                  <option value="keyword">Palavra-chave (mensagem)</option>
-                  <option value="order_status">Status de pedido</option>
-                </select>
-              </div>
-              {formData.triggerType === "order_status" ? (
-                <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-1.5">Quando o pedido mudar para</label>
-                  <select required value={formData.triggerValue} onChange={e => setFormData({ ...formData, triggerValue: e.target.value })} className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20 focus:border-[#4f46e5]/50 appearance-none">
-                    <option value="">Selecione o status...</option>
-                    {ORDER_STATUS_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                  </select>
-                  <p className="text-xs text-gray-400 mt-1.5">
-                    Use <code className="bg-gray-100 px-1 rounded">{"{orderId}"}</code> e <code className="bg-gray-100 px-1 rounded">{"{status}"}</code> na resposta para personalizar.
+      {/* Read-only list */}
+      {loading ? (
+        <div className="py-12 flex justify-center">
+          <div className="w-7 h-7 border-2 border-gray-200 border-t-[#4f46e5] rounded-full animate-spin" />
+        </div>
+      ) : rules.length === 0 ? (
+        <div className="py-12 text-center text-sm text-gray-400">Nenhuma automação cadastrada.</div>
+      ) : (
+        <div className="bg-white rounded-2xl border border-gray-200/60 shadow-sm overflow-hidden">
+          <div className="divide-y divide-gray-100">
+            {rules.map(rule => (
+              <div key={rule.id} className="flex items-center gap-4 px-5 py-3">
+                <span className={`w-2 h-2 rounded-full shrink-0 ${rule.active ? "bg-emerald-500" : "bg-gray-300"}`} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">{rule.name}</p>
+                  <p className="text-xs text-gray-500 truncate">
+                    {rule.triggerType === "order_status" ? "Status do pedido" : "Palavra-chave"}: <em>{rule.triggerValue}</em>
                   </p>
                 </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-1.5">Gatilho (Mensagem)</label>
-                    <input required type="text" placeholder="Ex: preço" value={formData.triggerValue} onChange={e => setFormData({ ...formData, triggerValue: e.target.value })} className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20 focus:border-[#4f46e5]/50 transition-all placeholder:text-gray-400" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-900 mb-1.5">Correspondência</label>
-                    <select value={formData.matchType} onChange={e => setFormData({ ...formData, matchType: e.target.value })} className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20 focus:border-[#4f46e5]/50 appearance-none">
-                      <option value="exact">Mensagem exata</option>
-                      <option value="contains">Contém a palavra</option>
-                    </select>
-                  </div>
-                </div>
-              )}
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-1.5">Resposta Automática</label>
-                <textarea required rows={4} placeholder="O que o sistema deve responder..." value={formData.responseText} onChange={e => setFormData({ ...formData, responseText: e.target.value })} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20 focus:border-[#4f46e5]/50 transition-all placeholder:text-gray-400 resize-none" />
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${rule.active ? "bg-emerald-50 text-emerald-700" : "bg-gray-100 text-gray-500"}`}>
+                  {rule.active ? "Ativa" : "Pausada"}
+                </span>
               </div>
-              <div className="pt-4 flex items-center justify-end gap-3">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-5 py-2.5 text-sm font-semibold text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors">Cancelar</button>
-                <button type="submit" disabled={saving} className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-[#4f46e5] rounded-xl hover:bg-[#4338ca] shadow-sm hover:shadow-md transition-all disabled:opacity-50">
-                  {saving ? (
-                    <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Salvando...</>
-                  ) : (
-                    editingRule ? "Salvar Alterações" : "Criar Automação"
-                  )}
-                </button>
-              </div>
-            </form>
+            ))}
           </div>
         </div>
       )}
     </div>
   );
+
 }
 
 // ── Tab: Prontidão ────────────────────────────────────────────────────────────

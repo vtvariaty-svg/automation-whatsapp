@@ -7,12 +7,11 @@ import { useEntitlements } from "@/hooks/useEntitlements";
 import Link from "next/link";
 import {
   CheckCircleIcon,
-  BoltIcon,
   SparklesIcon,
   ClipboardDocumentIcon,
   CheckIcon,
 } from "@heroicons/react/24/outline";
-import { marketplaceBots, BLUEPRINTS, MODULE_LABELS, Blueprint, Module } from "@/lib/marketplace/bots";
+import { marketplaceBots, Blueprint } from "@/lib/marketplace/bots";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -138,9 +137,6 @@ export default function BotsIAPage() {
 // ─── Aba: Marketplace ─────────────────────────────────────────────────────────
 
 function MarketplaceTab({
-  user,
-  ent,
-  onBotActivated,
   activeBotId,
 }: {
   user: any;
@@ -148,197 +144,38 @@ function MarketplaceTab({
   onBotActivated: (botId: string) => void;
   activeBotId: string | null;
 }) {
-  const hasPremiumTemplates = ent.loading || ent.features.premiumTemplates;
-  const [activating, setActivating] = useState<string | null>(null);
-  const [justActivated, setJustActivated] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedBot, setSelectedBot] = useState<string | null>(null);
-
-  const handleActivate = async (botId: string) => {
-    if (!user?.tenantId) return;
-    setActivating(botId);
-    setError(null);
-    try {
-      const token = localStorage.getItem("auth_token");
-      const res = await fetch("/api/marketplace/activate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ botId }),
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setJustActivated(botId);
-        setSelectedBot(null);
-        onBotActivated(botId);
-      } else {
-        setError(data.error || "Erro ao ativar o bot.");
-      }
-    } catch {
-      setError("Erro ao conectar com o servidor.");
-    } finally {
-      setActivating(null);
-    }
-  };
+  const activeBot = activeBotId ? marketplaceBots.find(b => b.id === activeBotId) : null;
 
   return (
-    <div className="space-y-8">
-      {error && (
-        <div className="p-4 bg-red-50 border border-red-100 rounded-xl text-sm text-red-700">{error}</div>
+    <div className="max-w-2xl py-8 space-y-6">
+      <div className="text-center space-y-3">
+        <div className="text-5xl">🧠</div>
+        <h2 className="text-xl font-bold text-gray-900">Ativação de bots unificada</h2>
+        <p className="text-sm text-gray-500 leading-relaxed max-w-md mx-auto">
+          A seleção e ativação de bots do marketplace foi movida para a{" "}
+          <strong>Central de Atendimento IA</strong>, onde você pode configurar todo o
+          comportamento conversacional em um único lugar.
+        </p>
+      </div>
+
+      {activeBot && (
+        <div className="flex items-center gap-3 bg-indigo-50 border border-indigo-200 rounded-xl px-5 py-4">
+          <span className="text-2xl">{activeBot.emoji}</span>
+          <div>
+            <p className="text-sm font-semibold text-indigo-800">Bot ativo: {activeBot.name}</p>
+            <p className="text-xs text-indigo-600">{activeBot.nicheLabel}</p>
+          </div>
+        </div>
       )}
 
-      {(Object.keys(BLUEPRINTS) as Blueprint[]).map((blueprintId) => {
-        const bots = marketplaceBots.filter((b) => b.blueprint === blueprintId);
-        if (bots.length === 0) return null;
-        const bp = BLUEPRINTS[blueprintId];
-        const display = BLUEPRINT_DISPLAY[blueprintId];
-
-        return (
-          <div key={blueprintId} className="space-y-4">
-            {/* Cabeçalho da seção */}
-            <div className="flex items-center gap-3">
-              <div className={`h-1 w-6 rounded-full bg-gradient-to-r ${display.color}`} />
-              <div>
-                <span className="text-sm font-bold text-gray-800">{bp.label}</span>
-                <span className="ml-2 text-xs text-gray-400">{bp.description}</span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {bots.map((bot) => {
-                const isActive = activeBotId === bot.id;
-                const isActivating = activating === bot.id;
-                const isJust = justActivated === bot.id;
-
-                return (
-                  <div
-                    key={bot.id}
-                    className={`bg-white rounded-2xl border shadow-sm overflow-hidden hover:shadow-md transition-all flex flex-col ${
-                      isActive ? "border-indigo-300 ring-1 ring-indigo-200" : "border-gray-100"
-                    }`}
-                  >
-                    {/* Card header */}
-                    <div className={`p-6 bg-gradient-to-br ${display.color} relative overflow-hidden`}>
-                      <div className="absolute inset-0 opacity-10">
-                        <div className="absolute -right-4 -top-4 w-32 h-32 rounded-full bg-white" />
-                        <div className="absolute -left-8 -bottom-8 w-40 h-40 rounded-full bg-white" />
-                      </div>
-                      <div className="relative flex items-start justify-between">
-                        <div>
-                          <span className="text-4xl">{bot.emoji}</span>
-                          <h2 className="text-xl font-bold text-white mt-2">{bot.name}</h2>
-                          <span className="inline-block mt-1 px-3 py-0.5 bg-white/20 text-white text-xs font-semibold rounded-full">
-                            {bot.nicheLabel}
-                          </span>
-                        </div>
-                        <div className="flex flex-col items-end gap-1">
-                          {isActive && (
-                            <span className="px-2 py-0.5 bg-white/90 text-indigo-700 text-xs font-bold rounded-full">
-                              ativo
-                            </span>
-                          )}
-                          <span className="text-white/80 text-sm font-medium">
-                            <BoltIcon className="w-4 h-4 inline-block mr-1" />
-                            {bot.automations.length} automações
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Card body */}
-                    <div className="p-6 flex flex-col flex-1">
-                      <p className="text-sm text-gray-600 leading-relaxed">{bot.description}</p>
-
-                      {/* Module chips */}
-                      <div className="flex flex-wrap gap-1.5 mt-3">
-                        {bot.modules.map((mod) => (
-                          <span
-                            key={mod}
-                            className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${display.tagColor}`}
-                          >
-                            {MODULE_LABELS[mod as Module]}
-                          </span>
-                        ))}
-                      </div>
-
-                      {/* Tom e objetivo */}
-                      <div className="mt-4 flex flex-wrap gap-4 text-xs text-gray-500">
-                        <span>🎤 <strong>Tom:</strong> {bot.toneOfVoice}</span>
-                        <span>🎯 <strong>Foco:</strong> {bot.objective}</span>
-                      </div>
-
-                      <div className="mt-auto pt-5">
-                        {isJust ? (
-                          <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-sm text-emerald-700">
-                            <CheckCircleIcon className="w-5 h-5 shrink-0" />
-                            <span>
-                              <strong>Bot ativado!</strong> Prompt, boas-vindas e automações configurados.
-                            </span>
-                          </div>
-                        ) : selectedBot === bot.id ? (
-                          <div className="space-y-3">
-                            <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl text-xs text-amber-700">
-                              <strong>Atenção:</strong> O prompt da IA e a mensagem de boas-vindas serão atualizados. Automações com os mesmos gatilhos <strong>não serão duplicadas</strong>.
-                            </div>
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => setSelectedBot(null)}
-                                className="flex-1 py-2.5 text-sm font-semibold text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition-all"
-                              >
-                                Cancelar
-                              </button>
-                              <button
-                                onClick={() => handleActivate(bot.id)}
-                                disabled={isActivating}
-                                className={`flex-1 py-2.5 text-sm font-semibold text-white rounded-xl transition-all bg-gradient-to-r ${display.color} hover:shadow-lg disabled:opacity-60`}
-                              >
-                                {isActivating ? (
-                                  <span className="flex items-center justify-center gap-2">
-                                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                    Ativando...
-                                  </span>
-                                ) : (
-                                  "Confirmar ativação"
-                                )}
-                              </button>
-                            </div>
-                          </div>
-                        ) : hasPremiumTemplates ? (
-                          <button
-                            onClick={() => setSelectedBot(bot.id)}
-                            className={`w-full py-2.5 text-sm font-semibold text-white rounded-xl bg-gradient-to-r ${display.color} hover:shadow-lg hover:scale-[1.01] transition-all`}
-                          >
-                            {isActive ? "Reinstalar este bot" : "Ativar este bot"}
-                          </button>
-                        ) : (
-                          <Link
-                            href="/dashboard/billing"
-                            className="w-full block py-2.5 text-sm font-semibold text-center text-gray-500 rounded-xl bg-gray-100 border border-gray-200 hover:bg-gray-200 transition-all"
-                          >
-                            Requer Pro — Fazer upgrade
-                          </Link>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })}
-
-      <div className="bg-indigo-50/60 border border-indigo-100 rounded-2xl p-5 flex gap-4 items-start">
-        <div className="w-10 h-10 shrink-0 bg-white rounded-xl flex items-center justify-center shadow-sm text-indigo-600">
-          <SparklesIcon className="w-5 h-5" />
-        </div>
-        <div>
-          <h4 className="font-semibold text-gray-900 text-sm">Como funciona</h4>
-          <p className="text-sm text-gray-600 mt-1">
-            Ao ativar um bot, o prompt da IA, a mensagem de boas-vindas e as automações de resposta rápida são
-            pré-configurados para o seu segmento. Acesse a aba <strong>Meu Bot</strong> para ver o checklist
-            de configuração e testar o comportamento antes de ir ao ar.
-          </p>
-        </div>
+      <div className="flex justify-center">
+        <Link
+          href="/dashboard/atendimento-ia#bot-preset"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-colors"
+        >
+          <SparklesIcon className="w-4 h-4" />
+          Ir para Central de Atendimento IA
+        </Link>
       </div>
     </div>
   );
@@ -527,55 +364,21 @@ function ComportamentoTab({ user }: { user: any }) {
   const [welcomeMessage, setWelcomeMessage] = useState("");
   const [businessHours, setBusinessHours] = useState("");
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
 
-  const loadSettings = async () => {
+  useEffect(() => {
     if (!user?.tenantId) return;
     setLoading(true);
-    try {
-      const res = await fetch(`/api/tenant/settings?tenantId=${user.tenantId}`);
-      if (res.ok) {
-        const data = await res.json();
+    fetch(`/api/tenant/settings?tenantId=${user.tenantId}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return;
         setAiPrompt(data.aiPrompt || data.ai_prompt || "");
         setWelcomeMessage(data.welcomeMessage || data.welcome_message || "");
         setBusinessHours(data.businessHours || data.business_hours || "");
-      }
-    } catch {
-      setMessage("Erro ao carregar configurações.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (user?.tenantId) loadSettings();
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, [user?.tenantId]);
-
-  const saveSettings = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user?.tenantId) return;
-    setSaving(true);
-    setMessage("");
-    try {
-      const res = await fetch(`/api/tenant/settings`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tenantId: user.tenantId,
-          ai_prompt: aiPrompt,
-          welcome_message: welcomeMessage,
-          business_hours: businessHours,
-        }),
-      });
-      setMessage(res.ok ? "✅ Configuração salva com sucesso!" : "❌ Erro ao salvar.");
-    } catch {
-      setMessage("❌ Erro ao salvar.");
-    } finally {
-      setSaving(false);
-      setTimeout(() => setMessage(""), 4000);
-    }
-  };
 
   if (loading) {
     return (
@@ -586,123 +389,92 @@ function ComportamentoTab({ user }: { user: any }) {
   }
 
   return (
-    <div className="max-w-3xl space-y-6">
-      {message && (
-        <div className={`p-4 rounded-xl text-sm font-medium border ${
-          message.includes("✅")
-            ? "bg-emerald-50 text-emerald-700 border-emerald-100"
-            : "bg-red-50 text-red-700 border-red-100"
-        }`}>
-          {message}
+    <div className="max-w-3xl space-y-4">
+      {/* Banner */}
+      <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-5 py-4">
+        <span className="text-xl mt-0.5">🔒</span>
+        <div>
+          <p className="text-sm font-semibold text-amber-800">Comportamento da IA gerenciado na Central</p>
+          <p className="text-xs text-amber-700 mt-0.5">
+            Edição do prompt, boas-vindas e horários foi unificada na Central de Atendimento IA.{" "}
+            <a href="/dashboard/atendimento-ia#ai-identity" className="underline font-medium hover:text-amber-900">
+              Editar na Central →
+            </a>
+          </p>
         </div>
-      )}
+      </div>
 
-      <form onSubmit={saveSettings} className="space-y-6">
-        {/* Prompt */}
-        <div className="bg-white rounded-2xl border border-gray-200/60 shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-indigo-50/50 to-purple-50/50">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-[#4f46e5] to-[#7c3aed] rounded-xl flex items-center justify-center text-white text-lg">
-                🤖
-              </div>
-              <div>
-                <h3 className="font-bold text-gray-900">Prompt Base da IA</h3>
-                <p className="text-xs text-gray-500">Define a personalidade e conhecimento da IA</p>
-              </div>
+      {/* Read-only prompt */}
+      <div className="bg-white rounded-2xl border border-gray-200/60 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-indigo-50/50 to-purple-50/50">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-[#4f46e5] to-[#7c3aed] rounded-xl flex items-center justify-center text-white text-lg">🤖</div>
+            <div>
+              <h3 className="font-bold text-gray-900">Prompt Base da IA</h3>
+              <p className="text-xs text-gray-500">Somente leitura — edite na Central</p>
             </div>
           </div>
-          <div className="p-6">
-            <textarea
-              rows={6}
-              value={aiPrompt}
-              onChange={(e) => setAiPrompt(e.target.value)}
-              placeholder="Ex: Você é Maria, assistente virtual da loja Boutique Fashion. Seja educada, simpática e ajude os clientes com informações sobre produtos, preços e disponibilidade."
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20 focus:border-[#4f46e5]/40 transition-all placeholder:text-gray-400 resize-none leading-relaxed"
-            />
-            <p className="text-xs text-gray-400 mt-2">💡 Dica: Quanto mais detalhado o prompt, melhor será o atendimento.</p>
-          </div>
         </div>
+        <div className="p-6">
+          <textarea
+            rows={6}
+            value={aiPrompt}
+            readOnly
+            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm resize-none leading-relaxed text-gray-600 cursor-default"
+          />
+        </div>
+      </div>
 
-        {/* Boas-vindas */}
-        <div className="bg-white rounded-2xl border border-gray-200/60 shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-emerald-50/50 to-teal-50/50">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center text-white text-lg">
-                👋
-              </div>
-              <div>
-                <h3 className="font-bold text-gray-900">Mensagem de Boas-Vindas</h3>
-                <p className="text-xs text-gray-500">Enviada automaticamente na primeira interação</p>
-              </div>
+      {/* Read-only boas-vindas */}
+      <div className="bg-white rounded-2xl border border-gray-200/60 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-emerald-50/50 to-teal-50/50">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl flex items-center justify-center text-white text-lg">👋</div>
+            <div>
+              <h3 className="font-bold text-gray-900">Mensagem de Boas-Vindas</h3>
+              <p className="text-xs text-gray-500">Somente leitura — edite na Central</p>
             </div>
           </div>
-          <div className="p-6">
-            <textarea
-              rows={4}
-              value={welcomeMessage}
-              onChange={(e) => setWelcomeMessage(e.target.value)}
-              placeholder="Ex: Olá! 👋 Sou a secretária virtual da Boutique Fashion. Como posso te ajudar?"
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500/40 transition-all placeholder:text-gray-400 resize-none leading-relaxed"
-            />
-            <div className="mt-3 text-[11px] text-amber-600 font-medium bg-amber-50 p-2.5 rounded-xl border border-amber-100 flex items-start gap-2">
-              <span className="text-sm">⚠️</span>
-              <p>Esta mensagem será enviada <b>exatamente como digitada acima</b> no primeiro contato do cliente. A inteligência artificial só passará a responder a partir da <b>segunda mensagem</b> recebida do cliente.</p>
-            </div>
-            {welcomeMessage && (
-              <div className="mt-4 p-4 bg-gradient-to-r from-[#4f46e5] to-[#5b51e0] rounded-xl text-white text-sm leading-relaxed">
-                <p className="text-[10px] text-indigo-200 font-bold uppercase tracking-wider mb-1">Prévia</p>
-                {welcomeMessage}
-              </div>
-            )}
-          </div>
         </div>
+        <div className="p-6">
+          <textarea
+            rows={4}
+            value={welcomeMessage}
+            readOnly
+            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm resize-none leading-relaxed text-gray-600 cursor-default"
+          />
+        </div>
+      </div>
 
-        {/* Horários */}
-        <div className="bg-white rounded-2xl border border-gray-200/60 shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-amber-50/50 to-orange-50/50">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl flex items-center justify-center text-white text-lg">
-                🕐
-              </div>
-              <div>
-                <h3 className="font-bold text-gray-900">Horários e Regras</h3>
-                <p className="text-xs text-gray-500">Informações que a IA usará para responder clientes</p>
-              </div>
+      {/* Read-only horários */}
+      <div className="bg-white rounded-2xl border border-gray-200/60 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-amber-50/50 to-orange-50/50">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl flex items-center justify-center text-white text-lg">🕐</div>
+            <div>
+              <h3 className="font-bold text-gray-900">Horários e Regras</h3>
+              <p className="text-xs text-gray-500">Somente leitura — edite na Central</p>
             </div>
           </div>
-          <div className="p-6">
-            <textarea
-              rows={4}
-              value={businessHours}
-              onChange={(e) => setBusinessHours(e.target.value)}
-              placeholder="Ex: Seg-Sex 08:00-18:00, Sáb 09:00-13:00. Endereço: Rua das Flores, 123. Formas de pagamento: PIX, Cartão e Boleto."
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500/40 transition-all placeholder:text-gray-400 resize-none leading-relaxed"
-            />
-          </div>
         </div>
+        <div className="p-6">
+          <textarea
+            rows={4}
+            value={businessHours}
+            readOnly
+            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm resize-none leading-relaxed text-gray-600 cursor-default"
+          />
+        </div>
+      </div>
 
-        <div className="flex items-center justify-end gap-3 pt-2">
-          <button
-            type="submit"
-            disabled={saving || !user?.tenantId}
-            className="inline-flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] text-white rounded-xl font-semibold text-sm hover:shadow-lg hover:shadow-indigo-200/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {saving ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Salvando...
-              </>
-            ) : (
-              <>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                Salvar Configurações
-              </>
-            )}
-          </button>
-        </div>
-      </form>
+      <div className="flex justify-end pt-2">
+        <a
+          href="/dashboard/atendimento-ia#ai-identity"
+          className="inline-flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 transition-colors"
+        >
+          Editar na Central de Atendimento IA →
+        </a>
+      </div>
     </div>
   );
 }

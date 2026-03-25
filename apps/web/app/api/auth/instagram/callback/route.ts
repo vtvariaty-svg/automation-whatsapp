@@ -5,6 +5,8 @@ import jwt from 'jsonwebtoken';
 if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET environment variable is required');
 const JWT_SECRET = process.env.JWT_SECRET;
 
+const COOKIE_MAX_AGE = 86400; // matches JWT 1d
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get('code');
@@ -122,9 +124,19 @@ export async function GET(request: Request) {
       { expiresIn: '1d' }
     );
 
-    return NextResponse.redirect(
-      `${baseUrl}/auth/callback?token=${encodeURIComponent(token)}&provider=instagram`
-    );
+    // Redirect to /auth/callback so the client can persist token to localStorage
+    // (needed for Bearer auth in apiClient — dual-track strategy from ETAPA 1).
+    // Set the httpOnly cookie on THIS response (the one that is actually returned).
+    const callbackUrl = `${baseUrl}/auth/callback?token=${encodeURIComponent(token)}&provider=instagram`;
+    const response = NextResponse.redirect(callbackUrl);
+    response.cookies.set('auth_token', token, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+      maxAge: COOKIE_MAX_AGE,
+    });
+    return response;
   } catch (err: any) {
     console.error('Instagram auth error:', err);
     return NextResponse.redirect(`${baseUrl}/login?error=server_error`);

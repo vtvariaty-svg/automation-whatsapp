@@ -5,6 +5,8 @@ import jwt from 'jsonwebtoken';
 if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET environment variable is required');
 const JWT_SECRET = process.env.JWT_SECRET;
 
+const COOKIE_MAX_AGE = 86400; // matches JWT 1d
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get('code');
@@ -94,20 +96,20 @@ export async function GET(request: Request) {
       { expiresIn: '1d' }
     );
 
-    // Set cookies and redirect
-    const response = NextResponse.redirect(`${baseUrl}/dashboard`);
+    // Redirect to /auth/callback so the client can persist token to localStorage
+    // (needed for Bearer auth in apiClient — dual-track strategy from ETAPA 1).
+    // The httpOnly cookie is set HERE on the response that is actually returned.
+    // Previous code set the cookie on a discarded response object — that was the bug.
+    const callbackUrl = `${baseUrl}/auth/callback?token=${encodeURIComponent(token)}&provider=facebook`;
+    const response = NextResponse.redirect(callbackUrl);
     response.cookies.set('auth_token', token, {
-      path: '/',
-      maxAge: 86400,
       httpOnly: true,
+      sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      path: '/',
+      maxAge: COOKIE_MAX_AGE,
     });
-
-    // Also set localStorage-compatible script via a redirect page
-    return NextResponse.redirect(
-      `${baseUrl}/auth/callback?token=${encodeURIComponent(token)}&provider=facebook`
-    );
+    return response;
   } catch (err: any) {
     console.error('Facebook auth error:', err);
     return NextResponse.redirect(`${baseUrl}/login?error=server_error`);

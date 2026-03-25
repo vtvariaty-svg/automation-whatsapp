@@ -533,12 +533,25 @@ export default function SearchRunDetailPage() {
     }
   }, [id]);
 
+  const loadTeamUsers = useCallback(async () => {
+    try {
+      const res = await fetch('/api/lead-intelligence/team', {
+        headers: { Authorization: `Bearer ${getAuthToken()}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setTeamUsers(data.users || []);
+      }
+    } catch {}
+  }, []);
+
   useEffect(() => {
     loadRun();
     loadDrafts();
     loadExecutions();
     loadAnalytics();
-  }, [loadRun, loadDrafts, loadExecutions, loadAnalytics]);
+    loadTeamUsers();
+  }, [loadRun, loadDrafts, loadExecutions, loadAnalytics, loadTeamUsers]);
 
   const [outcomeLoadings, setOutcomeLoadings] = useState<Record<string, boolean>>({});
 
@@ -653,12 +666,18 @@ export default function SearchRunDetailPage() {
 
   async function handleConsentPatch(candidateId: string, field: string, value: string) {
     try {
+      const token = getAuthToken();
       await fetch(`/api/lead-intelligence/candidates/${candidateId}/outreach-readiness`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ [field]: value }),
       });
-      await loadRun(); // recarrega UI
+      // Auto-trigger readiness check so outreachStatus updates immediately without manual click
+      await fetch(`/api/lead-intelligence/candidates/${candidateId}/outreach-readiness`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      await loadRun();
     } catch {}
   }
 
@@ -957,6 +976,9 @@ export default function SearchRunDetailPage() {
     not_approved: { label: 'Não aprovado',          color: 'bg-gray-100 text-gray-400 border-gray-200' },
   };
 
+  // ── Team users (for pipeline owner select) ───────────────────────────────
+  const [teamUsers, setTeamUsers] = useState<{ id: string; name: string | null; email: string }[]>([]);
+
   // ── WA Quick-batch modal state ────────────────────────────────────────────
   const [waBatchOpen, setWaBatchOpen] = useState(false);
   const [waBatchMessage, setWaBatchMessage] = useState('');
@@ -965,7 +987,32 @@ export default function SearchRunDetailPage() {
   const [waBatchResult, setWaBatchResult] = useState<{
     sent: number; failed: number; skipped: number;
     skippedReasons: Record<string, number>; executionId?: string;
+    errorMessage?: string;
   } | null>(null);
+
+  // ── Bulk approve ──────────────────────────────────────────────────────────
+  const [bulkApproving, setBulkApproving] = useState(false);
+
+  async function handleBulkApprove() {
+    if (selectedIds.size === 0) return;
+    setBulkApproving(true);
+    try {
+      const token = getAuthToken();
+      await Promise.all(
+        Array.from(selectedIds).map(candidateId =>
+          fetch(`/api/lead-intelligence/candidates/${candidateId}/status`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ status: 'approved' }),
+          })
+        )
+      );
+      await loadRun();
+      clearSelection();
+    } finally {
+      setBulkApproving(false);
+    }
+  }
 
   async function handleWaQuickBatch() {
     setWaBatchSending(true);
@@ -986,7 +1033,10 @@ export default function SearchRunDetailPage() {
         await loadRun();
         await loadExecutions();
       } else {
-        setWaBatchResult({ sent: 0, failed: 0, skipped: 0, skippedReasons: { Erro: 1 } });
+        setWaBatchResult({
+          sent: 0, failed: 0, skipped: 0, skippedReasons: {},
+          errorMessage: data.error || 'Erro desconhecido ao processar o envio.',
+        });
       }
     } finally {
       setWaBatchSending(false);
@@ -1314,10 +1364,17 @@ export default function SearchRunDetailPage() {
           <div className="sticky top-16 z-30 bg-indigo-700 text-white rounded-2xl px-5 py-3 flex flex-wrap items-center gap-3 shadow-lg shadow-indigo-500/30">
             <span className="font-bold text-sm">{selectedIds.size} selecionado(s)</span>
             <div className="flex flex-wrap gap-2 ml-auto">
+              <button
+                onClick={handleBulkApprove}
+                disabled={bulkApproving}
+                className="px-3 py-1.5 bg-green-500 hover:bg-green-400 disabled:opacity-60 text-white rounded-xl text-xs font-bold transition-all"
+              >
+                {bulkApproving ? '⏳ Aprovando...' : '✅ Aprovar selecionados'}
+              </button>
               <button onClick={() => handleDownloadPhones('txt')} className="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-xl text-xs font-bold transition-all">📥 Baixar números (.txt)</button>
               <button onClick={() => handleDownloadPhones('csv')} className="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-xl text-xs font-bold transition-all">📥 Baixar números (.csv)</button>
               <button onClick={() => handleExportSelected('csv')} className="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-xl text-xs font-bold transition-all">⬇ Exportar leads (.csv)</button>
-              <button onClick={() => { setWaBatchMessage(''); setWaBatchResult(null); setWaBatchOpen(true); }} className="px-3 py-1.5 bg-green-400 hover:bg-green-300 text-green-900 rounded-xl text-xs font-bold transition-all">📱 Enviar lote WhatsApp</button>
+              <button onClick={() => { setWaBatchMessage(''); setWaBatchResult(null); setWaBatchOpen(true); }} className="px-3 py-1.5 bg-emerald-400 hover:bg-emerald-300 text-emerald-950 rounded-xl text-xs font-bold transition-all">📱 Enviar lote WhatsApp</button>
               <button onClick={clearSelection} className="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-semibold transition-all">✕ Limpar</button>
             </div>
           </div>
@@ -1798,15 +1855,18 @@ export default function SearchRunDetailPage() {
 
                           <div>
                             <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">
-                              Responsável (User ID)
+                              Responsável
                             </label>
-                            <input
-                              type="text"
-                              placeholder="UUID do usuário"
+                            <select
                               value={pipelineDrafts[c.id].ownerUserId}
                               onChange={e => setPipelineDrafts(prev => ({ ...prev, [c.id]: { ...prev[c.id], ownerUserId: e.target.value } }))}
                               className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                            />
+                            >
+                              <option value="">Sem responsável</option>
+                              {teamUsers.map(u => (
+                                <option key={u.id} value={u.id}>{u.name || u.email}</option>
+                              ))}
+                            </select>
                           </div>
 
                           <div className="sm:col-span-2">
@@ -2433,6 +2493,122 @@ export default function SearchRunDetailPage() {
       </div>
 
       {/* ── Seção 6: Análise e Conversões ──────────────────────────── */}
+      {/* ── WA Quick-Batch Modal ──────────────────────────────────────────────── */}
+      {waBatchOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-bold text-gray-900">📱 Enviar WhatsApp em Lote</h2>
+              <button
+                onClick={() => { setWaBatchOpen(false); setWaBatchResult(null); }}
+                className="text-gray-400 hover:text-gray-700 text-xl font-bold leading-none"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-gray-500 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+              Apenas leads <strong>aprovados</strong>, com <strong>consentimento WhatsApp = concedido</strong> e readiness{' '}
+              <strong>ready_whatsapp</strong> ou <strong>ready_multichannel</strong> serão enviados.
+              {' '}<span className="font-semibold text-amber-700">{selectedIds.size} lead(s) selecionado(s).</span>
+            </p>
+
+            {!waBatchResult ? (
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">
+                    Mensagem <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    rows={4}
+                    placeholder="Olá! Gostaríamos de apresentar nossa solução..."
+                    value={waBatchMessage}
+                    onChange={e => setWaBatchMessage(e.target.value)}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-300 resize-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Tamanho do lote (máx 20)</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={20}
+                    value={waBatchSize}
+                    onChange={e => setWaBatchSize(Math.min(20, Math.max(1, Number(e.target.value))))}
+                    className="w-32 border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                  />
+                </div>
+                <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
+                  <button
+                    onClick={() => setWaBatchOpen(false)}
+                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition-all"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleWaQuickBatch}
+                    disabled={waBatchSending || !waBatchMessage.trim()}
+                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 text-white rounded-xl text-xs font-bold transition-all"
+                  >
+                    {waBatchSending ? '⏳ Enviando...' : '🚀 Enviar agora'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {waBatchResult.errorMessage ? (
+                  <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">
+                    <strong>Erro:</strong> {waBatchResult.errorMessage}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="bg-emerald-50 rounded-xl p-3 text-center">
+                      <p className="text-xl font-black text-emerald-700">{waBatchResult.sent}</p>
+                      <p className="text-[10px] font-bold text-emerald-600 uppercase">Enviados</p>
+                    </div>
+                    <div className="bg-red-50 rounded-xl p-3 text-center">
+                      <p className="text-xl font-black text-red-700">{waBatchResult.failed}</p>
+                      <p className="text-[10px] font-bold text-red-600 uppercase">Falhas</p>
+                    </div>
+                    <div className="bg-amber-50 rounded-xl p-3 text-center">
+                      <p className="text-xl font-black text-amber-700">{waBatchResult.skipped}</p>
+                      <p className="text-[10px] font-bold text-amber-600 uppercase">Ignorados</p>
+                    </div>
+                  </div>
+                )}
+
+                {!waBatchResult.errorMessage && Object.keys(waBatchResult.skippedReasons).length > 0 && (
+                  <div className="bg-gray-50 rounded-xl p-3 text-xs text-gray-700 space-y-1">
+                    <p className="font-bold text-gray-600 text-[11px] uppercase mb-1">Motivos de exclusão:</p>
+                    {Object.entries(waBatchResult.skippedReasons).map(([reason, count]) => (
+                      <div key={reason} className="flex justify-between">
+                        <span>{reason}</span>
+                        <span className="font-bold">{count as number}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
+                  <button
+                    onClick={() => { setWaBatchResult(null); setWaBatchMessage(''); }}
+                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition-all"
+                  >
+                    Novo envio
+                  </button>
+                  <button
+                    onClick={() => { setWaBatchOpen(false); setWaBatchResult(null); }}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all"
+                  >
+                    Fechar
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {analytics && (
         <div className="space-y-4">
           <div>

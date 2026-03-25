@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthTenant } from '@/lib/getAuthTenant';
+import { decrypt } from '@/lib/utils/crypto';
 // @ts-ignore
 import { sendWhatsAppMessage } from '@/src/services/whatsappService';
 
@@ -41,11 +42,22 @@ export async function POST(
   });
   if (!searchRun) return NextResponse.json({ error: 'Busca não encontrada' }, { status: 404 });
 
-  // Load tenant WhatsApp credentials
-  const tenant = await db.tenant.findUnique({ where: { id: auth.tenantId } });
-  if (!tenant?.whatsappPhoneId || !tenant?.whatsappToken) {
-    return NextResponse.json({ error: 'WhatsApp não configurado para esta conta' }, { status: 422 });
+  // Load tenant WhatsApp credentials — support both embedded-signup (whatsappConnection) and legacy direct fields
+  const tenant = await db.tenant.findUnique({
+    where: { id: auth.tenantId },
+    include: { whatsappConnection: true },
+  });
+
+  const rawToken = tenant?.whatsappConnection?.accessToken || tenant?.whatsappToken;
+  const phoneId = tenant?.whatsappConnection?.phoneNumberId || tenant?.whatsappPhoneNumberId || tenant?.whatsappPhoneId;
+
+  if (!rawToken || !phoneId) {
+    return NextResponse.json({
+      error: 'WhatsApp não configurado para esta conta. Configure a integração WhatsApp em Configurações → Integrações.',
+    }, { status: 422 });
   }
+
+  const token = decrypt(rawToken);
 
   // Load candidates with all needed fields
   const candidates: any[] = await db.leadCandidate.findMany({
@@ -129,7 +141,7 @@ export async function POST(
     let errorMessage: string | undefined;
 
     try {
-      const result = await sendWhatsAppMessage(phone, messageBody, tenant.whatsappPhoneId, tenant.whatsappToken);
+      const result = await sendWhatsAppMessage(phone, messageBody, phoneId, token);
       providerMessageId = result?.messages?.[0]?.id || 'unknown';
       success = true;
       sent++;

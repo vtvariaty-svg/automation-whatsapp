@@ -70,7 +70,12 @@ export async function PUT(req: Request) {
 
     await prisma.tenant.update({ where: { id: auth.tenantId }, data: updates });
 
-    return NextResponse.json({ ok: true, managedBlock: newBlock });
+    return NextResponse.json({
+      ok:           true,
+      managedBlock: newBlock,
+      newPrompt:    newPrompt,
+      newWelcome:   (updates.welcomeMessage as string) ?? null,
+    });
   } catch (err: any) {
     console.error('[ai-guided-setup] PUT error:', err);
     return NextResponse.json({ error: err.message }, { status: 500 });

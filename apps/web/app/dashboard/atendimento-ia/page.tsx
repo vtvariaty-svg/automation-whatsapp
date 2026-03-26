@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import GuidedAiSetupChat from "@/components/ai/GuidedAiSetupChat";
 import { useAuth } from "@/hooks/useAuth";
@@ -184,8 +184,15 @@ export default function AtendimentoIAPage() {
   const [schedulingMeta, setSchedulingMeta] = useState({ enabled: false, mode: "disponibilidade_global" as "com_profissionais" | "disponibilidade_global", servicesCount: 0, professionalsCount: 0 });
   const [operationalConfig, setOperationalConfig] = useState<OperationalConfig>({ openingHours: "", templateBookingConfirmed: "", templateReminder24h: "" });
 
-  // Guided setup
-  const [guidedSetup, setGuidedSetup] = useState<Record<string, unknown>>({});
+  // Guided setup — initialGuidedSetup is set ONCE from the API load and never updated from onChange.
+  // This breaks the circular: onChange → setGuidedSetup → new prop ref → re-sync loop in GuidedAiSetupChat.
+  const [initialGuidedSetup, setInitialGuidedSetup] = useState<Record<string, unknown>>({});
+  const latestGuidedAnswers = useRef<Record<string, unknown>>({});
+
+  // Autosave status
+  type AutoSaveStatus = 'idle' | 'saving' | 'saved';
+  const [autoSaveStatus, setAutoSaveStatus] = useState<AutoSaveStatus>('idle');
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Bot
   const [activeBotKey, setActiveBotKey] = useState<string | null>(null);
@@ -229,7 +236,9 @@ export default function AtendimentoIAPage() {
 
         if (gsRes?.ok) {
           const gs = await gsRes.json();
-          setGuidedSetup(gs.setup ?? {});
+          const setup = gs.setup ?? {};
+          setInitialGuidedSetup(setup);
+          latestGuidedAnswers.current = setup;
         }
 
         setBusinessCtx(d.businessContext);
@@ -279,6 +288,34 @@ export default function AtendimentoIAPage() {
     }
   }
 
+  // autoSaveGuidedSetup — debounced, no full page reload, patches state from response
+  const autoSaveGuidedSetup = useCallback(async (answers: Record<string, unknown>) => {
+    latestGuidedAnswers.current = answers;
+
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    setAutoSaveStatus('saving');
+
+    autoSaveTimer.current = setTimeout(async () => {
+      try {
+        const res = await fetch("/api/ai-guided-setup", {
+          method:  "PUT",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body:    JSON.stringify({ setup: answers }),
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        // Patch local state silently — no full control-center reload needed
+        if (data.newPrompt)  setAiIdentity((p) => ({ ...p, aiPrompt: data.newPrompt }));
+        if (data.newWelcome) setWelcome({ message: data.newWelcome });
+        setAutoSaveStatus('saved');
+        setTimeout(() => setAutoSaveStatus('idle'), 2500);
+      } catch {
+        setAutoSaveStatus('idle');
+      }
+    }, 800);
+  }, [token]);
+
+  // saveGuidedSetup — manual fallback (keeps the Save button working)
   async function saveGuidedSetup() {
     setSaving((s) => ({ ...s, guidedSetup: true }));
     setSaved((s)  => ({ ...s, guidedSetup: false }));
@@ -286,16 +323,13 @@ export default function AtendimentoIAPage() {
       const res = await fetch("/api/ai-guided-setup", {
         method:  "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body:    JSON.stringify({ setup: guidedSetup }),
+        body:    JSON.stringify({ setup: latestGuidedAnswers.current }),
       });
       if (!res.ok) throw new Error("Erro ao salvar");
-      // Reload aiIdentity — managed block was merged into aiPrompt
-      const r2 = await fetch("/api/ai-control-center", { headers: { Authorization: `Bearer ${token}` } });
-      if (r2.ok) {
-        const d2: ControlCenterData = await r2.json();
-        setAiIdentity(d2.aiIdentity);
-        setWelcome(d2.welcome);
-      }
+      const data = await res.json();
+      // Patch silently from response — no second fetch needed
+      if (data.newPrompt)  setAiIdentity((p) => ({ ...p, aiPrompt: data.newPrompt }));
+      if (data.newWelcome) setWelcome({ message: data.newWelcome });
       setSaved((s) => ({ ...s, guidedSetup: true }));
       setTimeout(() => setSaved((s) => ({ ...s, guidedSetup: false })), 3000);
     } catch (e: any) {
@@ -654,10 +688,36 @@ export default function AtendimentoIAPage() {
             O conteúdo manual abaixo (seção Identidade da IA) é sempre preservado.
           </p>
           <GuidedAiSetupChat
-            initialAnswers={guidedSetup as any}
-            onChange={(a) => setGuidedSetup(a as Record<string, unknown>)}
+            initialAnswers={initialGuidedSetup as any}
+            persistKey={user?.tenantId ? `guided_ai_setup_draft:${user.tenantId}` : undefined}
+            onAutoSave={(a) => autoSaveGuidedSetup(a as Record<string, unknown>)}
+            onComplete={(a) => autoSaveGuidedSetup(a as Record<string, unknown>)}
           />
-          <SaveBtn saving={saving.guidedSetup} saved={saved.guidedSetup} onClick={saveGuidedSetup} />
+          {/* Autosave status indicator */}
+          <div className="flex items-center justify-end gap-3 pt-3 min-h-[2.5rem]">
+            {autoSaveStatus === 'saving' && (
+              <span className="text-xs text-gray-400 flex items-center gap-1.5">
+                <span className="w-3 h-3 border border-gray-300 border-t-[#4f46e5] rounded-full animate-spin inline-block" />
+                Salvando...
+              </span>
+            )}
+            {autoSaveStatus === 'saved' && (
+              <span className="text-xs text-emerald-600 font-medium flex items-center gap-1">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+                Salvo
+              </span>
+            )}
+            {/* Manual save fallback — always available */}
+            <button
+              onClick={saveGuidedSetup}
+              disabled={saving.guidedSetup}
+              className="text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2 transition-colors disabled:opacity-40"
+            >
+              {saving.guidedSetup ? 'Salvando...' : 'Salvar manualmente'}
+            </button>
+          </div>
         </div>
       </SectionCard>
 

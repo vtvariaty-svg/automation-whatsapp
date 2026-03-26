@@ -750,9 +750,9 @@ async function processInboundMessage(
     customerPhone: maskPhone(from),
     source: 'ai_response',
     responseLength: aiResponse?.length ?? 0,
-    isFirstContact: isFirstInbound,
+    isFirstContact: isNewServiceSession,
     hasWelcomeConfigured: !!(tenant.welcomeMessage?.trim()),
-  }, `[Webhook] AI responded — ${aiResponse?.length ?? 0} chars${isFirstInbound ? ' [FIRST CONTACT — welcome was not configured]' : ''}`);
+  }, `[Webhook] AI responded — ${aiResponse?.length ?? 0} chars${isNewServiceSession ? ' [FIRST CONTACT — welcome was not configured]' : ''}`);
 
   await sendAndSave({
     to: from,
@@ -764,7 +764,7 @@ async function processInboundMessage(
     aiGenerated: true,
     channel: 'whatsapp',
     identity: resolvedIdentityContext,
-    logContext: { source: 'ai_response', isFirstContact: isFirstInbound },
+    logContext: { source: 'ai_response', isFirstContact: isNewServiceSession },
   });
 
   // ── ai_low_confidence handoff (non-blocking) ──────────────────────────────

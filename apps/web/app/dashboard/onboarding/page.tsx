@@ -156,13 +156,19 @@ export default function OnboardingPage() {
       return;
     }
 
-    // 2. Merge guided setup managed block + auto-welcome (non-fatal)
+    // 2. Merge guided setup managed block + auto-welcome (fatal — must succeed before showing success)
     if (Object.keys(guidedAnswers).length > 0) {
-      fetch('/api/ai-guided-setup', {
+      const gsRes = await fetch('/api/ai-guided-setup', {
         method: 'PUT',
         headers: authHeaders(),
         body: JSON.stringify({ setup: { ...guidedAnswers, companyName: cName } }),
-      }).catch(() => {});
+      });
+      if (!gsRes.ok) {
+        const gsErr = await gsRes.json().catch(() => ({}));
+        alert(gsErr.error ?? 'Erro ao salvar configuração da IA. Tente novamente.');
+        setLoading(false);
+        return;
+      }
     }
 
     setResult(data);

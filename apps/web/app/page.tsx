@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import MetaPixel from "@/components/marketing/MetaPixel";
 
 export const metadata = {
   title: "Variaty — Atendimento no WhatsApp com IA que Vende e Agenda 24h",

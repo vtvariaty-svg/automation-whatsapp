@@ -1,13 +1,29 @@
 import { NextResponse } from 'next/server';
 import { registerUser } from '@/lib/services/authService';
+import { sendLeadEventToMetaCapi } from '@/lib/services/metaCapiService';
 
 // JWT expires in 1d = 86400 seconds
 const COOKIE_MAX_AGE = 86400;
 
 export async function POST(req: Request) {
   try {
-    const { name, email, password, plan } = await req.json();
+    const { name, email, password, plan, eventId } = await req.json();
     const result = await registerUser(name, email, password, 'user', plan);
+
+    // If an eventId was provided from the landing page, fire the Conversions API 'Lead' event.
+    // Done asynchronously so it doesn't block the actual sign-up completion.
+    if (eventId) {
+      const clientIp = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || undefined;
+      const userAgent = req.headers.get('user-agent') || undefined;
+
+      // Disable await so this fires in the background
+      sendLeadEventToMetaCapi({
+        email,
+        eventId,
+        clientIp,
+        userAgent,
+      }).catch((e) => console.error('[Meta CAPI] Unhandled error during dispatch:', e));
+    }
 
     const response = NextResponse.json(result);
 

@@ -41,7 +41,13 @@ function RegisterForm() {
     }
 
     try {
-      await register({ name, email, password, plan: planSlug });
+      const eventId = crypto.randomUUID();
+      await register({ name, email, password, plan: planSlug, eventId });
+      
+      // Fire the Meta Pixel Lead event immediately upon successful registration
+      import("@/components/marketing/MetaPixel").then(({ leadEvent }) => {
+        leadEvent(eventId, email);
+      });
     } catch (err) {
       setError("Erro ao criar conta. Verifique os dados e tente novamente.");
     }
@@ -187,9 +193,13 @@ function RegisterForm() {
   );
 }
 
+import MetaPixel from "@/components/marketing/MetaPixel";
+
 export default function RegisterPage() {
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <>
+      <MetaPixel />
+      <div className="flex min-h-screen bg-gray-50">
       {/* Left side: Form */}
       <div className="flex flex-1 flex-col justify-center py-12 px-4 sm:px-6 lg:px-20 xl:px-24 bg-white">
         <Suspense fallback={<div className="mx-auto w-full max-w-sm lg:w-96 animate-pulse"><div className="h-36 w-36 bg-gray-200 rounded mb-8" /></div>}>
@@ -245,5 +255,6 @@ export default function RegisterPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }

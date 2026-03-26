@@ -79,7 +79,8 @@ export default function SettingsPage() {
     setSaving(true);
     setMessage("");
     try {
-      await authApi.updateTenantConfig(config);
+      // Only save fields owned by this page — operational fields are managed in Central de Atendimento IA
+      await authApi.updateTenantConfig({ name: config.name, businessDescription: config.businessDescription, phone: config.phone });
       setMessage("✅ Configurações salvas com sucesso!");
     } catch {
       setMessage("❌ Erro ao salvar configurações.");
@@ -169,37 +170,48 @@ export default function SettingsPage() {
             </div>
           </div>
           <div className="p-6 space-y-5">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Telefone Comercial</label>
+              <input
+                type="text"
+                value={config.phone}
+                onChange={(e) => setConfig({ ...config, phone: e.target.value })}
+                placeholder="(11) 99999-9999"
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500/40 transition-all"
+              />
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Telefone Comercial</label>
-                <input
-                  type="text"
-                  value={config.phone}
-                  onChange={(e) => setConfig({ ...config, phone: e.target.value })}
-                  placeholder="(11) 99999-9999"
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500/40 transition-all"
-                />
-              </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Horário de Funcionamento</label>
                 <input
                   type="text"
+                  readOnly
                   value={config.openingHours}
-                  onChange={(e) => setConfig({ ...config, openingHours: e.target.value })}
-                  placeholder="Seg-Sex 08:00 - 18:00"
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500/40 transition-all"
+                  placeholder="Não configurado"
+                  className="w-full px-4 py-3 bg-gray-100 border border-gray-200 rounded-xl text-sm text-gray-500 cursor-not-allowed"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Endereço</label>
+                <input
+                  type="text"
+                  readOnly
+                  value={config.address}
+                  placeholder="Não configurado"
+                  className="w-full px-4 py-3 bg-gray-100 border border-gray-200 rounded-xl text-sm text-gray-500 cursor-not-allowed"
                 />
               </div>
             </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Endereço</label>
-              <input
-                type="text"
-                value={config.address}
-                onChange={(e) => setConfig({ ...config, address: e.target.value })}
-                placeholder="Rua, número, bairro, cidade - UF"
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500/40 transition-all"
-              />
+            <div className="flex items-center justify-between bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3">
+              <p className="text-xs text-emerald-700">
+                Horário de funcionamento e endereço são gerenciados na <strong>Central de Atendimento IA</strong>.
+              </p>
+              <a
+                href="/dashboard/atendimento-ia#config-operacional"
+                className="ml-4 shrink-0 inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-100 text-emerald-700 text-sm font-semibold rounded-xl hover:bg-emerald-200 transition-colors"
+              >
+                Gerenciar na Central →
+              </a>
             </div>
           </div>
         </div>
@@ -225,14 +237,11 @@ export default function SettingsPage() {
                 </label>
                 <input
                   type="text"
+                  readOnly
                   value={config.templateBookingConfirmed}
-                  onChange={(e) => setConfig({ ...config, templateBookingConfirmed: e.target.value })}
-                  placeholder="Ex: appointment_confirmation"
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/40 transition-all"
+                  placeholder="Não configurado"
+                  className="w-full px-4 py-3 bg-gray-100 border border-gray-200 rounded-xl text-sm text-gray-500 cursor-not-allowed"
                 />
-                <p className="text-xs text-gray-500 mt-2">
-                  Disparado assim que salvo. <br/>Variáveis: <code>{"{{1}}"}</code> Nome, <code>{"{{2}}"}</code> Serviço, <code>{"{{3}}"}</code> Data, <code>{"{{4}}"}</code> Hora.
-                </p>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -240,18 +249,23 @@ export default function SettingsPage() {
                 </label>
                 <input
                   type="text"
+                  readOnly
                   value={config.templateReminder24h}
-                  onChange={(e) => setConfig({ ...config, templateReminder24h: e.target.value })}
-                  placeholder="Ex: appointment_reminder_24h"
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/40 transition-all"
+                  placeholder="Não configurado"
+                  className="w-full px-4 py-3 bg-gray-100 border border-gray-200 rounded-xl text-sm text-gray-500 cursor-not-allowed"
                 />
-                <p className="text-xs text-gray-500 mt-2">
-                   Disparado na véspera. <br/>Variáveis: <code>{"{{1}}"}</code> Nome, <code>{"{{2}}"}</code> Serviço, <code>{"{{3}}"}</code> Data, <code>{"{{4}}"}</code> Hora.
-                </p>
               </div>
             </div>
-            <div className="bg-blue-50 border border-blue-100 p-3 rounded-lg text-xs text-blue-700">
-              <strong>Atenção:</strong> Se vazios ou se a mensagem falhar, o sistema ainda tentará fazer o envio padrão em formato de texto livre (que só funciona se o cliente tiver engajado nas últimas 24hs).
+            <div className="flex items-center justify-between bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
+              <p className="text-xs text-blue-700">
+                Templates de WhatsApp são gerenciados na <strong>Central de Atendimento IA</strong>.
+              </p>
+              <a
+                href="/dashboard/atendimento-ia#config-operacional"
+                className="ml-4 shrink-0 inline-flex items-center gap-1.5 px-4 py-2 bg-blue-100 text-blue-700 text-sm font-semibold rounded-xl hover:bg-blue-200 transition-colors"
+              >
+                Gerenciar na Central →
+              </a>
             </div>
           </div>
         </div>

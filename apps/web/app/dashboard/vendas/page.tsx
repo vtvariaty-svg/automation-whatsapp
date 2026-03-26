@@ -331,7 +331,7 @@ function ProdutosTab() {
 
 // ── Tab: Catálogo ─────────────────────────────────────────────────────────────
 
-function CatalogoTab({ onCriarAutomacao }: { onCriarAutomacao: (text: string) => void }) {
+function CatalogoTab() {
   const [products, setProducts] = useState<Omit<Product, "active">[]>([]);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState<string | null>(null);
@@ -383,8 +383,7 @@ function CatalogoTab({ onCriarAutomacao }: { onCriarAutomacao: (text: string) =>
     <div className="space-y-4">
       <div className="bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-3 text-sm text-indigo-700">
         <strong>{products.length} produto{products.length !== 1 ? "s" : ""}</strong> publicados.
-        Use <strong>Copiar texto p/ IA</strong> para gerar o conteúdo que o bot enviará nas conversas,
-        ou <strong>⚡ Automação</strong> para criar uma resposta automática com esse produto.
+        Use <strong>Copiar texto p/ IA</strong> para gerar o conteúdo que o bot enviará nas conversas.
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {products.map(p => (
@@ -410,13 +409,6 @@ function CatalogoTab({ onCriarAutomacao }: { onCriarAutomacao: (text: string) =>
                 }`}
               >
                 {copied === p.id ? "✓ Copiado!" : "📋 Copiar texto p/ IA"}
-              </button>
-              <button
-                onClick={() => onCriarAutomacao(buildAiText(p))}
-                title="Criar automação com este produto"
-                className="px-3 py-2 rounded-lg text-sm font-medium bg-gray-50 text-gray-600 hover:bg-gray-100 transition-all"
-              >
-                ⚡ Automação
               </button>
             </div>
           </div>
@@ -620,8 +612,6 @@ export default function VendasPage() {
     return (["produtos", "catalogo", "automacoes", "prontidao"].includes(p ?? "") ? p : "produtos") as Tab;
   });
 
-  const [automacaoPrefill, setAutomacaoPrefill] = useState("");
-
   if (!ent.loading && !planAtLeast(ent.plan, "standard")) {
     return (
       <UpgradeGate
@@ -632,11 +622,6 @@ export default function VendasPage() {
       />
     );
   }
-
-  const handleCriarAutomacao = (text: string) => {
-    setAutomacaoPrefill(text);
-    setTab("automacoes");
-  };
 
   return (
     <div className="space-y-6">
@@ -663,12 +648,12 @@ export default function VendasPage() {
       </div>
 
       {tab === "produtos" && <ProdutosTab />}
-      {tab === "catalogo" && <CatalogoTab onCriarAutomacao={handleCriarAutomacao} />}
+      {tab === "catalogo" && <CatalogoTab />}
       {tab === "automacoes" && (
         <AutomacoesTab
           tenantId={tenantId}
-          prefillText={automacaoPrefill}
-          onPrefillConsumed={() => setAutomacaoPrefill("")}
+          prefillText=""
+          onPrefillConsumed={() => {}}
         />
       )}
       {tab === "prontidao" && <ProntidaoTab />}

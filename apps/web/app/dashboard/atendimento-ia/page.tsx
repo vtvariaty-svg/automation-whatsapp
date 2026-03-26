@@ -55,11 +55,18 @@ interface ProductItem {
   category: string | null;
 }
 
+interface OperationalConfig {
+  openingHours: string;
+  templateBookingConfirmed: string;
+  templateReminder24h: string;
+}
+
 interface ControlCenterData {
   businessContext: { companyName: string; businessType: string; contactPhone: string; address: string };
   aiIdentity: { aiPrompt: string; businessHours: string };
   welcome: { message: string };
   botPreset: { activeBotKey: string | null; botName: string | null; niche: string | null; tone: string | null; description: string | null; blueprint: string | null; emoji: string | null };
+  operationalConfig: OperationalConfig;
   commercialBehavior: { products: ProductItem[] };
   automations: AutomationRule[];
   schedulingBehavior: { enabled: boolean; mode: "com_profissionais" | "disponibilidade_global"; servicesCount: number; professionalsCount: number; services: ServiceItem[] };
@@ -172,6 +179,7 @@ export default function AtendimentoIAPage() {
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [automations, setAutomations] = useState<AutomationRule[]>([]);
   const [schedulingMeta, setSchedulingMeta] = useState({ enabled: false, mode: "disponibilidade_global" as "com_profissionais" | "disponibilidade_global", servicesCount: 0, professionalsCount: 0 });
+  const [operationalConfig, setOperationalConfig] = useState<OperationalConfig>({ openingHours: "", templateBookingConfirmed: "", templateReminder24h: "" });
 
   // Bot
   const [activeBotKey, setActiveBotKey] = useState<string | null>(null);
@@ -227,6 +235,7 @@ export default function AtendimentoIAPage() {
           servicesCount: d.schedulingBehavior.servicesCount,
           professionalsCount: d.schedulingBehavior.professionalsCount,
         });
+        setOperationalConfig(d.operationalConfig || { openingHours: "", templateBookingConfirmed: "", templateReminder24h: "" });
       } catch (e: any) {
         setLoadError(e.message);
       } finally {
@@ -701,6 +710,52 @@ export default function AtendimentoIAPage() {
               Gerenciar profissionais →
             </Link>
           </div>
+        </div>
+      </SectionCard>
+
+      {/* ── 5b. Configuração Operacional de Agendamento ───────────────────────── */}
+      <SectionCard id="config-operacional" icon="🕐" title="Configuração Operacional de Agendamento" subtitle="Horário de funcionamento, templates de confirmação e lembrete — usados pelo motor de agendamento">
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Horário de Funcionamento</label>
+            <input
+              type="text"
+              value={operationalConfig.openingHours}
+              onChange={(e) => setOperationalConfig((p) => ({ ...p, openingHours: e.target.value }))}
+              placeholder="Ex: Seg-Sex 08:00-18:00, Sáb 09:00-13:00"
+              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20 focus:border-[#4f46e5]/40 transition-all"
+            />
+            <p className="text-xs text-gray-400 mt-1">Usado pelo motor de slots para calcular disponibilidade real de agendamentos.</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Template — Confirmação de Agendamento</label>
+              <input
+                type="text"
+                value={operationalConfig.templateBookingConfirmed}
+                onChange={(e) => setOperationalConfig((p) => ({ ...p, templateBookingConfirmed: e.target.value }))}
+                placeholder="Ex: appointment_confirmation"
+                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20 focus:border-[#4f46e5]/40 transition-all"
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                Variáveis: <code className="bg-gray-100 px-1 rounded">{"{{1}}"}</code> Nome · <code className="bg-gray-100 px-1 rounded">{"{{2}}"}</code> Serviço · <code className="bg-gray-100 px-1 rounded">{"{{3}}"}</code> Data · <code className="bg-gray-100 px-1 rounded">{"{{4}}"}</code> Hora
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Template — Lembrete de Véspera (24h)</label>
+              <input
+                type="text"
+                value={operationalConfig.templateReminder24h}
+                onChange={(e) => setOperationalConfig((p) => ({ ...p, templateReminder24h: e.target.value }))}
+                placeholder="Ex: appointment_reminder_24h"
+                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20 focus:border-[#4f46e5]/40 transition-all"
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                Variáveis: <code className="bg-gray-100 px-1 rounded">{"{{1}}"}</code> Nome · <code className="bg-gray-100 px-1 rounded">{"{{2}}"}</code> Serviço · <code className="bg-gray-100 px-1 rounded">{"{{3}}"}</code> Data · <code className="bg-gray-100 px-1 rounded">{"{{4}}"}</code> Hora
+              </p>
+            </div>
+          </div>
+          <SaveBtn saving={saving.operationalConfig} saved={saved.operationalConfig} onClick={() => putSection("operationalConfig", { operationalConfig })} />
         </div>
       </SectionCard>
 

@@ -28,6 +28,18 @@ function hasSchedulingIntent(msg: string): boolean {
   return SCHEDULING_KEYWORDS.some((k) => lower.includes(k));
 }
 
+/**
+ * Dry-run simulator of the WhatsApp webhook processing pipeline.
+ *
+ * Layer order mirrors processInboundMessage in the real webhook exactly:
+ *   1. Welcome          — webhook step C
+ *   2. Explicit handoff — webhook step E  (BEFORE automations, unlike old simulator)
+ *   3. Pending appt     — webhook step F  (informational — requires live conversation state)
+ *   4. Automation       — webhook step G
+ *   5. Scheduling       — webhook step H  (new booking intent)
+ *   6. Commercial       — webhook step I  (orchestrator)
+ *   7. AI fallback      — webhook step K  (with low-confidence handoff note)
+ */
 export async function POST(req: Request) {
   const auth = await getAuthTenant(req);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -36,13 +48,18 @@ export async function POST(req: Request) {
     const { message, isFirstContact = false } = await req.json();
     if (!message) return NextResponse.json({ error: 'message is required' }, { status: 400 });
 
-    const [tenant, handoffConfig, services] = await Promise.all([
+    // Batch all read-only lookups up front
+    const [tenant, handoffConfig, services, activeProducts] = await Promise.all([
       prisma.tenant.findUnique({
         where: { id: auth.tenantId },
         select: { welcomeMessage: true } as any,
       }),
       prisma.handoffConfig.findUnique({ where: { tenantId: auth.tenantId } }),
       getServices(auth.tenantId),
+      prisma.product.findMany({
+        where: { tenantId: auth.tenantId, active: true },
+        select: { id: true },
+      }),
     ]);
 
     const layerTrace: Array<{
@@ -53,7 +70,7 @@ export async function POST(req: Request) {
       reason: string;
     }> = [];
 
-    // Layer 1: Welcome
+    // ── Layer 1: Welcome (webhook step C) ─────────────────────────────────
     const hasWelcome = !!((tenant as any)?.welcomeMessage?.trim());
     const welcomeMatched = isFirstContact && hasWelcome;
     layerTrace.push({
@@ -76,7 +93,47 @@ export async function POST(req: Request) {
       });
     }
 
-    // Layer 2: Automation
+    // ── Layer 2: Explicit handoff request (webhook step E) ─────────────────
+    // IMPORTANT: in production this runs BEFORE keyword automations.
+    const explicitHandoff = detectExplicitRequest(message);
+    const handoffEnabled = handoffConfig?.enabled ?? false;
+    const explicitHandoffMatched = handoffEnabled && explicitHandoff;
+    layerTrace.push({
+      layer: 'handoff_explicit',
+      label: 'Pedido Explícito de Atendente',
+      checked: handoffEnabled,
+      matched: explicitHandoffMatched,
+      reason: !handoffEnabled
+        ? 'Handoff não está ativado'
+        : explicitHandoffMatched
+        ? 'Cliente solicitou explicitamente falar com atendente humano'
+        : 'Sem pedido explícito de handoff detectado',
+    });
+    if (explicitHandoffMatched) {
+      return NextResponse.json({
+        resolvedLayer: 'handoff_explicit',
+        message:
+          handoffConfig?.clientMessage ||
+          'Entendido! Vou transferir você para um de nossos atendentes.',
+        reason: 'Pedido explícito de handoff — verificado antes das automações em produção',
+        layerTrace,
+      });
+    }
+
+    // ── Layer 3: Pending appointment state (webhook step F) ────────────────
+    // Cannot be simulated: depends on in-flight conversation state in the DB
+    // (customer mid-flow: selecting_slot, confirming_cancel, selecting_new_slot).
+    // Shown here so operators understand it exists in the real pipeline.
+    layerTrace.push({
+      layer: 'pending_appointment',
+      label: 'Estado de Agendamento Pendente',
+      checked: false,
+      matched: false,
+      reason:
+        'Não simulável — depende do estado de conversa ativa do cliente (ex: cliente já está selecionando horário). Em produção esta camada tem prioridade sobre automações.',
+    });
+
+    // ── Layer 4: Keyword automation (webhook step G) ───────────────────────
     const automationMatch = await checkAutomationMatch(message, auth.tenantId);
     layerTrace.push({
       layer: 'automation',
@@ -96,13 +153,13 @@ export async function POST(req: Request) {
       });
     }
 
-    // Layer 3: Scheduling
+    // ── Layer 5: Scheduling / appointment intent (webhook step H) ──────────
     const hasServices = (services as any[]).length > 0;
     const schedulingIntent = hasSchedulingIntent(message);
     const schedulingMatched = hasServices && schedulingIntent;
     layerTrace.push({
       layer: 'scheduling',
-      label: 'Fluxo de Agendamento',
+      label: 'Fluxo de Agendamento (nova intenção)',
       checked: hasServices,
       matched: schedulingMatched,
       reason: !hasServices
@@ -120,11 +177,7 @@ export async function POST(req: Request) {
       });
     }
 
-    // Layer 4: Commercial
-    const activeProducts = await prisma.product.findMany({
-      where: { tenantId: auth.tenantId, active: true },
-      select: { id: true },
-    });
+    // ── Layer 6: Commercial orchestrator (webhook step I) ──────────────────
     const hasProducts = activeProducts.length > 0;
     const commercialIntent = hasBuyIntent(message);
     const commercialMatched = hasProducts && commercialIntent;
@@ -142,45 +195,22 @@ export async function POST(req: Request) {
     if (commercialMatched) {
       return NextResponse.json({
         resolvedLayer: 'commercial',
-        message: '[Orquestrador comercial buscaria produto correspondente e enviaria oferta ou link de checkout]',
+        message:
+          '[Orquestrador comercial buscaria produto correspondente e enviaria oferta ou link de checkout]',
         reason: 'Intenção de compra detectada',
         layerTrace,
       });
     }
 
-    // Layer 5: Explicit handoff request
-    const explicitHandoff = detectExplicitRequest(message);
-    const handoffEnabled = handoffConfig?.enabled ?? false;
-    const handoffMatched = handoffEnabled && explicitHandoff;
-    layerTrace.push({
-      layer: 'handoff',
-      label: 'Handoff Humano (pedido explícito)',
-      checked: handoffEnabled,
-      matched: handoffMatched,
-      reason: !handoffEnabled
-        ? 'Handoff não está ativado'
-        : handoffMatched
-        ? 'Cliente solicitou explicitamente falar com atendente humano'
-        : 'Sem pedido explícito de handoff detectado',
-    });
-    if (handoffMatched) {
-      return NextResponse.json({
-        resolvedLayer: 'handoff',
-        message:
-          handoffConfig?.clientMessage ||
-          'Entendido! Vou transferir você para um de nossos atendentes.',
-        reason: 'Pedido explícito de handoff detectado',
-        layerTrace,
-      });
-    }
-
-    // Layer 6: AI fallback
+    // ── Layer 7: AI fallback (webhook step K) ──────────────────────────────
+    // Note: in production, low-confidence AI responses may trigger handoff non-blocking.
     layerTrace.push({
       layer: 'ai_fallback',
       label: 'Resposta da IA',
       checked: true,
       matched: true,
-      reason: 'Nenhuma camada anterior respondeu — IA processa livremente',
+      reason:
+        'Nenhuma camada determinística respondeu — IA processa livremente. Em produção, baixa confiança pode acionar handoff após a resposta.',
     });
 
     return NextResponse.json({

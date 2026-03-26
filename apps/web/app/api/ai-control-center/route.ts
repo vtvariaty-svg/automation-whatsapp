@@ -13,7 +13,11 @@ export async function GET(req: Request) {
 
   try {
     const [tenant, handoffConfig, automations, services, professionals, products] = await Promise.all([
-      prisma.tenant.findUnique({ where: { id: auth.tenantId } }),
+      // FIX: include businessConfig so address/openingHours/templates load correctly
+      prisma.tenant.findUnique({
+        where: { id: auth.tenantId },
+        include: { businessConfig: true },
+      }),
       prisma.handoffConfig.findUnique({ where: { tenantId: auth.tenantId } }),
       getAutomations(auth.tenantId),
       getServices(auth.tenantId),
@@ -26,7 +30,7 @@ export async function GET(req: Request) {
 
     if (!tenant) return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
 
-    const businessConfig = (tenant as any).businessConfig as Record<string, any> | null;
+    const businessConfig = tenant.businessConfig as any;
     const activeBotKey = (tenant as any).activeBotKey as string | null;
     const activeBot = activeBotKey ? marketplaceBots.find((b) => b.id === activeBotKey) : null;
     const servicesCount = (services as any[]).length;
@@ -55,6 +59,12 @@ export async function GET(req: Request) {
         blueprint: activeBot?.blueprint || null,
         emoji: activeBot?.emoji || null,
       },
+      // FIX: operational scheduling/appointment config now centralised here
+      operationalConfig: {
+        openingHours: businessConfig?.openingHours || '',
+        templateBookingConfirmed: businessConfig?.templateBookingConfirmed || '',
+        templateReminder24h: businessConfig?.templateReminder24h || '',
+      },
       commercialBehavior: {
         products: (products as any[]).map((p) => ({
           id: p.id,
@@ -79,10 +89,11 @@ export async function GET(req: Request) {
         mode: professionalsCount > 0 ? 'com_profissionais' : 'disponibilidade_global',
         servicesCount,
         professionalsCount,
+        // FIX: Service model field is durationMinutes, not duration
         services: (services as any[]).map((s) => ({
           id: s.id,
           name: s.name,
-          duration: s.duration,
+          duration: s.durationMinutes,
           active: s.active !== false,
         })),
       },
@@ -127,23 +138,50 @@ export async function PUT(req: Request) {
       }
     }
 
-    // Business context
+    // Business context — tenant scalar fields + businessConfig.address via nested upsert
+    // FIX: was incorrectly trying to set businessConfig as a plain object on tenant.update
     if (body.businessContext !== undefined) {
       const { companyName, businessType, contactPhone, address } = body.businessContext;
-      const tenantUpdate: Record<string, any> = {};
-      if (companyName !== undefined) tenantUpdate.name = companyName;
-      if (businessType !== undefined) tenantUpdate.businessType = businessType;
-      if (contactPhone !== undefined) tenantUpdate.phone = contactPhone;
-      if (address !== undefined) {
-        const current = await prisma.tenant.findUnique({
+      const tenantScalars: Record<string, any> = {};
+      if (companyName !== undefined) tenantScalars.name = companyName;
+      if (businessType !== undefined) tenantScalars.businessType = businessType;
+      if (contactPhone !== undefined) tenantScalars.phone = contactPhone;
+
+      const configData: Record<string, any> = {};
+      if (address !== undefined) configData.address = address;
+
+      if (Object.keys(tenantScalars).length > 0 || Object.keys(configData).length > 0) {
+        await prisma.tenant.update({
           where: { id: auth.tenantId },
-          select: { businessConfig: true },
+          data: {
+            ...tenantScalars,
+            ...(Object.keys(configData).length > 0 && {
+              businessConfig: {
+                upsert: { create: configData, update: configData },
+              },
+            }),
+          },
         });
-        const existing = ((current?.businessConfig as Record<string, any>) ?? {});
-        tenantUpdate.businessConfig = { ...existing, address };
       }
-      if (Object.keys(tenantUpdate).length > 0) {
-        await prisma.tenant.update({ where: { id: auth.tenantId }, data: tenantUpdate });
+    }
+
+    // Operational config — scheduling/appointment-related BusinessConfig fields
+    if (body.operationalConfig !== undefined) {
+      const { openingHours, templateBookingConfirmed, templateReminder24h } = body.operationalConfig;
+      const configData: Record<string, any> = {};
+      if (openingHours !== undefined) configData.openingHours = openingHours;
+      if (templateBookingConfirmed !== undefined) configData.templateBookingConfirmed = templateBookingConfirmed;
+      if (templateReminder24h !== undefined) configData.templateReminder24h = templateReminder24h;
+
+      if (Object.keys(configData).length > 0) {
+        await prisma.tenant.update({
+          where: { id: auth.tenantId },
+          data: {
+            businessConfig: {
+              upsert: { create: configData, update: configData },
+            },
+          },
+        });
       }
     }
 

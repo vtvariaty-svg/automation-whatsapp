@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import GuidedAiSetupChat from "@/components/ai/GuidedAiSetupChat";
 import { useAuth } from "@/hooks/useAuth";
 import { useEntitlements } from "@/hooks/useEntitlements";
 import {
@@ -183,6 +184,9 @@ export default function AtendimentoIAPage() {
   const [schedulingMeta, setSchedulingMeta] = useState({ enabled: false, mode: "disponibilidade_global" as "com_profissionais" | "disponibilidade_global", servicesCount: 0, professionalsCount: 0 });
   const [operationalConfig, setOperationalConfig] = useState<OperationalConfig>({ openingHours: "", templateBookingConfirmed: "", templateReminder24h: "" });
 
+  // Guided setup
+  const [guidedSetup, setGuidedSetup] = useState<Record<string, unknown>>({});
+
   // Bot
   const [activeBotKey, setActiveBotKey] = useState<string | null>(null);
   const [showBotGrid, setShowBotGrid] = useState(false);
@@ -216,11 +220,17 @@ export default function AtendimentoIAPage() {
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch("/api/ai-control-center", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const [res, gsRes] = await Promise.all([
+          fetch("/api/ai-control-center", { headers: { Authorization: `Bearer ${token}` } }),
+          fetch("/api/ai-guided-setup",   { headers: { Authorization: `Bearer ${token}` } }).catch(() => null),
+        ]);
         if (!res.ok) throw new Error("Erro ao carregar configurações");
         const d: ControlCenterData = await res.json();
+
+        if (gsRes?.ok) {
+          const gs = await gsRes.json();
+          setGuidedSetup(gs.setup ?? {});
+        }
 
         setBusinessCtx(d.businessContext);
         setAiIdentity(d.aiIdentity);
@@ -266,6 +276,32 @@ export default function AtendimentoIAPage() {
       alert(e.message);
     } finally {
       setSaving((s) => ({ ...s, [key]: false }));
+    }
+  }
+
+  async function saveGuidedSetup() {
+    setSaving((s) => ({ ...s, guidedSetup: true }));
+    setSaved((s)  => ({ ...s, guidedSetup: false }));
+    try {
+      const res = await fetch("/api/ai-guided-setup", {
+        method:  "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body:    JSON.stringify({ setup: guidedSetup }),
+      });
+      if (!res.ok) throw new Error("Erro ao salvar");
+      // Reload aiIdentity — managed block was merged into aiPrompt
+      const r2 = await fetch("/api/ai-control-center", { headers: { Authorization: `Bearer ${token}` } });
+      if (r2.ok) {
+        const d2: ControlCenterData = await r2.json();
+        setAiIdentity(d2.aiIdentity);
+        setWelcome(d2.welcome);
+      }
+      setSaved((s) => ({ ...s, guidedSetup: true }));
+      setTimeout(() => setSaved((s) => ({ ...s, guidedSetup: false })), 3000);
+    } catch (e: any) {
+      alert(e.message);
+    } finally {
+      setSaving((s) => ({ ...s, guidedSetup: false }));
     }
   }
 
@@ -607,6 +643,21 @@ export default function AtendimentoIAPage() {
               {applyingNiche ? "Aplicando..." : "Aplicar Preset"}
             </button>
           </div>
+        </div>
+      </SectionCard>
+
+      {/* ── 2b. Ensine sua IA ─────────────────────────────────────────────────── */}
+      <SectionCard id="ensinar-ia" icon="💡" title="Ensine sua IA" subtitle="Configure o comportamento com perguntas guiadas — sem depender só de prompt manual.">
+        <div className="space-y-1">
+          <p className="text-xs text-gray-400 mb-4">
+            Suas respostas geram um bloco estruturado que é mesclado automaticamente no prompt da IA.
+            O conteúdo manual abaixo (seção Identidade da IA) é sempre preservado.
+          </p>
+          <GuidedAiSetupChat
+            initialAnswers={guidedSetup as any}
+            onChange={(a) => setGuidedSetup(a as Record<string, unknown>)}
+          />
+          <SaveBtn saving={saving.guidedSetup} saved={saved.guidedSetup} onClick={saveGuidedSetup} />
         </div>
       </SectionCard>
 

@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import GuidedAiSetupChat from '@/components/ai/GuidedAiSetupChat';
+import type { GuidedSetupAnswers } from '@/lib/ai/guidedSetup';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -43,7 +45,7 @@ const STEPS = [
   { n: 1, label: 'Canal'      },
   { n: 2, label: 'Nicho'      },
   { n: 3, label: 'Template'   },
-  { n: 4, label: 'Mensagem'   },
+  { n: 4, label: 'Ensinar IA' },
   { n: 5, label: 'Publicar'   },
 ];
 
@@ -95,10 +97,12 @@ export default function OnboardingPage() {
   // Step 2
   const [selectedNiche, setSelectedNiche] = useState('');
 
-  // Step 4
-  const [companyName, setCompanyName] = useState('');
-  const [businessHours, setBusinessHours] = useState('Seg–Sex: 9h–18h, Sáb: 9h–13h');
-  const [welcomeMessage, setWelcomeMessage] = useState('');
+  // Step 4 — guided setup (replaces the old manual form)
+  const [guidedAnswers, setGuidedAnswers] = useState<Partial<GuidedSetupAnswers>>({});
+
+  // Legacy fallbacks used in handlePublish
+  const companyName  = (guidedAnswers.companyName ?? '').trim();
+  const businessHours = guidedAnswers.businessHours ?? 'Seg–Sex: 9h–18h, Sáb: 9h–13h';
 
   // Step 5
   const [result, setResult] = useState<{ automationCount: number; serviceCount: number } | null>(null);
@@ -130,44 +134,53 @@ export default function OnboardingPage() {
 
   useEffect(() => { loadChannels(); }, [loadChannels]);
 
-  // Pre-fill welcome message when niche changes
-  useEffect(() => {
-    const defaultMessages: Record<string, string> = {
-      estética:        'Olá! ✨ Bem-vindo(a)! Sou a assistente do studio. Posso ajudar com agendamentos e procedimentos. Como posso te ajudar?',
-      clínica:         'Olá! 👋 Bem-vindo(a)! Sou a assistente virtual da clínica. Posso ajudar com agendamentos e dúvidas. Como posso te ajudar?',
-      restaurante:     'Olá! 🍽️ Bem-vindo(a)! Sou o assistente do restaurante. Posso ajudar com reservas, pedidos e cardápio. Como posso te ajudar?',
-      'serviços locais': 'Olá! 🔧 Bem-vindo(a)! Posso ajudar com orçamentos e agendamento de visitas. Como posso te ajudar?',
-      infoproduto:     'Olá! 🚀 Bem-vindo(a)! Sou a assistente do curso. Posso tirar suas dúvidas e ajudar na sua jornada. Como posso te ajudar?',
-      outro:           'Olá! 👋 Bem-vindo(a)! Sou o assistente virtual. Como posso te ajudar hoje?',
-    };
-    if (selectedNiche) setWelcomeMessage(defaultMessages[selectedNiche] ?? defaultMessages['outro']);
-  }, [selectedNiche]);
+  // Welcome message is now handled automatically by /api/ai-guided-setup
+  // based on companyName + toneOfVoice from the guided chat answers.
 
   // ── Publish ──────────────────────────────────────────────────────────────────
   const handlePublish = async () => {
     setLoading(true);
+    const cName  = companyName || 'Meu Negócio';
+    const bHours = businessHours;
+
+    // 1. Apply niche template (creates automations, services, base prompt)
     const res = await fetch('/api/onboarding/fast', {
       method: 'POST',
       headers: authHeaders(),
-      body: JSON.stringify({ niche: selectedNiche, companyName, businessHours, welcomeMessage }),
+      body: JSON.stringify({ niche: selectedNiche, companyName: cName, businessHours: bHours }),
     });
     const data = await res.json();
-    if (res.ok) {
-      setResult(data);
-      setStep(5);
-    } else {
+    if (!res.ok) {
       alert(data.error ?? 'Erro ao publicar. Tente novamente.');
+      setLoading(false);
+      return;
     }
+
+    // 2. Merge guided setup managed block + auto-welcome (non-fatal)
+    if (Object.keys(guidedAnswers).length > 0) {
+      fetch('/api/ai-guided-setup', {
+        method: 'PUT',
+        headers: authHeaders(),
+        body: JSON.stringify({ setup: { ...guidedAnswers, companyName: cName } }),
+      }).catch(() => {});
+    }
+
+    setResult(data);
+    setStep(5);
     setLoading(false);
   };
 
+  const guidedRequiredDone = ['companyName', 'businessModel', 'offerMode', 'pricePolicy', 'toneOfVoice'].every(
+    (k) => !!guidedAnswers[k as keyof GuidedSetupAnswers],
+  );
+
   // ── Checklist (step 5) ────────────────────────────────────────────────────
   const checklist: ChecklistItem[] = [
-    { key: 'channel',   label: 'Canal conectado',              done: anyChannelConnected },
-    { key: 'niche',     label: 'Nicho escolhido',              done: !!selectedNiche },
-    { key: 'template',  label: 'Template importado',           done: !!result },
-    { key: 'message',   label: 'Mensagem de boas-vindas definida', done: !!welcomeMessage },
-    { key: 'published', label: 'Automações publicadas',        done: !!result, href: '/dashboard/vendas?tab=automacoes' },
+    { key: 'channel',   label: 'Canal conectado',                  done: anyChannelConnected },
+    { key: 'niche',     label: 'Nicho escolhido',                  done: !!selectedNiche },
+    { key: 'template',  label: 'Template importado',               done: !!result },
+    { key: 'guided',    label: 'IA configurada com regras do negócio', done: guidedRequiredDone },
+    { key: 'published', label: 'Automações publicadas',            done: !!result, href: '/dashboard/vendas?tab=automacoes' },
   ];
 
   // ─── Render ─────────────────────────────────────────────────────────────────
@@ -175,8 +188,8 @@ export default function OnboardingPage() {
     <div className="max-w-2xl mx-auto py-6 space-y-6">
       {/* Header */}
       <div className="text-center">
-        <h1 className="text-2xl font-bold text-gray-900">Ativar automação em minutos</h1>
-        <p className="text-gray-500 text-sm mt-1">Configure seu atendimento automático em 5 passos simples.</p>
+        <h1 className="text-2xl font-bold text-gray-900">Ensine sua IA a atender do seu jeito</h1>
+        <p className="text-gray-500 text-sm mt-1">Configure o atendimento automatizado em poucos passos — sem escrever prompt.</p>
       </div>
 
       <StepIndicator current={step} />
@@ -317,55 +330,26 @@ export default function OnboardingPage() {
         </div>
       )}
 
-      {/* ── Step 4: Personalizar ── */}
+      {/* ── Step 4: Ensinar IA ── */}
       {step === 4 && (
         <div className="bg-white border border-gray-200 rounded-2xl p-6 space-y-5">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">4. Personalizar</h2>
-            <p className="text-gray-500 text-sm mt-0.5">Ajuste os dados do seu negócio e a mensagem de boas-vindas.</p>
+            <h2 className="text-lg font-semibold text-gray-900">4. Ensine sua IA</h2>
+            <p className="text-gray-500 text-sm mt-0.5">
+              Responda algumas perguntas simples e a IA aprende as regras do seu negócio — sem escrever prompt.
+            </p>
           </div>
 
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nome do negócio <span className="text-red-400">*</span></label>
-              <input
-                type="text"
-                value={companyName}
-                onChange={(e) => setCompanyName(e.target.value)}
-                placeholder="Ex: Studio Bella, Clínica Saúde Plena..."
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Horário de atendimento</label>
-              <input
-                type="text"
-                value={businessHours}
-                onChange={(e) => setBusinessHours(e.target.value)}
-                placeholder="Ex: Seg–Sex 9h–18h, Sáb 9h–13h"
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Mensagem de boas-vindas</label>
-              <textarea
-                value={welcomeMessage}
-                onChange={(e) => setWelcomeMessage(e.target.value)}
-                rows={3}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
-                placeholder="Mensagem enviada quando um novo cliente entrar em contato..."
-              />
-              <p className="text-xs text-gray-400 mt-1">{welcomeMessage.length}/200 caracteres</p>
-            </div>
-          </div>
+          <GuidedAiSetupChat
+            initialAnswers={{ niche: selectedNiche }}
+            onChange={setGuidedAnswers}
+          />
 
           <div className="flex justify-between pt-2">
             <button onClick={() => setStep(3)} className="px-4 py-2 text-gray-500 text-sm hover:text-gray-700">← Voltar</button>
             <button
               onClick={handlePublish}
-              disabled={!companyName.trim() || loading}
+              disabled={!guidedRequiredDone || loading}
               className="px-6 py-2.5 bg-green-600 text-white rounded-xl font-medium text-sm disabled:opacity-40 hover:bg-green-700 transition-colors flex items-center gap-2"
             >
               {loading ? (

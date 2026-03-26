@@ -70,24 +70,24 @@ function HeroSection() {
               <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-600" />
             </span>
             <span className="text-xs sm:text-sm font-bold text-blue-700 uppercase tracking-wide">
-              Infraestrutura Oficial Meta · Motor OpenAI
+              Configuração guiada · API Oficial Meta · Motor OpenAI
             </span>
           </div>
 
           {/* Headline */}
           <h1 className="text-5xl md:text-6xl lg:text-7xl font-extrabold text-gray-900 tracking-tight leading-[1.08] mb-6">
-            Automatize o atendimento
+            Ensine sua IA a atender
             <br className="hidden md:block" />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">
-              {" "}no WhatsApp com IA
+              {" "}do seu jeito
             </span>
           </h1>
 
           {/* Subheadline */}
           <p className="text-lg md:text-xl text-gray-600 leading-relaxed mb-10 max-w-2xl mx-auto font-medium">
-            Uma IA treinada com as regras do seu negócio que responde clientes em segundos,{" "}
-            <strong className="text-gray-900">qualifica leads e fecha vendas automaticamente</strong>{" "}
-            — 24 horas por dia, sem precisar aumentar o time.
+            Configure sua secretária virtual em minutos respondendo perguntas simples sobre o seu negócio —
+            {" "}<strong className="text-gray-900">sem escrever uma linha de prompt</strong>.
+            Sua IA aprende suas regras, atende, agenda e vende por você 24h por dia.
           </p>
 
           {/* CTAs */}
@@ -96,7 +96,7 @@ function HeroSection() {
               href="/register"
               className="w-full sm:w-auto text-base font-bold bg-blue-600 text-white px-8 py-4 rounded-xl shadow-xl shadow-blue-500/20 hover:bg-blue-700 hover:shadow-blue-500/30 transition-all hover:-translate-y-1"
             >
-              Ativar meu WhatsApp com IA
+              Configurar minha IA agora
             </Link>
             <a
               href="#como-funciona"
@@ -113,6 +113,12 @@ function HeroSection() {
                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
               </svg>
               Sem cartão de crédito
+            </span>
+            <span className="flex items-center gap-1.5">
+              <svg className="w-3.5 h-3.5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+              </svg>
+              Sem escrever prompt
             </span>
             <span className="flex items-center gap-1.5">
               <svg className="w-3.5 h-3.5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
@@ -343,32 +349,32 @@ function ComoFuncionaSection() {
   const etapas = [
     {
       num: "01",
-      titulo: "Cliente envia uma mensagem",
-      desc: "WhatsApp, Instagram DM ou Facebook Messenger — a mensagem chega em um único painel centralizado.",
+      titulo: "Conecte seu canal",
+      desc: "WhatsApp Business Oficial, Instagram ou Facebook — ative com autenticação oficial Meta em poucos cliques.",
       cor: "blue",
     },
     {
       num: "02",
-      titulo: "IA lê o contexto e responde",
-      desc: "Treinada com as regras do seu negócio, a IA entende a intenção, responde com precisão e mantém o tom da sua marca.",
+      titulo: "Ensine sua IA",
+      desc: "Responda perguntas simples sobre seu negócio: tom, ofertas, horários e diferenciais. Sem escrever prompt — a IA aprende sozinha.",
       cor: "indigo",
     },
     {
       num: "03",
-      titulo: "Qualifica, agenda ou vende",
-      desc: "Dependendo da intenção, a IA oferece produto, gera link de pagamento, agenda horário ou coleta dados do lead.",
+      titulo: "IA atende com as suas regras",
+      desc: "Sua IA responde clientes com o tom e as regras que você definiu — não um script engessado, mas uma assistente inteligente.",
       cor: "violet",
     },
     {
       num: "04",
-      titulo: "Time entra quando faz sentido",
-      desc: "Para exceções ou fechamentos estratégicos, o atendente assume a conversa com todo o histórico na tela.",
+      titulo: "Qualifica, agenda ou vende",
+      desc: "A IA oferece produtos, agenda horários, gera links de pagamento e coleta dados de leads — tudo dentro da conversa.",
       cor: "blue",
     },
     {
       num: "05",
-      titulo: "Você vê tudo no painel",
-      desc: "Métricas, funil de vendas, agendamentos e conversas — tudo rastreável, tudo auditável.",
+      titulo: "Time intervém quando faz sentido",
+      desc: "Para exceções ou fechamentos estratégicos, o atendente assume com todo o histórico na tela.",
       cor: "indigo",
     },
   ];
@@ -381,10 +387,10 @@ function ComoFuncionaSection() {
             Mecanismo
           </span>
           <h2 className="text-3xl md:text-5xl font-extrabold text-gray-900 mb-4">
-            Como sua IA trabalha por você
+            Do zero ao atendimento com IA configurada para você
           </h2>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Do primeiro contato até a venda fechada — a Variaty executa cada etapa com precisão e sem intervenção manual.
+            Ensine sua IA em minutos. Ela atende, agenda e vende com as regras do seu negócio — sem script engessado, sem depender de equipe técnica.
           </p>
         </div>
 
@@ -577,22 +583,22 @@ function AtivacaoSection() {
     {
       num: "1",
       titulo: "Conecte seus canais",
-      desc: "Vincule o WhatsApp Business, Instagram e Facebook com autenticação oficial Meta — em até 2 cliques.",
+      desc: "Vincule o WhatsApp Business Oficial, Instagram e Facebook com autenticação Meta — em até 2 cliques.",
     },
     {
       num: "2",
-      titulo: "Configure sua IA",
-      desc: "Escreva as regras do negócio, adicione produtos e serviços, e defina como a IA deve se comportar.",
+      titulo: "Ensine sua IA com chat guiado",
+      desc: "Responda perguntas simples: tom de voz, o que você oferece, como tratar preços e horários. Sem escrever prompt — a IA monta a configuração por você.",
     },
     {
       num: "3",
       titulo: "Ative o atendimento",
-      desc: "A IA assume a primeira linha de atendimento e começa a responder, qualificar e transacionar imediatamente.",
+      desc: "Sua IA começa a responder clientes com as regras do seu negócio imediatamente — sem script rígido, com inteligência real.",
     },
     {
       num: "4",
-      titulo: "Acompanhe os resultados",
-      desc: "Monitore conversas, intervenha quando necessário e visualize métricas em tempo real no painel.",
+      titulo: "Acompanhe e refine",
+      desc: "Veja conversas em tempo real, ajuste o comportamento da IA quando quiser e intervenha nos casos que precisam de atenção humana.",
     },
   ];
 
@@ -604,10 +610,10 @@ function AtivacaoSection() {
             Ativação
           </span>
           <h2 className="text-3xl md:text-5xl font-extrabold text-gray-900 mb-4">
-            De zero a operação automatizada em minutos
+            Sua IA configurada e operando em minutos
           </h2>
           <p className="text-lg text-gray-600">
-            Self-service, sem implantação demorada e sem precisar de equipe técnica.
+            Self-service, sem prompt manual, sem equipe técnica. Sua IA aprende o seu negócio pelo chat guiado.
           </p>
         </div>
 

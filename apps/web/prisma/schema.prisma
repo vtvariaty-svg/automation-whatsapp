@@ -19,6 +19,7 @@ model Tenant {
   whatsappToken             String?
   openaiKey                 String?
   aiPrompt                  String?                   @db.Text
+  aiGuidedSetup             Json?                     // structured guided-setup answers (merged into aiPrompt as managed block)
   welcomeMessage            String?                   @db.Text
   businessHours             String?
   setupStep                 Int                       @default(1)

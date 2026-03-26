@@ -26,7 +26,7 @@ export const leadEvent = (eventId: string, email?: string) => {
   }
 };
 
-export default function MetaPixel() {
+function PixelTracker() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -65,5 +65,15 @@ export default function MetaPixel() {
         />
       </noscript>
     </>
+  );
+}
+
+import { Suspense } from 'react';
+
+export default function MetaPixel() {
+  return (
+    <Suspense fallback={null}>
+      <PixelTracker />
+    </Suspense>
   );
 }

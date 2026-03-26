@@ -65,6 +65,7 @@ interface ControlCenterData {
   businessContext: { companyName: string; businessType: string; contactPhone: string; address: string };
   aiIdentity: { aiPrompt: string; businessHours: string };
   welcome: { message: string };
+  session: { timeoutHours: number };
   botPreset: { activeBotKey: string | null; botName: string | null; niche: string | null; tone: string | null; description: string | null; blueprint: string | null; emoji: string | null };
   operationalConfig: OperationalConfig;
   commercialBehavior: { products: ProductItem[] };
@@ -169,6 +170,7 @@ export default function AtendimentoIAPage() {
   const [businessCtx, setBusinessCtx] = useState({ companyName: "", businessType: "", contactPhone: "", address: "" });
   const [aiIdentity, setAiIdentity] = useState({ aiPrompt: "", businessHours: "" });
   const [welcome, setWelcome] = useState({ message: "" });
+  const [sessionConfig, setSessionConfig] = useState({ timeoutHours: 24 });
   const [handoff, setHandoff] = useState<HandoffConfig>({
     enabled: false, alertPhone: "", clientMessage: "", operatorMessage: "",
     cooldownMinutes: 60, maxAlertsPerConversation: 3, autoSetHuman: true,
@@ -223,6 +225,7 @@ export default function AtendimentoIAPage() {
         setBusinessCtx(d.businessContext);
         setAiIdentity(d.aiIdentity);
         setWelcome(d.welcome);
+        setSessionConfig(d.session || { timeoutHours: 24 });
         setHandoff(d.handoff);
         setServices(d.schedulingBehavior.services);
         setProducts(d.commercialBehavior.products);
@@ -669,6 +672,27 @@ export default function AtendimentoIAPage() {
             </div>
           )}
           <SaveBtn saving={saving.welcome} saved={saved.welcome} onClick={() => putSection("welcome", { welcome: { message: welcome.message.trim() === "" ? "__clear__" : welcome.message } })} />
+
+          {/* ── Session timeout ─────────────────────────────────────────────── */}
+          <div className="pt-4 border-t border-gray-100 space-y-2">
+            <label className="block text-sm font-semibold text-gray-700">Reinício de sessão após inatividade</label>
+            <p className="text-xs text-gray-500">
+              Após este período sem mensagens, o próximo contato do cliente inicia uma nova sessão:
+              boas-vindas são reenviadas e estados pendentes (agendamento, comercial) são limpos automaticamente.
+            </p>
+            <div className="flex items-center gap-2 mt-1">
+              <input
+                type="number"
+                min={1}
+                max={168}
+                value={sessionConfig.timeoutHours}
+                onChange={(e) => setSessionConfig({ timeoutHours: Math.max(1, Math.min(168, parseInt(e.target.value, 10) || 24)) })}
+                className="w-24 px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500/40 transition-all"
+              />
+              <span className="text-sm text-gray-500">horas (1 – 168)</span>
+              <SaveBtn saving={saving.sessionConfig} saved={saved.sessionConfig} onClick={() => putSection("sessionConfig", { session: sessionConfig })} />
+            </div>
+          </div>
         </div>
       </SectionCard>
 
@@ -956,7 +980,9 @@ export default function AtendimentoIAPage() {
               n: 1,
               label: "Mensagem de Boas-Vindas",
               active: !!welcome.message,
-              desc: welcome.message ? "Configurada — disparada apenas no primeiro contato" : "Não configurada",
+              desc: welcome.message
+                ? `Configurada — primeiro contato e após ${sessionConfig.timeoutHours}h de inatividade`
+                : "Não configurada",
               simulatable: true,
             },
             {

@@ -14,12 +14,13 @@ import { generateAIResponse } from '@/src/services/aiService';
 // @ts-ignore - Importing from JS/untyped service file
 import { sendWhatsAppMessage } from '@/src/services/whatsappService';
 // @ts-ignore - Importing from JS/untyped service file
-import { saveUserMessage, saveAIMessage, getConversationStatus, IdentityContext, isFirstInboundCustomerMessage } from '@/src/services/conversationService';
+import { saveUserMessage, saveAIMessage, getConversationStatus, IdentityContext, shouldTriggerWelcomeForInbound } from '@/src/services/conversationService';
 import { getTenantByPhoneId } from '@/src/services/tenantService';
 import { buildCustomerContext, upsertCustomerMemory, extractNameFromText } from '@/src/services/customerMemoryService';
 import { checkAutomationMatch, sendTemplateMessage } from '@/src/services/automationService';
 import { verifyAiLimits } from '@/src/services/billingService';
-import { handleAppointmentMessage, hasPendingAppointmentState, handleBookingFlow } from '@/src/services/appointmentBookingService';
+import { handleAppointmentMessage, hasPendingAppointmentState, handleBookingFlow, clearAllPendingAppointmentState } from '@/src/services/appointmentBookingService';
+import { clearCommercialState } from '@/lib/services/commercialStateService';
 import { resolveWhatsAppIdentity } from '@/lib/services/identityResolver';
 import { runCommercialOrchestrator } from '@/src/services/commercialOrchestratorService';
 import { detectExplicitRequest, detectAiLowConfidence, executeHandoff } from '@/src/services/handoffService';
@@ -170,14 +171,15 @@ async function buildAIContext(tenantId: string, from: string): Promise<string> {
 // ── Branch handlers ───────────────────────────────────────────────────────────
 
 /**
- * Handles the welcome message branch (first inbound message from a customer).
+ * Handles the welcome message branch.
+ * Fires on first-ever contact OR on session restart after inactivity timeout.
  * Returns true if the welcome was triggered (caller should stop processing).
  */
 async function handleWelcomeBranch(
   tenant: any,
   from: string,
   status: string,
-  isFirstInbound: boolean,
+  isNewSession: boolean,
   resolvedIdentityContext: IdentityContext | undefined
 ): Promise<boolean> {
   const welcomeTemplate = tenant.welcomeMessage?.trim() || null;
@@ -186,13 +188,13 @@ async function handleWelcomeBranch(
     channel: 'whatsapp',
     tenantId: tenant.id,
     customerPhone: maskPhone(from),
-    source: isFirstInbound && welcomeTemplate ? 'welcome_message' : isFirstInbound ? 'no_welcome_configured' : 'returning_customer',
-    firstContactDetected: isFirstInbound,
+    source: isNewSession && welcomeTemplate ? 'welcome_message' : isNewSession ? 'no_welcome_configured' : 'returning_customer',
+    newSessionDetected: isNewSession,
     customWelcomeExists: !!welcomeTemplate,
     welcomeLength: welcomeTemplate?.length ?? 0,
-  }, '[Webhook] First-interaction check');
+  }, '[Webhook] Session check');
 
-  if (!isFirstInbound) return false;
+  if (!isNewSession) return false;
 
   // FIRST CONTACT but NO welcome configured — AI will respond.
   // This is allowed (opt-in behavior) but logged loudly so operators notice.
@@ -417,14 +419,74 @@ async function handleAutomationBranch(
 // ── Main inbound message processor ───────────────────────────────────────────
 
 /**
+ * Resets transient session-scoped state when an inactivity timeout has expired.
+ *
+ * Cleared (transient — session-scoped):
+ *   - Pending appointment flow state (selecting_slot, confirming_cancel, selecting_new_slot)
+ *   - Commercial orchestrator state (active offer, pending checkout, etc.)
+ *   - Stale human/waiting conversation lock (agent took over days ago — no longer active)
+ *
+ * Preserved (permanent — never touched):
+ *   - Message history
+ *   - Customer memory (name, preferences, long-term notes)
+ *   - Contact records, orders, appointments, payments
+ *
+ * Human lock policy: a human/waiting status that is stale beyond the session timeout
+ * is treated as an expired takeover. The AI resumes on the next customer message.
+ * An operator who wants to maintain control must interact within the timeout window.
+ */
+async function resetStaleSessionState(tenantId: string, phone: string): Promise<void> {
+  const tasks: Promise<unknown>[] = [
+    clearAllPendingAppointmentState(tenantId, phone).catch((e) =>
+      console.error('[Webhook] resetStaleSessionState: clearAllPendingAppointmentState failed:', e)
+    ),
+    clearCommercialState(tenantId, phone).catch((e) =>
+      console.error('[Webhook] resetStaleSessionState: clearCommercialState failed:', e)
+    ),
+  ];
+
+  // Reset stale human/waiting lock so the AI pipeline can restart cleanly.
+  let hadStaleLock = false;
+  try {
+    const staleConv = await prisma.conversation.findFirst({
+      where: { tenantId, customerPhone: phone, channel: 'whatsapp' },
+      select: { id: true, status: true },
+    });
+    if (staleConv && (staleConv.status === 'human' || staleConv.status === 'waiting')) {
+      hadStaleLock = true;
+      tasks.push(
+        prisma.conversation.update({
+          where: { id: staleConv.id },
+          data: { status: 'ai' },
+        }).catch((e) =>
+          console.error('[Webhook] resetStaleSessionState: status reset failed:', e)
+        )
+      );
+    }
+  } catch (e) {
+    console.error('[Webhook] resetStaleSessionState: conversation lookup failed:', e);
+  }
+
+  await Promise.all(tasks);
+
+  channelLog.info({
+    channel: 'whatsapp',
+    tenantId,
+    customerPhone: maskPhone(phone),
+    source: 'session_timeout_reset',
+    hadStaleLock,
+  }, '[Webhook] Session expired — transient state cleared, new session starting');
+}
+
+/**
  * Processes a single inbound customer text message after all guards have passed
  * (idempotency, tenant resolution, channel check, self-echo guard).
  *
  * Orchestration order — first branch that fires wins:
  *   A. Identity resolution (done before this function)
  *   B. Message persistence
- *   C. Welcome message (first ever contact)
- *   D. Status gate (human/waiting → ignore AI)
+ *   C. Welcome message (first contact OR session restart after inactivity timeout)
+ *   D. Status gate (human/waiting → ignore AI; stale locks are reset by session timeout before this)
  *   E. Explicit handoff request
  *   F. Pending business-state flows (selecting_slot, confirming_cancel, selecting_new_slot)
  *   G. Keyword automation (only after pending states are cleared)
@@ -441,9 +503,17 @@ async function processInboundMessage(
 ): Promise<void> {
   const phoneId = resolveReplyPhoneId(tenant);
 
-  // isFirstInbound MUST be checked BEFORE saveUserMessage because
-  // isFirstInboundCustomerMessage counts existing inbound records.
-  const isFirstInbound = await isFirstInboundCustomerMessage(tenant.id, from, 'whatsapp');
+  // shouldTriggerWelcomeForInbound MUST be called BEFORE saveUserMessage
+  // because it counts existing inbound records and reads lastMessageAt.
+  const sessionTimeoutHours: number = (tenant as any).sessionTimeoutHours ?? 24;
+  const { shouldTrigger: isNewServiceSession, sessionExpired } =
+    await shouldTriggerWelcomeForInbound(tenant.id, from, 'whatsapp', sessionTimeoutHours);
+
+  // If the session expired due to inactivity, reset all transient state BEFORE
+  // saving the new message so the rest of the pipeline sees a clean slate.
+  if (sessionExpired) {
+    await resetStaleSessionState(tenant.id, from);
+  }
 
   let status = await getConversationStatus(from, tenant.id);
   if (status === 'closed') status = 'open';
@@ -453,18 +523,19 @@ async function processInboundMessage(
 
   // ── C. Welcome message ────────────────────────────────────────────────────
   const welcomeTriggered = await handleWelcomeBranch(
-    tenant, from, status, isFirstInbound, resolvedIdentityContext
+    tenant, from, status, isNewServiceSession, resolvedIdentityContext
   );
   if (welcomeTriggered) return;
 
-  if (isFirstInbound) {
+  if (isNewServiceSession) {
     channelLog.warn({
       channel: 'whatsapp',
       tenantId: tenant.id,
       customerPhone: maskPhone(from),
       hasWelcomeConfigured: !!(tenant.welcomeMessage?.trim()),
-      source: 'first_contact_no_welcome',
-    }, '[Webhook] First contact — welcome branch skipped (no welcome configured). AI/automation pipeline will respond.');
+      sessionExpired,
+      source: sessionExpired ? 'session_restart_no_welcome' : 'first_contact_no_welcome',
+    }, '[Webhook] New service session — welcome branch skipped (no welcome configured). AI/automation pipeline will respond.');
   }
 
   // ── D. Status gate ────────────────────────────────────────────────────────

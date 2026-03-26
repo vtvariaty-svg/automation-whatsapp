@@ -158,6 +158,30 @@ export async function hasPendingAppointmentState(tenantId: string, phone: string
   return pending !== null;
 }
 
+/**
+ * Clears ALL pending appointment state keys for a customer (pendingBooking,
+ * pendingCancel, pendingReschedule). Called when a new session starts after
+ * an inactivity timeout so stale mid-flow state cannot hijack a fresh session.
+ * Preserves all other CustomerMemory fields (name, preferences, history notes).
+ */
+export async function clearAllPendingAppointmentState(tenantId: string, phone: string): Promise<void> {
+  try {
+    const raw = await getRawNotes(tenantId, phone);
+    let changed = false;
+    for (const key of ['pendingBooking', 'pendingCancel', 'pendingReschedule'] as PendingKey[]) {
+      if (key in raw) { delete raw[key]; changed = true; }
+    }
+    if (!changed) return; // nothing stored — skip write
+    await prisma.customerMemory.upsert({
+      where: { tenantId_contactId: { tenantId, contactId: phone } },
+      create: { tenantId, contactId: phone, notes: JSON.stringify(raw) },
+      update: { notes: JSON.stringify(raw) },
+    });
+  } catch (err) {
+    console.error('[AppointmentBooking] clearAllPendingAppointmentState error:', err);
+  }
+}
+
 // ─── Main handler ─────────────────────────────────────────────────────────────
 
 /**

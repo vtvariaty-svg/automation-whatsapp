@@ -24,6 +24,7 @@ model Tenant {
   setupStep                 Int                       @default(1)
   setupCompleted            Boolean                   @default(false)
   activeBotKey              String?                   // bot ativo via marketplace (fonte de verdade)
+  sessionTimeoutHours       Int                       @default(24) // inactivity window before session restart (1–168h)
   createdAt                 DateTime                  @default(now())
   // M0 – omnichannel
   enabledChannels           String? // comma-separated: "whatsapp,instagram"

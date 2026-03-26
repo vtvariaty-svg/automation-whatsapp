@@ -396,8 +396,7 @@ export async function takeoverConversation(phoneNumber: string, tenantId: string
 
 /**
  * Detecta se esta é a primeiríssima mensagem inbound recebida de um cliente em um canal específico.
- * Garante que a mensagem de boas vindas só seja disparada uma vez na vida útil daquele contato, ou
- * valida precisamente ausência total de inbounds anteriores caso haja quebras de conversas no BD.
+ * @deprecated Use shouldTriggerWelcomeForInbound which also handles session timeout.
  */
 export async function isFirstInboundCustomerMessage(tenantId: string, customerPhone: string, channel: string = 'whatsapp'): Promise<boolean> {
   try {
@@ -414,8 +413,65 @@ export async function isFirstInboundCustomerMessage(tenantId: string, customerPh
     return count === 0;
   } catch (error) {
     console.error('[ConversationService] Erro ao contar inbounds messages para firstInteraction:', error);
-    // Em caso de erro do banco de dados, assumir primeiro contato (true).
-    // É mais seguro arriscar uma boas-vindas duplicada do que deixar o cliente sem resposta.
     return true;
+  }
+}
+
+/**
+ * Determines whether the welcome flow should trigger for an inbound message,
+ * accounting for both first-ever contact and session restart after inactivity.
+ *
+ * MUST be called BEFORE saveUserMessage (counts existing inbound records).
+ *
+ * Returns:
+ *   { shouldTrigger: true,  sessionExpired: false } → first ever contact (no prior inbounds)
+ *   { shouldTrigger: true,  sessionExpired: true  } → session expired due to inactivity
+ *   { shouldTrigger: false, sessionExpired: false } → returning customer within active session
+ *
+ * On DB error, defaults to { shouldTrigger: true, sessionExpired: false } —
+ * safer to risk a duplicate welcome than to leave a customer without a response.
+ */
+export async function shouldTriggerWelcomeForInbound(
+  tenantId: string,
+  customerPhone: string,
+  channel: string = 'whatsapp',
+  sessionTimeoutHours: number = 24,
+): Promise<{ shouldTrigger: boolean; sessionExpired: boolean }> {
+  try {
+    const conversation = await prisma.conversation.findFirst({
+      where: { tenantId, customerPhone, channel },
+      select: { lastMessageAt: true },
+    });
+
+    // No conversation record yet — guaranteed first contact.
+    if (!conversation) {
+      return { shouldTrigger: true, sessionExpired: false };
+    }
+
+    // Count all-time inbound messages for this contact.
+    const inboundCount = await prisma.message.count({
+      where: {
+        direction: 'inbound',
+        channel,
+        conversation: { tenantId, customerPhone },
+      },
+    });
+
+    // Zero inbound messages ever — first contact (edge case: conversation exists but no inbounds).
+    if (inboundCount === 0) {
+      return { shouldTrigger: true, sessionExpired: false };
+    }
+
+    // Check inactivity: if last activity is older than the configured timeout, start a new session.
+    const timeoutMs = sessionTimeoutHours * 60 * 60 * 1000;
+    if (Date.now() - conversation.lastMessageAt.getTime() > timeoutMs) {
+      return { shouldTrigger: true, sessionExpired: true };
+    }
+
+    // Active returning customer — no session restart needed.
+    return { shouldTrigger: false, sessionExpired: false };
+  } catch (error) {
+    console.error('[ConversationService] shouldTriggerWelcomeForInbound error — defaulting to first contact:', error);
+    return { shouldTrigger: true, sessionExpired: false };
   }
 }

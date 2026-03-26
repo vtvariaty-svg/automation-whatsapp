@@ -50,6 +50,9 @@ export async function GET(req: Request) {
       welcome: {
         message: (tenant as any).welcomeMessage || '',
       },
+      session: {
+        timeoutHours: (tenant as any).sessionTimeoutHours ?? 24,
+      },
       botPreset: {
         activeBotKey,
         botName: activeBot?.name || null,
@@ -181,6 +184,17 @@ export async function PUT(req: Request) {
               upsert: { create: configData, update: configData },
             },
           },
+        });
+      }
+    }
+
+    // Session timeout
+    if (body.session !== undefined) {
+      const hours = body.session?.timeoutHours;
+      if (typeof hours === 'number' && hours >= 1 && hours <= 168) {
+        await prisma.tenant.update({
+          where: { id: auth.tenantId },
+          data: { sessionTimeoutHours: hours } as any,
         });
       }
     }

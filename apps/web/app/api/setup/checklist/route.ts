@@ -37,8 +37,9 @@ function getContextualStepDefs(plan: string, businessType: string | null): StepD
 
   // Paid plans
   steps.push(
-    { id: 'whatsapp',  title: 'Conectar WhatsApp',  description: 'Vincule o WhatsApp Business para atendimento automático.',    href: '/onboarding/step/2',       cta: 'Conectar WhatsApp',  priority: 2 },
-    { id: 'instagram', title: 'Conectar Instagram', description: 'Vincule sua conta para receber DMs automaticamente.',          href: '/dashboard/integrations',  cta: 'Conectar Instagram', priority: 3 },
+    { id: 'welcome',   title: 'Mensagem de boas-vindas', description: 'Configure a mensagem enviada automaticamente no primeiro contato pelo WhatsApp.', href: '/dashboard/atendimento-ia#welcome', cta: 'Configurar boas-vindas', priority: 2 },
+    { id: 'whatsapp',  title: 'Conectar WhatsApp',  description: 'Vincule o WhatsApp Business para atendimento automático.',    href: '/onboarding/step/2',       cta: 'Conectar WhatsApp',  priority: 3 },
+    { id: 'instagram', title: 'Conectar Instagram', description: 'Vincule sua conta para receber DMs automaticamente.',          href: '/dashboard/integrations',  cta: 'Conectar Instagram', priority: 4 },
   );
 
   if (plan === 'standard' || plan === 'trial') {
@@ -150,6 +151,7 @@ async function buildCompletionMap(tenantId: string): Promise<Record<string, bool
         whatsappToken: true,
         facebookToken: true,
         operationalStatus: true,
+        welcomeMessage: true,
       },
     }),
     prisma.instagramConnection.findUnique({ where: { tenantId }, select: { status: true } }),
@@ -177,6 +179,7 @@ async function buildCompletionMap(tenantId: string): Promise<Record<string, bool
 
   return {
     profile: !!(tenant?.name?.trim() && tenant?.businessType?.trim()),
+    welcome: !!tenant?.welcomeMessage?.trim(),
     whatsapp: hasWhatsapp,
     instagram: instagramConn?.status === 'connected',
     facebook: tenant?.facebookToken != null,
@@ -272,16 +275,16 @@ async function buildBotSetup(tenantId: string): Promise<BotSetup | null> {
       id: 'bot_prompt',
       title: 'Prompt da IA revisado',
       description: 'Revise e personalize o prompt gerado pelo bot.',
-      href: '/dashboard/bots?tab=comportamento',
+      href: '/dashboard/atendimento-ia#ai-identity',
       cta: 'Revisar prompt',
       done: !!tenant.aiPrompt?.trim(),
     },
     {
       id: 'bot_welcome',
-      title: 'Mensagem de boas-vindas revisada',
-      description: 'Revise a mensagem de boas-vindas configurada pelo bot.',
-      href: '/dashboard/bots?tab=comportamento',
-      cta: 'Revisar boas-vindas',
+      title: 'Mensagem de boas-vindas configurada',
+      description: 'Configure a mensagem enviada no primeiro contato — obrigatória para produção. Bots não definem mais esta mensagem automaticamente.',
+      href: '/dashboard/atendimento-ia#welcome',
+      cta: 'Configurar boas-vindas',
       done: !!tenant.welcomeMessage?.trim(),
     },
   ];

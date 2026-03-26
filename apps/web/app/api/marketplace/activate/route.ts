@@ -70,20 +70,15 @@ export async function POST(request: Request) {
       'REGRA GERAL: Responda sempre em português brasileiro de forma clara e objetiva.',
     ].join('\n');
 
-    // 4. Atualizar tenant com novo prompt, welcome e activeBotKey
-    // IMPORTANTE: businessType não é alterado aqui — pertence ao onboarding do tenant
-    const updateData: any = {
-      aiPrompt: systemPrompt,
-      activeBotKey: bot.id,
-    };
-
-    if (!tenant.welcomeMessage || tenant.welcomeMessage.trim() === '') {
-      updateData.welcomeMessage = bot.welcomeMessage;
-    }
-
+    // 4. Atualizar tenant com novo prompt e activeBotKey
+    // welcomeMessage é de propriedade exclusiva do operador — bot activation nunca a escreve.
+    // IMPORTANTE: businessType não é alterado aqui — pertence ao onboarding do tenant.
     await prisma.tenant.update({
       where: { id: auth.tenantId },
-      data: updateData,
+      data: {
+        aiPrompt: systemPrompt,
+        activeBotKey: bot.id,
+      },
     });
 
     // 5. Calcular itens pendentes para o checklist de ativação
@@ -91,6 +86,7 @@ export async function POST(request: Request) {
     const hasChannel = !!(tenant.whatsappToken || tenant.instagramPageId || tenant.facebookPageId);
     if (!hasChannel) pendingSetup.push('channel');
     if (!tenant.businessHours?.trim()) pendingSetup.push('business_hours');
+    if (!tenant.welcomeMessage?.trim()) pendingSetup.push('welcome_message');
     if (bot.suggestedTools.includes('services') || bot.suggestedTools.includes('serviços')) pendingSetup.push('services');
     if (bot.suggestedTools.includes('produtos') || bot.suggestedTools.includes('products')) pendingSetup.push('products');
 

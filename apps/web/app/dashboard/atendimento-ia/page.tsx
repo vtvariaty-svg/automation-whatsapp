@@ -638,6 +638,19 @@ export default function AtendimentoIAPage() {
       {/* ── 4. Mensagem de Boas-Vindas ────────────────────────────────────────── */}
       <SectionCard id="welcome" icon="👋" title="Mensagem de Boas-Vindas" subtitle="Enviada automaticamente no primeiro contato do cliente">
         <div className="space-y-4">
+          {!welcome.message && (
+            <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+              <span className="text-base shrink-0">🚨</span>
+              <div>
+                <p className="text-sm font-semibold text-red-800">Setup incompleto — boas-vindas não configuradas</p>
+                <p className="text-xs text-red-600 mt-0.5">
+                  O primeiro contato de cada cliente não receberá resposta automática.
+                  Configure esta mensagem antes de ir para produção.
+                  Bots e presets não definem mais esta mensagem automaticamente — ela é de sua responsabilidade.
+                </p>
+              </div>
+            </div>
+          )}
           <textarea
             rows={4}
             value={welcome.message}

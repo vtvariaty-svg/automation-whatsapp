@@ -6,11 +6,15 @@ import { businessTemplates } from "./templates";
  *
  * forcePrompt = false (padrão — onboarding):
  *   - Serviços e automações só são criados se o tenant ainda não tiver nenhum
- *   - Prompt e welcomeMessage são sempre gravados (primeira configuração)
+ *   - Prompt é sempre gravado (primeira configuração)
  *
  * forcePrompt = true (re-aplicar pelo painel de configurações):
- *   - Prompt e welcomeMessage são sempre atualizados
+ *   - Prompt é sempre atualizado
  *   - Serviços e automações existentes são preservados (não são apagados nem duplicados)
+ *
+ * welcomeMessage NÃO é escrita por esta função.
+ * A mensagem de boas-vindas é de propriedade exclusiva do operador,
+ * configurada na Central de Atendimento IA.
  */
 export async function applyBusinessTemplate(
   tenantId: string,
@@ -58,7 +62,8 @@ export async function applyBusinessTemplate(
     });
   }
 
-  // 3. Prompt e mensagem de boas-vindas — sempre atualiza (onboarding e re-apply)
+  // 3. Prompt da IA — sempre atualiza (onboarding e re-apply)
+  // welcomeMessage não é escrita aqui: é de propriedade exclusiva do operador.
   const systemPrompt = [
     template.defaultPrompt,
     "",
@@ -70,16 +75,11 @@ export async function applyBusinessTemplate(
     "REGRA GERAL: Responda sempre em português brasileiro de forma clara e objetiva.",
   ].join("\n");
 
-  const welcomeMessage = template.welcomeMessage
-    .replace("{company_name}", companyName);
-
   await prisma.tenant.update({
     where: { id: tenantId },
     data: {
       aiPrompt: systemPrompt,
-      welcomeMessage,
       businessType,
-      ...(forcePrompt ? {} : {}), // campo reservado para extensões futuras
     }
   });
 

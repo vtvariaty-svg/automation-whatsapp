@@ -655,7 +655,7 @@ export default function AtendimentoIAPage() {
               {welcome.message}
             </div>
           )}
-          <SaveBtn saving={saving.welcome} saved={saved.welcome} onClick={() => putSection("welcome", { welcome })} />
+          <SaveBtn saving={saving.welcome} saved={saved.welcome} onClick={() => putSection("welcome", { welcome: { message: welcome.message.trim() === "" ? "__clear__" : welcome.message } })} />
         </div>
       </SectionCard>
 
@@ -936,48 +936,65 @@ export default function AtendimentoIAPage() {
       </SectionCard>
 
       {/* ── 9. Ordem de Execução ──────────────────────────────────────────────── */}
-      <SectionCard id="runtime" icon="🔄" title="Ordem de Execução" subtitle="Sequência de camadas que o sistema percorre para cada mensagem recebida">
+      <SectionCard id="runtime" icon="🔄" title="Ordem de Execução" subtitle="Sequência exata de camadas que o sistema percorre para cada mensagem recebida">
         <div className="space-y-2">
           {[
             {
               n: 1,
               label: "Mensagem de Boas-Vindas",
               active: !!welcome.message,
-              desc: welcome.message ? "Configurada" : "Não configurada",
+              desc: welcome.message ? "Configurada — disparada apenas no primeiro contato" : "Não configurada",
+              simulatable: true,
             },
             {
               n: 2,
-              label: "Automações Determinísticas",
-              active: activeAutomations > 0,
-              desc: `${activeAutomations} ativa${activeAutomations !== 1 ? "s" : ""}`,
+              label: "Pedido Explícito de Atendente",
+              active: handoff.enabled,
+              desc: handoff.enabled ? "Ativo — verificado antes de qualquer automação" : "Handoff desativado",
+              simulatable: true,
             },
             {
               n: 3,
-              label: "Fluxo de Agendamento",
+              label: "Estado de Agendamento Pendente",
+              active: schedulingMeta.enabled,
+              desc: schedulingMeta.enabled
+                ? "Ativo — cliente já em fluxo de agendamento tem prioridade sobre automações"
+                : "Sem serviços ativos",
+              simulatable: false,
+            },
+            {
+              n: 4,
+              label: "Automações Determinísticas",
+              active: activeAutomations > 0,
+              desc: `${activeAutomations} ativa${activeAutomations !== 1 ? "s" : ""} — palavra-chave ou regex exata`,
+              simulatable: true,
+            },
+            {
+              n: 5,
+              label: "Fluxo de Agendamento (nova intenção)",
               active: schedulingMeta.enabled,
               desc: schedulingMeta.enabled
                 ? schedulingMeta.mode === "com_profissionais" ? "Com profissionais" : "Disponibilidade global"
                 : "Sem serviços ativos",
-            },
-            {
-              n: 4,
-              label: "Orquestrador Comercial",
-              active: activeProducts > 0,
-              desc: `${activeProducts} produto${activeProducts !== 1 ? "s" : ""} ativo${activeProducts !== 1 ? "s" : ""}`,
-            },
-            {
-              n: 5,
-              label: "Resposta da IA (Fallback)",
-              active: !!aiIdentity.aiPrompt,
-              desc: aiIdentity.aiPrompt ? "Prompt configurado" : "Sem prompt configurado",
+              simulatable: true,
             },
             {
               n: 6,
-              label: "Handoff Humano",
-              active: handoff.enabled,
-              desc: handoff.enabled ? "Ativo" : "Desativado",
+              label: "Orquestrador Comercial",
+              active: activeProducts > 0,
+              desc: `${activeProducts} produto${activeProducts !== 1 ? "s" : ""} ativo${activeProducts !== 1 ? "s" : ""}`,
+              simulatable: true,
             },
-          ].map(({ n, label, active, desc }) => (
+            {
+              n: 7,
+              label: "Resposta da IA (Fallback)",
+              active: !!aiIdentity.aiPrompt,
+              desc: aiIdentity.aiPrompt
+                ? "Prompt configurado — IA responde. Baixa confiança pode acionar handoff como efeito colateral."
+                : "Sem prompt — resposta genérica",
+              simulatable: true,
+            },
+          ].map(({ n, label, active, desc, simulatable }) => (
             <div key={n} className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 bg-gray-50/50">
               <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${active ? "bg-[#4f46e5] text-white" : "bg-gray-200 text-gray-500"}`}>
                 {n}
@@ -986,12 +1003,20 @@ export default function AtendimentoIAPage() {
                 <p className="text-sm font-medium text-gray-900">{label}</p>
                 <p className="text-xs text-gray-400">{desc}</p>
               </div>
-              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${active ? "bg-emerald-100 text-emerald-700" : "bg-gray-200 text-gray-500"}`}>
-                {active ? "Ativo" : "Inativo"}
-              </span>
+              <div className="flex items-center gap-1.5 shrink-0">
+                {!simulatable && (
+                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-600">estado vivo</span>
+                )}
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${active ? "bg-emerald-100 text-emerald-700" : "bg-gray-200 text-gray-500"}`}>
+                  {active ? "Ativo" : "Inativo"}
+                </span>
+              </div>
             </div>
           ))}
         </div>
+        <p className="text-xs text-gray-400 mt-3">
+          A camada de handoff humano não é uma etapa terminal — ela opera como efeito colateral: por pedido explícito (camada 2), por baixa confiança da IA (após camada 7), ou por condições configuradas. Use a simulação abaixo para testar o roteamento.
+        </p>
       </SectionCard>
 
       {/* ── 10. Simulação ─────────────────────────────────────────────────────── */}

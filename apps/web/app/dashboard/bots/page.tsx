@@ -112,7 +112,6 @@ function BotsIAContent() {
         <MeuBotTab
           activeBotId={activeBotId}
           onGoMarketplace={() => setTab("marketplace")}
-          onGoComportamento={() => setTab("comportamento")}
         />
       )}
       {tab === "comportamento" && <ComportamentoTab user={user} />}
@@ -186,11 +185,9 @@ function MarketplaceTab({
 function MeuBotTab({
   activeBotId,
   onGoMarketplace,
-  onGoComportamento,
 }: {
   activeBotId: string | null;
   onGoMarketplace: () => void;
-  onGoComportamento: () => void;
 }) {
   const [copied, setCopied] = useState<string | null>(null);
 
@@ -241,12 +238,12 @@ function MeuBotTab({
           </div>
           <div className="flex flex-col items-end gap-2">
             <span className="px-3 py-1 bg-white/20 text-white text-xs font-semibold rounded-full">ativo</span>
-            <button
-              onClick={onGoComportamento}
+            <Link
+              href="/dashboard/atendimento-ia#ai-identity"
               className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white text-xs font-semibold rounded-xl transition-all"
             >
-              Editar comportamento →
-            </button>
+              Editar na Central →
+            </Link>
           </div>
         </div>
       </div>

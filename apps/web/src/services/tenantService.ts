@@ -61,16 +61,18 @@ export async function updateTenantAISettings(id: string, { ai_prompt, welcome_me
     if (ai_prompt !== undefined)      data.aiPrompt      = ai_prompt      || null;
     if (business_hours !== undefined)  data.businessHours  = business_hours || null;
 
-    // welcomeMessage: only update when a real non-empty value is provided.
-    // Empty string from the UI (e.g., unloaded form saved early) must NOT overwrite a valid welcome.
+    // welcomeMessage rules:
+    //   '__clear__' → explicit intentional clear from the Central UI → set null
+    //   non-empty string → save as provided
+    //   empty string / null → preserve existing (accidental-save guard for other callers)
     if (welcome_message !== undefined) {
       const trimmed = welcome_message?.trim();
-      if (trimmed) {
+      if (trimmed === '__clear__') {
+        data.welcomeMessage = null;
+      } else if (trimmed) {
         data.welcomeMessage = trimmed;
-      } else {
-        // Empty string submitted — preserve existing value. Log so operators can trace.
-        console.warn(`[TenantService] updateTenantAISettings: welcome_message submitted as empty for tenant ${id} — preserving existing value. To explicitly clear, send '__clear__'.`);
       }
+      // empty string → no-op; existing value preserved silently
     }
 
     const tenant = await prisma.tenant.update({ where: { id }, data });

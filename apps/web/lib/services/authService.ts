@@ -34,7 +34,17 @@ export const registerUser = async (name: string, email: string, passwordPlain: s
 
   const tenant = await prisma.tenant.create({
     data: {
-      name: `${name}'s Workspace`
+      name: `${name}'s Workspace`,
+      businessConfig: {
+        create: {
+          address: '',
+          openingHours: '',
+          timezone: 'America/Sao_Paulo',
+          templateBookingConfirmed: null,
+          templateReminder24h: null,
+          templateReminder2h: null,
+        }
+      }
     }
   });
 

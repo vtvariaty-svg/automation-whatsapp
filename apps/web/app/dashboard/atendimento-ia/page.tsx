@@ -66,7 +66,13 @@ interface OperationalConfig {
 
 interface ControlCenterData {
   businessContext: { companyName: string; businessType: string; contactPhone: string; address: string };
-  aiIdentity: { aiPrompt: string; businessHours: string };
+  aiIdentity: { 
+    aiPrompt: string; 
+    businessHours: string;
+    presetPromptPreview?: string | null;
+    guidedPromptPreview?: string | null;
+    compiledPromptPreview?: string | null;
+  };
   welcome: { message: string };
   session: { timeoutHours: number };
   botPreset: { activeBotKey: string | null; botName: string | null; niche: string | null; tone: string | null; description: string | null; blueprint: string | null; emoji: string | null };
@@ -164,7 +170,13 @@ export default function AtendimentoIAPage() {
 
   // Section states
   const [businessCtx, setBusinessCtx] = useState({ companyName: "", businessType: "", contactPhone: "", address: "" });
-  const [aiIdentity, setAiIdentity] = useState({ aiPrompt: "", businessHours: "" });
+  const [aiIdentity, setAiIdentity] = useState({ 
+    aiPrompt: "", 
+    businessHours: "",
+    presetPromptPreview: null as string | null,
+    guidedPromptPreview: null as string | null,
+    compiledPromptPreview: ""
+  });
   const [welcome, setWelcome] = useState({ message: "" });
   const [sessionConfig, setSessionConfig] = useState({ timeoutHours: 24 });
   const [handoff, setHandoff] = useState<HandoffConfig>({
@@ -234,7 +246,13 @@ export default function AtendimentoIAPage() {
         }
 
         setBusinessCtx(d.businessContext);
-        setAiIdentity(d.aiIdentity);
+        setAiIdentity({
+          aiPrompt: d.aiIdentity.aiPrompt,
+          businessHours: d.aiIdentity.businessHours,
+          presetPromptPreview: d.aiIdentity.presetPromptPreview ?? null,
+          guidedPromptPreview: d.aiIdentity.guidedPromptPreview ?? null,
+          compiledPromptPreview: d.aiIdentity.compiledPromptPreview ?? ""
+        });
         setWelcome(d.welcome);
         setSessionConfig(d.session || { timeoutHours: 24 });
         setHandoff(d.handoff);
@@ -418,7 +436,13 @@ export default function AtendimentoIAPage() {
     if (res?.ok) {
       const d: ControlCenterData = await res.json();
       setBusinessCtx(d.businessContext);
-      setAiIdentity(d.aiIdentity);
+      setAiIdentity({
+        aiPrompt: d.aiIdentity.aiPrompt,
+        businessHours: d.aiIdentity.businessHours,
+        presetPromptPreview: d.aiIdentity.presetPromptPreview ?? null,
+        guidedPromptPreview: d.aiIdentity.guidedPromptPreview ?? null,
+        compiledPromptPreview: d.aiIdentity.compiledPromptPreview ?? ""
+      });
       setWelcome(d.welcome);
       setSessionConfig(d.session || { timeoutHours: 24 });
       setHandoff(d.handoff);
@@ -770,8 +794,25 @@ export default function AtendimentoIAPage() {
       {/* ── 3. Identidade da IA ───────────────────────────────────────────────── */}
       <SectionCard id="ai-identity" icon="💬" title="Identidade da IA" subtitle="Prompt base e contexto de horários que orientam as respostas da IA">
         <div className="space-y-4">
+          
+          {/* Preset Preview */}
+          {aiIdentity.presetPromptPreview && (
+            <div className="bg-amber-50/50 border border-amber-200/50 rounded-xl p-4 space-y-1.5">
+              <p className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Prompt do Preset Ativo (Read-only)</p>
+              <p className="text-xs text-amber-800 leading-relaxed italic line-clamp-4">{aiIdentity.presetPromptPreview}</p>
+            </div>
+          )}
+
+          {/* Guided Preview */}
+          {aiIdentity.guidedPromptPreview && (
+            <div className="bg-emerald-50/50 border border-emerald-200/50 rounded-xl p-4 space-y-1.5">
+              <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Prompt do Guided Setup (Read-only)</p>
+              <p className="text-xs text-emerald-800 leading-relaxed italic line-clamp-4">{aiIdentity.guidedPromptPreview}</p>
+            </div>
+          )}
+
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Prompt Base da IA</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Prompt Manual da IA</label>
             <textarea
               rows={6}
               value={aiIdentity.aiPrompt}
@@ -779,8 +820,26 @@ export default function AtendimentoIAPage() {
               placeholder="Ex: Você é Maria, assistente virtual da Boutique Fashion. Seja educada, simpática e ajude os clientes com informações sobre produtos, preços e disponibilidade."
               className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20 focus:border-[#4f46e5]/40 transition-all resize-none leading-relaxed"
             />
-            <p className="text-xs text-gray-400 mt-1">💡 Quanto mais detalhado o prompt, melhor o atendimento.</p>
+            <p className="text-[11px] text-gray-500 mt-1.5">
+              💡 O preset do bot ativo e o guided setup são aplicados separadamente. Este campo edita apenas a <b>camada manual</b>.
+            </p>
           </div>
+
+          {/* Compiled Preview Collapse */}
+          {aiIdentity.compiledPromptPreview && (
+            <details className="group border border-gray-100 rounded-xl overflow-hidden bg-gray-50/50">
+              <summary className="flex items-center justify-between px-4 py-2 cursor-pointer hover:bg-gray-100/50 transition-colors list-none select-none">
+                <span className="text-xs font-semibold text-gray-600">Ver Prompt Final Compilado (Avançado)</span>
+                <span className="text-gray-400 group-open:rotate-180 transition-transform">↓</span>
+              </summary>
+              <div className="p-4 border-t border-gray-200 bg-white">
+                <pre className="text-[10px] font-mono text-gray-500 whitespace-pre-wrap leading-relaxed max-h-[300px] overflow-auto">
+                  {aiIdentity.compiledPromptPreview}
+                </pre>
+              </div>
+            </details>
+          )}
+
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">Horários e Regras de Contexto</label>
             <textarea

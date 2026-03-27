@@ -53,6 +53,15 @@ export async function GET(req: Request) {
       aiIdentity: {
         // Expose only the manual layer — PRESET and GUIDED blocks are managed separately
         aiPrompt: extractPromptWithoutManagedBlocks((tenant as any).aiPrompt),
+        presetPromptPreview: extractManagedBlock((tenant as any).aiPrompt, PRESET_BLOCK_START, PRESET_BLOCK_END)
+          ?.replace(PRESET_BLOCK_START, '')
+          ?.replace(PRESET_BLOCK_END, '')
+          ?.trim() || null,
+        guidedPromptPreview: extractManagedBlock((tenant as any).aiPrompt, '[GUIDED_SETUP_START]', '[GUIDED_SETUP_END]')
+          ?.replace('[GUIDED_SETUP_START]', '')
+          ?.replace('[GUIDED_SETUP_END]', '')
+          ?.trim() || null,
+        compiledPromptPreview: (tenant as any).aiPrompt || '',
         businessHours: (tenant as any).businessHours || '',
       },
       welcome: {

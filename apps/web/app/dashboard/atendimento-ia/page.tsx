@@ -364,6 +364,16 @@ export default function AtendimentoIAPage() {
       });
       const d = await res.json();
       if (res.ok && d.success) {
+        // Clear local storage for guided setup if necessary
+        if (scope === "guided_setup" || scope === "all") {
+          const persistKey = user?.tenantId ? `guided_ai_setup_draft:${user.tenantId}` : undefined;
+          if (persistKey) {
+            localStorage.removeItem(persistKey);
+          }
+          setInitialGuidedSetup({});
+          latestGuidedAnswers.current = {};
+        }
+
         await reloadAll();
         setResetFeedback({ type: "ok", text: "Resetado com sucesso." });
         setTimeout(() => setResetFeedback(null), 4000);

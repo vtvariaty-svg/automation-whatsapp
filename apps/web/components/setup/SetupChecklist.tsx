@@ -350,8 +350,8 @@ export default function SetupChecklist() {
       {/* All done CTA */}
       {allDone && (
         <div className="bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-200/60 rounded-2xl p-6 text-center">
-          <p className="text-lg font-extrabold text-emerald-800 mb-1">Setup completo!</p>
-          <p className="text-sm text-emerald-700 mb-4">Sua plataforma está configurada e pronta para operar.</p>
+          <p className="text-lg font-extrabold text-emerald-800 mb-1">Configuração concluída!</p>
+          <p className="text-sm text-emerald-700 mb-4">Seu robô já entende o contexto do seu negócio e está pronto para operar.</p>
           <Link
             href="/dashboard"
             className="inline-flex items-center gap-2 px-6 py-2.5 bg-emerald-600 text-white rounded-xl font-semibold text-sm hover:bg-emerald-700 transition-colors"

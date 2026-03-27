@@ -8,6 +8,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthTenant } from '@/lib/getAuthTenant';
 import { marketplaceBots } from '@/lib/marketplace/bots';
+import { extractPromptWithoutManagedBlocks } from '@/lib/ai/guidedSetup';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,7 +24,7 @@ function getContextualStepDefs(plan: string, businessType: string | null): StepD
 
   // Base steps always included
   const steps: StepDef[] = [
-    { id: 'profile', title: 'Perfil inicial', description: 'Configure nome, tipo de negócio e horários de atendimento.', href: '/onboarding/step/1', cta: 'Configurar perfil', priority: 1 },
+    { id: 'profile', title: 'Contexto do Negócio', description: 'Configure nome, tipo de negócio, telefone e endereço.', href: '/onboarding/step/1', cta: 'Configurar contexto', priority: 1 },
   ];
 
   if (plan === 'free' || plan === 'starter') {
@@ -148,10 +149,21 @@ async function buildCompletionMap(tenantId: string): Promise<Record<string, bool
       select: {
         name: true,
         businessType: true,
+        phone: true,
         whatsappToken: true,
         facebookToken: true,
         operationalStatus: true,
         welcomeMessage: true,
+        activeBotKey: true,
+        aiPrompt: true,
+        aiGuidedSetup: true,
+        businessHours: true,
+        businessConfig: {
+          select: {
+            address: true,
+            openingHours: true,
+          }
+        }
       },
     }),
     prisma.instagramConnection.findUnique({ where: { tenantId }, select: { status: true } }),
@@ -176,9 +188,10 @@ async function buildCompletionMap(tenantId: string): Promise<Record<string, bool
 
   const now = new Date();
   const hasWhatsapp = tenant?.whatsappToken != null;
+  const manualPrompt = extractPromptWithoutManagedBlocks(tenant?.aiPrompt);
 
   return {
-    profile: !!(tenant?.name?.trim() && tenant?.businessType?.trim()),
+    profile: !!(tenant?.name?.trim() && tenant?.businessType?.trim() && tenant?.phone?.trim() && tenant?.businessConfig?.address?.trim()),
     welcome: !!tenant?.welcomeMessage?.trim(),
     whatsapp: hasWhatsapp,
     instagram: instagramConn?.status === 'connected',
@@ -194,12 +207,16 @@ async function buildCompletionMap(tenantId: string): Promise<Record<string, bool
     crm: contactCount > 0,
     team: userCount > 1,
     go_live: tenant?.operationalStatus === 'live',
-    // businessType-aware steps
+    // businessType-aware steps (considering fallback if no bot active)
     services: serviceCount > 0,
-    appointments: serviceCount > 0 && hasWhatsapp,
+    appointments: (serviceCount > 0 || !!tenant?.businessConfig?.openingHours?.trim()) && hasWhatsapp,
     catalog: productCount > 0,
     orders: orderCount > 0,
     payments: payConfig?.enabled === true,
+    // AI Control Center Canonical settings
+    preset: !!tenant?.activeBotKey,
+    guided_setup: !!tenant?.aiGuidedSetup,
+    identity_manual: !!(manualPrompt.length > 0 || tenant?.businessHours?.trim())
   };
 }
 
@@ -235,7 +252,20 @@ async function buildAnalytics(tenantId: string) {
 async function buildBotSetup(tenantId: string): Promise<BotSetup | null> {
   const tenant = await prisma.tenant.findUnique({
     where: { id: tenantId },
-    select: { activeBotKey: true, whatsappToken: true, facebookToken: true, businessHours: true, aiPrompt: true, welcomeMessage: true },
+    select: { 
+      activeBotKey: true, 
+      whatsappToken: true, 
+      facebookToken: true, 
+      businessHours: true, 
+      aiPrompt: true, 
+      welcomeMessage: true,
+      aiGuidedSetup: true,
+      businessConfig: {
+        select: {
+          openingHours: true,
+        }
+      }
+    },
   });
 
   if (!tenant?.activeBotKey) return null;
@@ -244,60 +274,91 @@ async function buildBotSetup(tenantId: string): Promise<BotSetup | null> {
   if (!bot) return null;
 
   const needsCatalog = bot.modules.includes('catalogo');
+  const needsAgenda  = bot.modules.includes('agenda');
 
-  const [instagramConn, activeCatalogCount] = await Promise.all([
+  const [instagramConn, productCount, serviceCount] = await Promise.all([
     prisma.instagramConnection.findUnique({ where: { tenantId }, select: { status: true } }),
-    needsCatalog
-      ? prisma.product.count({ where: { tenantId, active: true } })
-      : Promise.resolve(0),
+    prisma.product.count({ where: { tenantId, active: true } }),
+    prisma.service.count({ where: { tenantId, active: true } }),
   ]);
 
   const hasChannel = !!(tenant.whatsappToken || tenant.facebookToken || instagramConn?.status === 'connected');
+  const manualPromptContent = extractPromptWithoutManagedBlocks(tenant.aiPrompt);
 
   const steps: BotSetupStep[] = [
     {
       id: 'bot_channel',
-      title: 'Canal conectado',
-      description: 'Conecte WhatsApp, Instagram ou Facebook para o bot atender.',
+      title: 'Canal de atendimento conectado',
+      description: 'Conecte WhatsApp, Instagram ou Facebook para o bot poder atender.',
       href: '/dashboard/integrations',
       cta: 'Conectar canal',
       done: hasChannel,
     },
     {
-      id: 'bot_hours',
-      title: 'Horário de atendimento',
-      description: 'Informe os horários para o bot informar os clientes corretamente.',
-      href: '/onboarding/step/1',
-      cta: 'Configurar horários',
-      done: !!tenant.businessHours?.trim(),
+      id: 'bot_preset',
+      title: 'Bot preset ativado',
+      description: 'Escolha um modelo de bot pré-configurado para o seu negócio.',
+      href: '/dashboard/bots',
+      cta: 'Escolher bot',
+      done: !!tenant.activeBotKey,
+    },
+    {
+      id: 'bot_guided',
+      title: 'Configuração guiada concluída',
+      description: 'Ensine o contexto do seu negócio respondendo às perguntas da IA.',
+      href: '/dashboard/atendimento-ia#guided-setup',
+      cta: 'Iniciar configuração guiada',
+      done: !!tenant.aiGuidedSetup,
     },
     {
       id: 'bot_prompt',
-      title: 'Prompt da IA revisado',
-      description: 'Revise e personalize o prompt gerado pelo bot.',
+      title: 'Identidade da IA (Manual) revisada',
+      description: 'Revise e personalize o prompt manual para dar o toque final no tom da IA.',
       href: '/dashboard/atendimento-ia#ai-identity',
-      cta: 'Revisar prompt',
-      done: !!tenant.aiPrompt?.trim(),
+      cta: 'Revisar prompt manual',
+      done: !!(manualPromptContent.trim().length > 0 || tenant.businessHours?.trim()),
     },
     {
       id: 'bot_welcome',
-      title: 'Mensagem de boas-vindas configurada',
-      description: 'Configure a mensagem enviada no primeiro contato — obrigatória para produção. Bots não definem mais esta mensagem automaticamente.',
+      title: 'Boas-vindas configurada',
+      description: 'Configure a mensagem inicial — bots não definem esta mensagem automaticamente por segurança.',
       href: '/dashboard/atendimento-ia#welcome',
       cta: 'Configurar boas-vindas',
       done: !!tenant.welcomeMessage?.trim(),
     },
   ];
 
-  // CAT1 — catalog step only for bots that sell products
+  // Modules: Catalog OR Services
   if (needsCatalog) {
     steps.push({
       id: 'bot_catalog',
-      title: 'Produtos no catálogo',
+      title: 'Catálogo de produtos',
       description: 'Adicione pelo menos 1 produto ativo para o bot poder apresentar e vender.',
       href: '/dashboard/vendas',
       cta: 'Gerenciar produtos',
-      done: activeCatalogCount > 0,
+      done: productCount > 0,
+    });
+  }
+  if (needsAgenda) {
+    steps.push({
+      id: 'bot_services',
+      title: 'Serviços cadastrados',
+      description: 'Adicione pelo menos 1 serviço ativo para a agenda do bot funcionar.',
+      href: '/dashboard/services',
+      cta: 'Gerenciar serviços',
+      done: serviceCount > 0,
+    });
+  }
+
+  // Operational module for scheduling bots
+  if (needsAgenda) {
+    steps.push({
+      id: 'bot_operational',
+      title: 'Configuração operacional',
+      description: 'Defina os horários e regras para que a IA possa agendar atendimentos.',
+      href: '/dashboard/atendimento-ia#atendimento-ia',
+      cta: 'Configurações operacionais',
+      done: !!(tenant.businessConfig?.openingHours?.trim()),
     });
   }
 

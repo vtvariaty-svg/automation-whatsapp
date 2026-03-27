@@ -38,7 +38,7 @@ function getContextualStepDefs(plan: string, businessType: string | null): StepD
 
   // Paid plans
   steps.push(
-    { id: 'welcome',   title: 'Mensagem de boas-vindas', description: 'Configure a mensagem enviada automaticamente no primeiro contato pelo WhatsApp.', href: '/dashboard/atendimento-ia#welcome', cta: 'Configurar boas-vindas', priority: 2 },
+    { id: 'welcome',   title: 'Mensagem de boas-vindas', description: 'Configure a mensagem enviada automaticamente no primeiro contato pelo WhatsApp.', href: '/onboarding/step/4', cta: 'Configurar boas-vindas', priority: 2 },
     { id: 'whatsapp',  title: 'Conectar WhatsApp',  description: 'Vincule o WhatsApp Business para atendimento automático.',    href: '/onboarding/step/2',       cta: 'Conectar WhatsApp',  priority: 3 },
     { id: 'instagram', title: 'Conectar Instagram', description: 'Vincule sua conta para receber DMs automaticamente.',          href: '/dashboard/integrations',  cta: 'Conectar Instagram', priority: 4 },
   );
@@ -298,7 +298,7 @@ async function buildBotSetup(tenantId: string): Promise<BotSetup | null> {
       id: 'bot_preset',
       title: 'Bot preset ativado',
       description: 'Escolha um modelo de bot pré-configurado para o seu negócio.',
-      href: '/dashboard/bots',
+      href: '/onboarding/step/1',
       cta: 'Escolher bot',
       done: !!tenant.activeBotKey,
     },
@@ -306,7 +306,7 @@ async function buildBotSetup(tenantId: string): Promise<BotSetup | null> {
       id: 'bot_guided',
       title: 'Configuração guiada concluída',
       description: 'Ensine o contexto do seu negócio respondendo às perguntas da IA.',
-      href: '/dashboard/atendimento-ia#guided-setup',
+      href: '/onboarding/step/4',
       cta: 'Iniciar configuração guiada',
       done: !!tenant.aiGuidedSetup,
     },
@@ -322,7 +322,7 @@ async function buildBotSetup(tenantId: string): Promise<BotSetup | null> {
       id: 'bot_welcome',
       title: 'Boas-vindas configurada',
       description: 'Configure a mensagem inicial — bots não definem esta mensagem automaticamente por segurança.',
-      href: '/dashboard/atendimento-ia#welcome',
+      href: '/onboarding/step/4',
       cta: 'Configurar boas-vindas',
       done: !!tenant.welcomeMessage?.trim(),
     },
@@ -356,7 +356,7 @@ async function buildBotSetup(tenantId: string): Promise<BotSetup | null> {
       id: 'bot_operational',
       title: 'Configuração operacional',
       description: 'Defina os horários e regras para que a IA possa agendar atendimentos.',
-      href: '/dashboard/atendimento-ia#atendimento-ia',
+      href: '/onboarding/step/3',
       cta: 'Configurações operacionais',
       done: !!(tenant.businessConfig?.openingHours?.trim()),
     });

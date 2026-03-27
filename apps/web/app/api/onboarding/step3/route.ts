@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthTenant } from '@/lib/getAuthTenant';
+import { marketplaceBots } from '@/lib/marketplace/bots';
 
 export async function GET(request: Request) {
   try {
@@ -9,12 +10,35 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
-    const services = await prisma.service.findMany({
-      where: { tenantId: auth.tenantId, active: true },
-      orderBy: { createdAt: 'asc' }
-    });
+    const [tenant, services] = await Promise.all([
+      prisma.tenant.findUnique({
+        where: { id: auth.tenantId },
+        select: {
+          activeBotKey: true,
+          businessConfig: {
+            select: { openingHours: true, address: true },
+          },
+        },
+      }),
+      prisma.service.findMany({
+        where: { tenantId: auth.tenantId, active: true },
+        orderBy: { createdAt: 'asc' },
+        select: { name: true, durationMinutes: true },
+      }),
+    ]);
 
-    return NextResponse.json({ services });
+    const activeBotKey = (tenant as any)?.activeBotKey as string | null;
+    const bot = activeBotKey ? marketplaceBots.find((b) => b.id === activeBotKey) : null;
+
+    return NextResponse.json({
+      services,
+      activeBotKey,
+      botModules: bot?.modules ?? [],
+      botBlueprint: bot?.blueprint ?? null,
+      botName: bot?.name ?? null,
+      openingHours: (tenant as any)?.businessConfig?.openingHours ?? '',
+      address: (tenant as any)?.businessConfig?.address ?? '',
+    });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
@@ -28,28 +52,45 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { services } = body;
+    const { services, openingHours, address } = body;
 
-    if (!services || !Array.isArray(services) || services.length === 0) {
-      return NextResponse.json({ error: 'Adicione pelo menos um serviço' }, { status: 400 });
+    // Save operational config to BusinessConfig
+    const hasConfig = openingHours !== undefined || address !== undefined;
+    if (hasConfig) {
+      await prisma.businessConfig.upsert({
+        where: { tenantId: auth.tenantId },
+        update: {
+          ...(openingHours !== undefined && { openingHours }),
+          ...(address !== undefined && { address }),
+        },
+        create: {
+          tenantId: auth.tenantId,
+          openingHours: openingHours ?? '',
+          address: address ?? '',
+          timezone: 'America/Sao_Paulo',
+        },
+      });
     }
 
-    // Overwrite existing services completely for simplicity during onboarding
-    await prisma.service.deleteMany({
-      where: { tenantId: auth.tenantId }
-    });
-
-    // Create services in the real Service table
-    for (const svc of services) {
-      if (svc.name?.trim()) {
-        await prisma.service.create({
-          data: {
-            tenantId: auth.tenantId,
-            name: svc.name.trim(),
-            durationMinutes: svc.durationMinutes || 30,
-            active: true,
-          },
+    // Save manual services — NEVER delete system (bot-seeded) services
+    if (Array.isArray(services) && services.length > 0) {
+      const validServices = services.filter((s: any) => s.name?.trim());
+      if (validServices.length > 0) {
+        // Only delete manual services; preserve sourceType='system'
+        await (prisma.service as any).deleteMany({
+          where: { tenantId: auth.tenantId, sourceType: 'manual' },
         });
+        for (const svc of validServices) {
+          await (prisma.service as any).create({
+            data: {
+              tenantId: auth.tenantId,
+              name: svc.name.trim(),
+              durationMinutes: svc.durationMinutes || 30,
+              active: true,
+              sourceType: 'manual',
+            },
+          });
+        }
       }
     }
 

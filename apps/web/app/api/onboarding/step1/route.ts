@@ -10,30 +10,39 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { companyName, businessType, businessDescription, businessHours } = body;
+    const { companyName, businessType, businessDescription, phone, address, botId } = body;
 
-    if (!companyName) {
+    if (!companyName?.trim()) {
       return NextResponse.json({ error: 'Nome da empresa é obrigatório' }, { status: 400 });
     }
 
+    // Save business context — NO applyBusinessTemplate, NO aiPrompt generation
     await prisma.tenant.update({
       where: { id: auth.tenantId },
       data: {
-        name: companyName,
+        name: companyName.trim(),
         businessType: businessType || null,
         businessDescription: businessDescription || null,
-        businessHours: businessHours || null,
+        phone: phone || null,
         setupStep: 2,
       },
     });
 
-    // Apply industry preset if a business type was selected
-    if (businessType) {
-      const { applyBusinessTemplate } = await import('@/lib/onboarding/applyTemplate');
-      await applyBusinessTemplate(auth.tenantId, businessType, companyName, businessHours || "");
+    // Upsert BusinessConfig with address
+    if (address?.trim()) {
+      await prisma.businessConfig.upsert({
+        where: { tenantId: auth.tenantId },
+        update: { address: address.trim() },
+        create: {
+          tenantId: auth.tenantId,
+          address: address.trim(),
+          timezone: 'America/Sao_Paulo',
+        },
+      });
     }
 
-    return NextResponse.json({ success: true, nextStep: 2 });
+    // Return botId so the frontend can call POST /api/marketplace/activate independently
+    return NextResponse.json({ success: true, nextStep: 2, botId: botId || null });
   } catch (error: any) {
     console.error('Onboarding step 1 error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });

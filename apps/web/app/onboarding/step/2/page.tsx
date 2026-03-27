@@ -218,12 +218,13 @@ export default function OnboardingStep2() {
 
 function StepProgress({ current }: { current: number }) {
   const steps = [
-    { n: 1, label: "Empresa" },
+    { n: 1, label: "Bot + Negócio" },
     { n: 2, label: "WhatsApp" },
-    { n: 3, label: "Serviços" },
+    { n: 3, label: "Operação" },
     { n: 4, label: "IA" },
     { n: 5, label: "Teste" },
   ];
+
   return (
     <div className="flex items-center justify-between">
       {steps.map((step, i) => (

@@ -62,7 +62,18 @@ export const updateTenantConfig = async (
   return tenant;
 };
 
-export const createProduct = async (tenantId: string, data: { name: string, description?: string, price: number }) => {
+export const createProduct = async (tenantId: string, data: { 
+  name: string, 
+  description?: string, 
+  price: number,
+  salesMode?: string,
+  salesCtaText?: string,
+  externalSalesUrl?: string,
+  salesShortText?: string,
+  aliases?: string[],
+  salesPriority?: number,
+  requiresHumanApproval?: boolean
+}) => {
   return await prisma.product.create({
     data: {
       ...data,

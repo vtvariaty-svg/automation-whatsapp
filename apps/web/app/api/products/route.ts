@@ -20,6 +20,21 @@ export async function POST(req: Request) {
 
   try {
     const data = await req.json();
+
+    // Normalization and type conversion
+    if (data.aliases && typeof data.aliases === 'string') {
+      data.aliases = data.aliases.split(',').map((a: string) => a.trim()).filter(Boolean);
+    }
+    if (data.salesPriority !== undefined) data.salesPriority = Number(data.salesPriority);
+    if (data.requiresHumanApproval !== undefined) data.requiresHumanApproval = Boolean(data.requiresHumanApproval);
+    if (data.price !== undefined) data.price = Number(data.price);
+    if (data.stock !== undefined) data.stock = data.stock !== null ? Number(data.stock) : null;
+
+    // Validation
+    if (data.salesMode === 'external_link' && !data.externalSalesUrl) {
+      return NextResponse.json({ error: 'URL externa é obrigatória para este modo de venda.' }, { status: 400 });
+    }
+
     const product = await createProduct(user.tenantId, data);
     return NextResponse.json(product);
   } catch (error: any) {

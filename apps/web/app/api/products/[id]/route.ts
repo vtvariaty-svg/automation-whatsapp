@@ -26,6 +26,18 @@ export async function PATCH(
       ...(data.price       !== undefined && { price: Number(data.price) }),
       ...(data.stock       !== undefined && { stock: data.stock !== null ? Number(data.stock) : null }),
       ...(data.active      !== undefined && { active: Boolean(data.active) }),
+      // Sales/Commercial expansion
+      ...(data.salesMode   !== undefined && { salesMode: data.salesMode }),
+      ...(data.salesCtaText !== undefined && { salesCtaText: data.salesCtaText }),
+      ...(data.externalSalesUrl !== undefined && { externalSalesUrl: data.externalSalesUrl }),
+      ...(data.salesShortText !== undefined && { salesShortText: data.salesShortText }),
+      ...(data.aliases     !== undefined && { 
+        aliases: typeof data.aliases === 'string' 
+          ? data.aliases.split(',').map((a: string) => a.trim()).filter(Boolean) 
+          : data.aliases 
+      }),
+      ...(data.salesPriority !== undefined && { salesPriority: Number(data.salesPriority) }),
+      ...(data.requiresHumanApproval !== undefined && { requiresHumanApproval: Boolean(data.requiresHumanApproval) }),
     },
   });
 

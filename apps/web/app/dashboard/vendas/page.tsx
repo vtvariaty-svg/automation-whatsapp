@@ -21,6 +21,14 @@ interface Product {
   currency: string;
   stock: number | null;
   active: boolean;
+  // Sales/Commercial expansion
+  salesMode?: "none" | "external_link" | "dynamic_checkout";
+  salesCtaText?: string | null;
+  externalSalesUrl?: string | null;
+  salesShortText?: string | null;
+  aliases?: string[];
+  salesPriority?: number;
+  requiresHumanApproval?: boolean;
 }
 
 interface AutomationRule {
@@ -87,7 +95,21 @@ function ProdutosTab() {
   const [saving, setSaving] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const emptyForm = { name: "", description: "", category: "", price: "", stock: "" };
+  const emptyForm = { 
+    name: "", 
+    description: "", 
+    category: "", 
+    price: "", 
+    stock: "",
+    // Commercial fields
+    salesMode: "none" as "none" | "external_link" | "dynamic_checkout",
+    salesCtaText: "",
+    externalSalesUrl: "",
+    salesShortText: "",
+    aliases: "", // comma separated in form
+    salesPriority: "0",
+    requiresHumanApproval: false
+  };
   const [form, setForm] = useState(emptyForm);
 
   const [loadError, setLoadError] = useState("");
@@ -118,6 +140,13 @@ function ProdutosTab() {
         category: p.category || "",
         price: p.price.toString(),
         stock: p.stock !== null ? p.stock.toString() : "",
+        salesMode: p.salesMode || "none",
+        salesCtaText: p.salesCtaText || "",
+        externalSalesUrl: p.externalSalesUrl || "",
+        salesShortText: p.salesShortText || "",
+        aliases: (p.aliases || []).join(", "),
+        salesPriority: (p.salesPriority ?? 0).toString(),
+        requiresHumanApproval: !!p.requiresHumanApproval
       });
     } else {
       setEditingProduct(null);
@@ -135,6 +164,13 @@ function ProdutosTab() {
       category: form.category || undefined,
       price: parseFloat(form.price),
       stock: form.stock ? parseInt(form.stock) : null,
+      salesMode: form.salesMode,
+      salesCtaText: form.salesCtaText || undefined,
+      externalSalesUrl: form.salesMode === "external_link" ? form.externalSalesUrl : undefined,
+      salesShortText: form.salesShortText || undefined,
+      aliases: form.aliases.split(",").map(s => s.trim()).filter(Boolean),
+      salesPriority: parseInt(form.salesPriority) || 0,
+      requiresHumanApproval: form.requiresHumanApproval
     };
     try {
       const res = editingProduct
@@ -315,8 +351,64 @@ function ProdutosTab() {
           </div>
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">Descrição</label>
-            <textarea rows={3} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Descreva o produto..." className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20 focus:border-[#4f46e5]/40 transition-all resize-none" />
+            <textarea rows={2} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Descreva o produto..." className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20 focus:border-[#4f46e5]/40 transition-all resize-none" />
           </div>
+
+          <div className="bg-gray-50/50 p-4 rounded-2xl border border-gray-100 space-y-4">
+            <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Configurações Comerciais</h4>
+            
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Modo de Venda *</label>
+              <select 
+                value={form.salesMode} 
+                onChange={e => setForm({ ...form, salesMode: e.target.value as any })}
+                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20"
+              >
+                <option value="none">Nenhum (Catálogo apenas)</option>
+                <option value="external_link">Link Externo (WhatsApp / Checkout Externo)</option>
+                <option value="dynamic_checkout">Checkout Dinâmico (Carrinho Interno)</option>
+              </select>
+              <p className="text-[10px] text-gray-400 mt-1">
+                {form.salesMode === "none" && "O produto é apenas informativo no catálogo."}
+                {form.salesMode === "external_link" && "O cliente será redirecionado para um link externo ao clicar em comprar."}
+                {form.salesMode === "dynamic_checkout" && "O bot processará o pedido e gerará um link de pagamento dinâmico."}
+              </p>
+            </div>
+
+            {form.salesMode === "external_link" && (
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">URL Comercial do Produto *</label>
+                <input required type="url" value={form.externalSalesUrl} onChange={e => setForm({ ...form, externalSalesUrl: e.target.value })} placeholder="https://..." className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20" />
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Texto do CTA (Botão)</label>
+                <input value={form.salesCtaText} onChange={e => setForm({ ...form, salesCtaText: e.target.value })} placeholder="Ex: Comprar Agora" className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Prioridade (0 a 100)</label>
+                <input type="number" value={form.salesPriority} onChange={e => setForm({ ...form, salesPriority: e.target.value })} className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20" />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Resumo Comercial (IA)</label>
+              <input value={form.salesShortText} onChange={e => setForm({ ...form, salesShortText: e.target.value })} placeholder="Destaque curto para o bot falar..." className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20" />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Apelidos / Sinônimos (Separados por vírgula)</label>
+              <input value={form.aliases} onChange={e => setForm({ ...form, aliases: e.target.value })} placeholder="Ex: ebook, guia, tutorial" className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20" />
+            </div>
+
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input type="checkbox" checked={form.requiresHumanApproval} onChange={e => setForm({ ...form, requiresHumanApproval: e.target.checked })} className="w-4 h-4 text-[#4f46e5] border-gray-300 rounded focus:ring-[#4f46e5]" />
+              <span className="text-sm font-medium text-gray-700">Requer aprovação humana para vender?</span>
+            </label>
+          </div>
+
           <div className="pt-4 flex justify-end gap-3 border-t border-gray-100">
             <button type="button" onClick={() => setShowModal(false)} className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all">Cancelar</button>
             <button type="submit" disabled={saving} className="px-5 py-2.5 bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] text-white rounded-xl font-semibold text-sm hover:shadow-lg transition-all disabled:opacity-50">
@@ -405,29 +497,56 @@ function CatalogoTab() {
             <span>📦</span> Produtos ({products.length})
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {products.map(p => (
-              <div key={p.id} className="bg-white rounded-2xl border border-emerald-200/60 shadow-sm p-5">
+             {products.map(p => (
+              <div key={p.id} className="bg-white rounded-2xl border border-emerald-200/60 shadow-sm p-5 flex flex-col h-full">
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex items-center gap-2 flex-wrap">
                     {p.category && (
                       <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-xs font-semibold uppercase">{p.category}</span>
                     )}
                     <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase">✓ Catálogo</span>
+                    
+                    {p.salesMode === "external_link" && (
+                      <span className="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase">🔗 Link Externo</span>
+                    )}
+                    {p.salesMode === "dynamic_checkout" && (
+                      <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase">⚡ Checkout IA</span>
+                    )}
                   </div>
                   <p className="text-lg font-bold text-[#4f46e5] shrink-0 ml-2">{fmtBRL(p.price, p.currency || "BRL")}</p>
                 </div>
                 <h3 className="font-bold text-gray-900 mb-1">{p.name}</h3>
-                <p className="text-sm text-gray-500 line-clamp-2 mb-4">{p.description || "Sem descrição"}</p>
-                <button
-                  onClick={() => handleCopy(p)}
-                  className={`w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all ${
-                    copied === p.id
-                      ? "bg-emerald-100 text-emerald-700"
-                      : "bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
-                  }`}
-                >
-                  {copied === p.id ? "✓ Copiado!" : "📋 Copiar texto p/ IA"}
-                </button>
+                <p className="text-sm text-gray-500 line-clamp-2 mb-4">
+                  {p.salesShortText || p.description || "Sem descrição"}
+                </p>
+
+                <div className="mt-auto space-y-2">
+                  {p.salesMode === "external_link" && p.externalSalesUrl ? (
+                    <a 
+                      href={p.externalSalesUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] text-white rounded-lg text-sm font-semibold hover:shadow-md transition-all"
+                    >
+                      {p.salesCtaText || "Comprar via Link"} ↗
+                    </a>
+                  ) : p.salesMode === "dynamic_checkout" ? (
+                    <div className="w-full flex items-center justify-center gap-2 py-2 px-4 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg text-sm font-bold">
+                      {p.salesCtaText || "Venda via IA ativa"}
+                    </div>
+                  ) : null}
+
+                  <button
+                    onClick={() => handleCopy(p)}
+                    className={`w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all ${
+                      copied === p.id
+                        ? "bg-emerald-100 text-emerald-700"
+                        : "bg-gray-50 text-gray-500 hover:bg-gray-100"
+                    }`}
+                  >
+                    {copied === p.id ? "✓ Copiado!" : "📋 Copiar texto p/ IA"}
+                  </button>
+                </div>
               </div>
             ))}
           </div>

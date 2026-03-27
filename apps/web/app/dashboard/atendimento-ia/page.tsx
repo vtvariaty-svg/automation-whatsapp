@@ -646,37 +646,10 @@ export default function AtendimentoIAPage() {
             </div>
           )}
 
-          {/* Niche preset */}
-          <div className="border-t border-gray-100 pt-5">
-            <p className="text-sm font-semibold text-gray-700 mb-1">Aplicar Preset de Nicho</p>
-            <p className="text-xs text-gray-400 mb-3">
-              Aplica prompt base + mensagem de boas-vindas pré-configurados para o segmento.{" "}
-              <strong className="text-amber-600">Sobrescreve o prompt e boas-vindas atuais.</strong>
-            </p>
-            <div className="flex flex-wrap gap-2 mb-3">
-              {NICHOS.map((n) => (
-                <button
-                  key={n.id}
-                  type="button"
-                  onClick={() => setSelectedNiche(n.id)}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-all ${selectedNiche === n.id ? "bg-violet-50 border-violet-400 text-violet-700" : "border-gray-200 text-gray-600 hover:border-gray-300"}`}
-                >
-                  {n.emoji} {n.label}
-                </button>
-              ))}
-            </div>
-            {nicheMsg && (
-              <p className={`text-sm font-medium mb-2 ${nicheMsg.includes("Erro") ? "text-red-600" : "text-emerald-600"}`}>{nicheMsg}</p>
-            )}
-            <button
-              type="button"
-              onClick={applyNiche}
-              disabled={applyingNiche || !selectedNiche}
-              className="px-5 py-2 bg-gradient-to-r from-violet-600 to-purple-600 text-white text-sm font-semibold rounded-xl disabled:opacity-50 transition-all"
-            >
-              {applyingNiche ? "Aplicando..." : "Aplicar Preset"}
-            </button>
-          </div>
+          {/* Preset aplicado automaticamente — sem seleção manual separada */}
+          <p className="text-xs text-gray-400 pt-4 border-t border-gray-100">
+            💡 Ao ativar um bot, a configuração base do seu tipo de negócio — serviços padrão e automações — é aplicada automaticamente.
+          </p>
         </div>
       </SectionCard>
 

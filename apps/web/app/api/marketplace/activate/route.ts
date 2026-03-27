@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { getAuthTenant } from '@/lib/getAuthTenant';
 import { prisma } from '@/lib/prisma';
 import { marketplaceBots } from '@/lib/marketplace/bots';
+import { BOT_TEMPLATE_MAP } from '@/lib/marketplace/botTemplateMap';
+import { businessTemplates } from '@/lib/onboarding/templates';
 import { checkFeature } from '@/lib/services/entitlementsService';
 
 export async function POST(request: Request) {
@@ -81,7 +83,25 @@ export async function POST(request: Request) {
       },
     });
 
-    // 5. Calcular itens pendentes para o checklist de ativação
+    // 5. Apply template default services — bot covers automations + prompt.
+    // Only creates services if the tenant has none yet (idempotent).
+    const tmplKey = BOT_TEMPLATE_MAP[bot.id];
+    const template = tmplKey ? businessTemplates[tmplKey] : null;
+    if (template && template.defaultServices.length > 0) {
+      const svcCount = await prisma.service.count({ where: { tenantId: auth.tenantId } });
+      if (svcCount === 0) {
+        await prisma.service.createMany({
+          data: template.defaultServices.map((svc) => ({
+            tenantId: auth.tenantId,
+            name: svc.name,
+            durationMinutes: svc.durationMinutes,
+            active: true,
+          })),
+        });
+      }
+    }
+
+    // 6. Calcular itens pendentes para o checklist de ativação
     const pendingSetup: string[] = [];
     const hasChannel = !!(tenant.whatsappToken || tenant.instagramPageId || tenant.facebookPageId);
     if (!hasChannel) pendingSetup.push('channel');

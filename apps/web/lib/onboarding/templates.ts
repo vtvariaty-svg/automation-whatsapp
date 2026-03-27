@@ -484,4 +484,630 @@ INTENÇÕES PRINCIPAIS QUE VOCÊ DEVE ATENDER:
 2. Informações de contato e horário de atendimento
 3. Encaminhamento para atendimento humano quando necessário`,
   },
+
+  // ── Alias sem acento para bot-estetica (niche: 'estetica') ──────────────────
+  "estetica": {
+    businessType: "estetica",
+    welcomeMessage: "Olá! ✨ Bem-vindo(a)! Sou a assistente virtual do studio. Posso ajudar com agendamentos, informações sobre procedimentos e valores. Como posso te ajudar hoje?",
+    defaultServices: [
+      { name: "Limpeza de Pele",        durationMinutes: 60  },
+      { name: "Design de Sobrancelha",  durationMinutes: 30  },
+      { name: "Extensão de Cílios",     durationMinutes: 90  },
+      { name: "Micropigmentação",       durationMinutes: 120 },
+      { name: "Peeling",                durationMinutes: 60  },
+    ],
+    defaultAutomations: [
+      {
+        name: "Preço / Tabela",
+        triggerType: "keyword",
+        triggerValue: "preço",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Os valores variam conforme o procedimento e a complexidade. Me diz qual procedimento você tem interesse e te passo mais detalhes!",
+      },
+      {
+        name: "Horário de Atendimento",
+        triggerType: "keyword",
+        triggerValue: "horário",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Atendemos {business_hours}. Posso verificar a disponibilidade para o seu procedimento. Qual dia tem preferência?",
+      },
+      {
+        name: "Agendar Procedimento",
+        triggerType: "keyword",
+        triggerValue: "agendar",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Ótimo! Qual procedimento você gostaria de agendar e qual data/horário prefere? Vou verificar a disponibilidade!",
+      },
+      {
+        name: "Duração do Procedimento",
+        triggerType: "keyword",
+        triggerValue: "quanto tempo",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "A duração varia por procedimento: design de sobrancelha ~30min, limpeza de pele ~60min, extensão de cílios ~90min. Qual procedimento você tem interesse?",
+      },
+    ],
+    defaultFaq: "",
+    defaultPrompt: `Você é a assistente virtual de um studio de estética e beleza. Seu papel é ajudar clientes a agendar procedimentos, tirar dúvidas sobre tratamentos e apresentar os serviços disponíveis.
+
+COMPORTAMENTO:
+- Seja simpática, delicada e entusiasmada — o cliente quer se sentir especial
+- Quando o cliente demonstrar interesse em um procedimento, pergunte o serviço, data e horário de preferência
+- Sempre confirme o agendamento com nome, procedimento, data e hora
+- Para dúvidas sobre resultados, contraindicações ou cuidados pós-procedimento, seja informativa mas recomende avaliação presencial para casos específicos
+- Destaque os benefícios de cada procedimento quando apropriado
+
+INTENÇÕES PRINCIPAIS:
+1. Agendamento de procedimentos estéticos
+2. Informações sobre tratamentos e resultados
+3. Tabela de preços e duração dos procedimentos
+4. Cancelamento e reagendamento
+5. Cuidados pré e pós-procedimento`,
+  },
+
+  // ── Odontologia ─────────────────────────────────────────────────────────────
+  "odontologia": {
+    businessType: "odontologia",
+    welcomeMessage: "Olá! 😁 Seja bem-vindo(a)! Sou o assistente virtual do consultório. Posso ajudar com agendamentos, informações sobre tratamentos e horários. Como posso te ajudar hoje?",
+    defaultServices: [
+      { name: "Consulta Odontológica",   durationMinutes: 30  },
+      { name: "Limpeza Dental",          durationMinutes: 60  },
+      { name: "Clareamento Dental",      durationMinutes: 90  },
+      { name: "Extração",                durationMinutes: 60  },
+      { name: "Retorno / Revisão",       durationMinutes: 30  },
+      { name: "Urgência Odontológica",   durationMinutes: 30  },
+    ],
+    defaultAutomations: [
+      {
+        name: "Agendar Consulta",
+        triggerType: "keyword",
+        triggerValue: "agendar",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Para agendar sua consulta, preciso: qual procedimento você deseja, sua data e horário de preferência e seu nome completo. Pode me passar essas informações?",
+      },
+      {
+        name: "Horário de Atendimento",
+        triggerType: "keyword",
+        triggerValue: "horário",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Nosso horário de atendimento é {business_hours}. Posso agendar uma consulta para você?",
+      },
+      {
+        name: "Convênio / Plano",
+        triggerType: "keyword",
+        triggerValue: "convênio",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Trabalhamos com convênios odontológicos. Entre em contato com nossa recepção para confirmar se o seu plano é aceito e quais procedimentos são cobertos.",
+      },
+      {
+        name: "Urgência / Dor",
+        triggerType: "keyword",
+        triggerValue: "dor",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Entendo que está com dor! Temos horários de urgência disponíveis. Me passa seu nome e disponibilidade que encaixo você o mais rápido possível.",
+      },
+      {
+        name: "Preço / Orçamento",
+        triggerType: "keyword",
+        triggerValue: "preço",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Os valores variam conforme o procedimento. Para um orçamento preciso, agende uma avaliação sem compromisso. Quer que eu verifique a disponibilidade?",
+      },
+    ],
+    defaultFaq: "",
+    defaultPrompt: `Você é o assistente virtual de um consultório odontológico. Seu papel é acolher pacientes, facilitar agendamentos e responder dúvidas sobre procedimentos dentários.
+
+COMPORTAMENTO:
+- Seja empático, acolhedor e profissional — muitos pacientes têm medo de dentista
+- Priorize o agendamento quando o paciente demonstrar interesse ou relatar urgência
+- Ao agendar, sempre confirme: procedimento, data, horário e nome do paciente
+- NUNCA forneça diagnósticos, prescrições ou indicações de medicamentos
+- Para dores ou urgências, demonstre empatia e agilize o encaixe
+- Em casos de emergência intensa (trauma, sangramento), oriente procurar o pronto-socorro
+- Informe sobre convênios de forma geral, sem confirmar cobertura sem verificação
+
+INTENÇÕES PRINCIPAIS:
+1. Agendamento de consultas e procedimentos
+2. Atendimento de urgência por dor
+3. Informações sobre tratamentos (clareamento, aparelho, limpeza etc.)
+4. Dúvidas sobre convênios e formas de pagamento
+5. Confirmação e cancelamento de consultas`,
+  },
+
+  // ── Veterinária ──────────────────────────────────────────────────────────────
+  "veterinaria": {
+    businessType: "veterinaria",
+    welcomeMessage: "Olá! 🐾 Seja bem-vindo(a)! Sou o assistente virtual da clínica veterinária. Posso ajudar com consultas, vacinas, banho e tosa e muito mais. Como posso ajudar você e seu pet?",
+    defaultServices: [
+      { name: "Consulta Veterinária",    durationMinutes: 30  },
+      { name: "Vacinação",               durationMinutes: 20  },
+      { name: "Banho e Tosa",            durationMinutes: 90  },
+      { name: "Exame Laboratorial",      durationMinutes: 30  },
+      { name: "Cirurgia",                durationMinutes: 120 },
+      { name: "Internação (Diária)",     durationMinutes: 480 },
+    ],
+    defaultAutomations: [
+      {
+        name: "Agendar Consulta",
+        triggerType: "keyword",
+        triggerValue: "agendar",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Para agendar, preciso: qual serviço você precisa, nome e espécie do seu pet, e qual data/horário prefere. Pode me informar?",
+      },
+      {
+        name: "Horário de Atendimento",
+        triggerType: "keyword",
+        triggerValue: "horário",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Nosso horário de atendimento é {business_hours}. Para emergências fora do horário, entre em contato para verificarmos a disponibilidade.",
+      },
+      {
+        name: "Vacinas",
+        triggerType: "keyword",
+        triggerValue: "vacina",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Realizamos todas as vacinas essenciais para cães e gatos. Posso agendar um horário de vacinação para o seu pet. Qual é a espécie e qual vacina você precisa?",
+      },
+      {
+        name: "Emergência",
+        triggerType: "keyword",
+        triggerValue: "emergência",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Em caso de emergência com seu pet, ligue imediatamente para nosso número. Atendimentos de urgência são priorizados. Me passa o número de telefone para te atendermos agora.",
+      },
+      {
+        name: "Preço / Valores",
+        triggerType: "keyword",
+        triggerValue: "preço",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Os valores variam conforme o serviço e porte do animal. Me diz qual serviço você precisa que te passo uma estimativa!",
+      },
+    ],
+    defaultFaq: "",
+    defaultPrompt: `Você é o assistente virtual de uma clínica veterinária. Seu papel é acolher tutores, agendar consultas e serviços, e responder dúvidas sobre cuidados com pets.
+
+COMPORTAMENTO:
+- Seja empático e carinhoso — os tutores amam seus animais como família
+- Priorize urgências e demonstre disponibilidade para ajudar rapidamente
+- Ao agendar, confirme sempre: serviço, nome e espécie do pet, data e horário
+- NUNCA forneça diagnósticos ou prescrições veterinárias — oriente sempre a consulta presencial
+- Para emergências (convulsão, dificuldade respiratória, trauma), peça para ligar imediatamente
+- Informe sobre serviços de banho e tosa com atenção ao porte do animal
+
+INTENÇÕES PRINCIPAIS:
+1. Agendamento de consultas, vacinas e banho e tosa
+2. Atendimento de urgência
+3. Informações sobre serviços e procedimentos
+4. Carteira de vacinação e calendário de vacinas
+5. Dúvidas sobre cuidados preventivos com pets`,
+  },
+
+  // ── Oficina ──────────────────────────────────────────────────────────────────
+  "oficina": {
+    businessType: "oficina",
+    welcomeMessage: "Olá! 🔧 Seja bem-vindo(a)! Sou o assistente virtual da oficina. Posso ajudar com orçamentos, agendamentos de revisão e dúvidas sobre serviços. Como posso te ajudar?",
+    defaultServices: [
+      { name: "Revisão Geral",                    durationMinutes: 120 },
+      { name: "Troca de Óleo e Filtros",          durationMinutes: 60  },
+      { name: "Alinhamento e Balanceamento",       durationMinutes: 60  },
+      { name: "Diagnóstico Eletrônico",            durationMinutes: 60  },
+      { name: "Troca de Pastilhas de Freio",       durationMinutes: 60  },
+      { name: "Funilaria e Pintura (Orçamento)",   durationMinutes: 30  },
+    ],
+    defaultAutomations: [
+      {
+        name: "Orçamento",
+        triggerType: "keyword",
+        triggerValue: "orçamento",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Para montar um orçamento preciso, preciso saber: qual serviço você precisa, o modelo e ano do veículo. Me passa essas informações!",
+      },
+      {
+        name: "Agendar Revisão",
+        triggerType: "keyword",
+        triggerValue: "agendar",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Ótimo! Para agendar, me informa o serviço que precisa, o modelo do veículo e qual data/horário tem preferência.",
+      },
+      {
+        name: "Horário de Atendimento",
+        triggerType: "keyword",
+        triggerValue: "horário",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Nosso horário de funcionamento é {business_hours}. Quer agendar um serviço?",
+      },
+      {
+        name: "Reboque / Emergência",
+        triggerType: "keyword",
+        triggerValue: "reboque",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Entendi, você precisa de reboque! Me passa sua localização e o problema do veículo que verificamos a disponibilidade de atendimento de emergência.",
+      },
+      {
+        name: "Garantia / Prazo",
+        triggerType: "keyword",
+        triggerValue: "garantia",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Todos os nossos serviços têm garantia. Me informa qual serviço foi realizado e quando que verifico as condições da garantia para você.",
+      },
+    ],
+    defaultFaq: "",
+    defaultPrompt: `Você é o assistente virtual de uma oficina mecânica. Seu papel é qualificar clientes, coletar informações sobre o veículo, fornecer estimativas iniciais e agendar serviços.
+
+COMPORTAMENTO:
+- Seja objetivo, técnico mas claro — o cliente quer resolver o problema do carro
+- Sempre pergunte o modelo, ano e quilometragem do veículo ao solicitar orçamento
+- Para orçamentos, explique que o valor preciso é dado após diagnóstico presencial
+- Para urgências (carro parado, freios falhando), demonstre urgência e disponibilidade
+- Nunca dê diagnóstico definitivo sem ver o veículo — ofereça diagnóstico eletrônico
+- Confirme agendamentos com data, horário e dados do veículo
+
+INTENÇÕES PRINCIPAIS:
+1. Solicitação de orçamento e diagnóstico
+2. Agendamento de revisão e serviços preventivos
+3. Atendimento de emergência e reboque
+4. Informações sobre serviços disponíveis
+5. Garantia e acompanhamento pós-serviço`,
+  },
+
+  // ── Loja ────────────────────────────────────────────────────────────────────
+  "loja": {
+    businessType: "loja",
+    welcomeMessage: "Olá! 🛍️ Seja bem-vindo(a) à nossa loja! Sou o assistente virtual e posso te ajudar a encontrar produtos, verificar disponibilidade, formas de pagamento e muito mais. Como posso te ajudar?",
+    defaultServices: [
+      { name: "Atendimento ao Cliente", durationMinutes: 30 },
+      { name: "Encomenda Especial",     durationMinutes: 30 },
+    ],
+    defaultAutomations: [
+      {
+        name: "Produto / Disponibilidade",
+        triggerType: "keyword",
+        triggerValue: "tem",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Me conta o que você está procurando que verifico a disponibilidade em estoque pra você!",
+      },
+      {
+        name: "Horário de Funcionamento",
+        triggerType: "keyword",
+        triggerValue: "horário",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Nosso horário de funcionamento é {business_hours}. Quer mais informações sobre nossos produtos?",
+      },
+      {
+        name: "Endereço / Localização",
+        triggerType: "keyword",
+        triggerValue: "endereço",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Estamos em {business_address}. Ficamos felizes em te receber! Quer saber nosso horário de funcionamento?",
+      },
+      {
+        name: "Preço / Valor",
+        triggerType: "keyword",
+        triggerValue: "preço",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Me conta qual produto você tem interesse que te passo o valor atualizado!",
+      },
+      {
+        name: "Pagamento / Formas",
+        triggerType: "keyword",
+        triggerValue: "pagamento",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Aceitamos cartão de crédito, débito, PIX e dinheiro. Tem algum produto específico que posso te ajudar a encontrar?",
+      },
+    ],
+    defaultFaq: "",
+    defaultPrompt: `Você é o assistente virtual de uma loja física ou varejista. Seu papel é ajudar clientes a encontrar produtos, verificar disponibilidade em estoque, informar preços e facilitar a compra.
+
+COMPORTAMENTO:
+- Seja atencioso, prestativo e entusiasmado com os produtos
+- Para buscas de produto, pergunte modelo, tamanho, cor ou características desejadas
+- Sempre verifique disponibilidade antes de confirmar qualquer item
+- Para produtos indisponíveis, ofereça alternativas similares ou lista de espera
+- Informe claramente formas de pagamento, parcelamento e condições
+- Para encomendas especiais, colete todos os detalhes necessários e prazo estimado
+
+INTENÇÕES PRINCIPAIS:
+1. Busca e disponibilidade de produtos
+2. Informações sobre preços e promoções
+3. Localização e horário de funcionamento
+4. Formas de pagamento e parcelamento
+5. Encomendas e pedidos especiais`,
+  },
+
+  // ── Imobiliária ──────────────────────────────────────────────────────────────
+  "imobiliária": {
+    businessType: "imobiliária",
+    welcomeMessage: "Olá! 🏠 Seja bem-vindo(a)! Sou o assistente virtual da imobiliária. Posso te ajudar a encontrar o imóvel ideal, agendar visitas e tirar dúvidas. Como posso te ajudar hoje?",
+    defaultServices: [
+      { name: "Visita a Imóvel",        durationMinutes: 60 },
+      { name: "Avaliação de Imóvel",    durationMinutes: 60 },
+      { name: "Consultoria Imobiliária",durationMinutes: 60 },
+    ],
+    defaultAutomations: [
+      {
+        name: "Busca de Imóvel",
+        triggerType: "keyword",
+        triggerValue: "imóvel",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Ótimo! Para te indicar as melhores opções, me conta: você está buscando para compra ou aluguel? Qual tipo de imóvel (casa, apartamento, comercial)? Qual região ou bairro de preferência? E qual faixa de valor?",
+      },
+      {
+        name: "Agendar Visita",
+        triggerType: "keyword",
+        triggerValue: "visita",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Ótimo que você quer conhecer o imóvel pessoalmente! Me passa o código do imóvel ou me diz qual você tem interesse e escolhemos uma data e horário para a visita.",
+      },
+      {
+        name: "Aluguel",
+        triggerType: "keyword",
+        triggerValue: "alugar",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Temos ótimas opções para locação! Para te indicar as mais adequadas: qual tipo de imóvel, quantos quartos, bairro de preferência e valor máximo de aluguel?",
+      },
+      {
+        name: "Compra",
+        triggerType: "keyword",
+        triggerValue: "comprar",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Que ótima decisão investir em imóvel! Para encontrar as melhores opções: você prefere casa ou apartamento? Qual região? Tem interesse em financiamento ou pagamento à vista?",
+      },
+      {
+        name: "Documentação / Processo",
+        triggerType: "keyword",
+        triggerValue: "documento",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "A documentação varia conforme o tipo de negociação (compra, venda ou locação). Um de nossos corretores pode te orientar em detalhes. Posso agendar uma consultoria?",
+      },
+    ],
+    defaultFaq: "",
+    defaultPrompt: `Você é o assistente virtual de uma imobiliária. Seu papel é qualificar leads, entender as necessidades do cliente em busca de imóveis e agendar visitas com os corretores.
+
+COMPORTAMENTO:
+- Seja consultivo, atencioso e profissional — comprar ou alugar imóvel é uma decisão importante
+- Sempre qualifique o lead: compra ou aluguel? Tipo de imóvel? Localização? Faixa de valor?
+- Para visitas, agende com antecedência e confirme endereço e horário
+- Nunca confirme disponibilidade ou condições sem verificar com o corretor
+- Para dúvidas sobre financiamento, oriente a consultar um especialista ou o corretor responsável
+- Registre os dados do interessado para follow-up posterior
+
+INTENÇÕES PRINCIPAIS:
+1. Busca e filtragem de imóveis (compra e aluguel)
+2. Agendamento de visitas
+3. Informações sobre localização, área e características
+4. Dúvidas sobre processo de compra, aluguel e documentação
+5. Avaliação e venda de imóveis`,
+  },
+
+  // ── Advocacia ────────────────────────────────────────────────────────────────
+  "advocacia": {
+    businessType: "advocacia",
+    welcomeMessage: "Olá! ⚖️ Seja bem-vindo(a)! Sou o assistente virtual do escritório de advocacia. Posso ajudar com informações sobre nossas áreas de atuação e agendar uma consulta inicial. Como posso te ajudar?",
+    defaultServices: [
+      { name: "Consulta Jurídica Inicial", durationMinutes: 60  },
+      { name: "Análise de Caso",           durationMinutes: 60  },
+      { name: "Orientação Jurídica",       durationMinutes: 30  },
+    ],
+    defaultAutomations: [
+      {
+        name: "Agendar Consulta",
+        triggerType: "keyword",
+        triggerValue: "consulta",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Para agendar uma consulta com nossos advogados, me informe: qual área jurídica você precisa de ajuda, seu nome e disponibilidade de horário. Vou verificar a agenda.",
+      },
+      {
+        name: "Área de Atuação",
+        triggerType: "keyword",
+        triggerValue: "área",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Atuamos em diversas áreas do Direito. Me conta brevemente qual é a sua situação que te informo se podemos te ajudar e qual especialista seria mais adequado.",
+      },
+      {
+        name: "Honorários / Preço",
+        triggerType: "keyword",
+        triggerValue: "honorário",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Os honorários são definidos após a avaliação do caso pelo advogado responsável. Posso agendar uma consulta inicial para análise da sua situação. Tem interesse?",
+      },
+      {
+        name: "Urgência Jurídica",
+        triggerType: "keyword",
+        triggerValue: "urgente",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Entendo a urgência! Vou verificar a disponibilidade imediata de um advogado. Me passa seu nome, número de contato e descreve brevemente a situação.",
+      },
+    ],
+    defaultFaq: "",
+    defaultPrompt: `Você é o assistente virtual de um escritório de advocacia. Seu papel é recepcionar clientes, coletar informações iniciais sobre o caso e agendar consultas com os advogados.
+
+COMPORTAMENTO:
+- Seja formal, respeitoso e discreto — o cliente está em uma situação sensível
+- NUNCA forneça orientação ou parecer jurídico específico — isso é atribuição exclusiva do advogado
+- Colete informações básicas do caso: área do direito, breve descrição, urgência e disponibilidade do cliente
+- Para urgências (prisão em flagrante, audiências próximas), priorize o contato imediato com o advogado
+- Mantenha total sigilo sobre informações compartilhadas pelo cliente
+- Direcione para consulta presencial ou por videochamada para análise aprofundada
+
+INTENÇÕES PRINCIPAIS:
+1. Agendamento de consulta jurídica inicial
+2. Informações gerais sobre áreas de atuação do escritório
+3. Triagem inicial do tipo de caso
+4. Atendimento de urgência jurídica
+5. Informações sobre o processo de contratação`,
+  },
+
+  // ── Educação ─────────────────────────────────────────────────────────────────
+  "educacao": {
+    businessType: "educacao",
+    welcomeMessage: "Olá! 📚 Seja bem-vindo(a)! Sou o assistente virtual. Posso te ajudar com informações sobre cursos, matrículas, horários e dúvidas gerais. Como posso te ajudar hoje?",
+    defaultServices: [
+      { name: "Aula Experimental",    durationMinutes: 60  },
+      { name: "Matrícula",            durationMinutes: 30  },
+      { name: "Orientação Acadêmica", durationMinutes: 30  },
+      { name: "Aula de Reforço",      durationMinutes: 60  },
+    ],
+    defaultAutomations: [
+      {
+        name: "Matrícula / Inscrição",
+        triggerType: "keyword",
+        triggerValue: "matrícula",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Ótimo interesse! Para iniciar sua matrícula, me informa: qual curso ou turma você tem interesse, seu nome e melhor forma de contato. Vou te orientar sobre os próximos passos.",
+      },
+      {
+        name: "Preço / Mensalidade",
+        triggerType: "keyword",
+        triggerValue: "preço",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Os valores variam conforme o curso e modalidade. Me conta qual curso você tem interesse que te passo os detalhes de investimento e condições de pagamento!",
+      },
+      {
+        name: "Horário das Aulas",
+        triggerType: "keyword",
+        triggerValue: "horário",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Temos turmas em diversos horários para facilitar sua rotina! Me conta qual curso você quer e sua disponibilidade que verifico as opções mais adequadas.",
+      },
+      {
+        name: "Aula Experimental",
+        triggerType: "keyword",
+        triggerValue: "experimental",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Que ótima ideia! Você pode fazer uma aula experimental sem compromisso. Me passa seu nome e disponibilidade que agendo para você.",
+      },
+      {
+        name: "Material Didático",
+        triggerType: "keyword",
+        triggerValue: "material",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Informações sobre material didático variam por curso. Me conta qual curso você está buscando que te passo todos os detalhes sobre o que está incluso.",
+      },
+    ],
+    defaultFaq: "",
+    defaultPrompt: `Você é o assistente virtual de uma instituição de ensino (escola, curso, academia de idiomas, escola técnica etc.). Seu papel é informar sobre cursos, agendar matrículas e aulas experimentais.
+
+COMPORTAMENTO:
+- Seja acolhedor, entusiasmado e motivador — o cliente está investindo em seu desenvolvimento
+- Destaque os benefícios e resultados de cada curso ao apresentá-los
+- Para matrículas, colete: nome, curso de interesse, modalidade (presencial/online) e disponibilidade
+- Para dúvidas sobre aproveitamento de créditos ou histórico escolar, oriente a contatar a secretaria
+- Sempre destaque diferenciais como metodologia, material incluso e qualificação dos professores
+- Ofereça aula experimental como primeiro passo para novos interessados
+
+INTENÇÕES PRINCIPAIS:
+1. Informações sobre cursos, grades e metodologia
+2. Matrículas e inscrições
+3. Agendamento de aulas experimentais
+4. Horários e modalidades disponíveis
+5. Dúvidas sobre mensalidade, bolsas e condições de pagamento`,
+  },
+
+  // ── Academia ─────────────────────────────────────────────────────────────────
+  "academia": {
+    businessType: "academia",
+    welcomeMessage: "Olá! 💪 Seja bem-vindo(a)! Sou o assistente virtual da academia. Posso te ajudar com informações sobre planos, modalidades, horários e muito mais. Como posso te ajudar hoje?",
+    defaultServices: [
+      { name: "Avaliação Física",          durationMinutes: 60  },
+      { name: "Aula Experimental",         durationMinutes: 60  },
+      { name: "Personal Training (Sessão)",durationMinutes: 60  },
+      { name: "Assessoria Nutricional",    durationMinutes: 60  },
+    ],
+    defaultAutomations: [
+      {
+        name: "Planos / Mensalidade",
+        triggerType: "keyword",
+        triggerValue: "plano",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Temos planos mensais, trimestrais e anuais com ótimas condições! Me conta o que você busca e te apresento a melhor opção. Posso agendar uma visita para conhecer a academia?",
+      },
+      {
+        name: "Horário de Funcionamento",
+        triggerType: "keyword",
+        triggerValue: "horário",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Funcionamos {business_hours}. Temos turmas em vários horários para encaixar na sua rotina. Quer saber sobre nossas modalidades?",
+      },
+      {
+        name: "Modalidades / Aulas",
+        triggerType: "keyword",
+        triggerValue: "aula",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Oferecemos diversas modalidades! Me conta o que você busca (musculação, spinning, funcional, yoga, artes marciais etc.) e te informo os horários disponíveis.",
+      },
+      {
+        name: "Personal Training",
+        triggerType: "keyword",
+        triggerValue: "personal",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "Temos personal trainers experientes disponíveis! O personal garante treinos personalizados e mais resultados em menos tempo. Quer mais informações sobre horários e valores?",
+      },
+      {
+        name: "Avaliação Física",
+        triggerType: "keyword",
+        triggerValue: "avaliação",
+        matchType: "contains",
+        responseType: "text",
+        responseText: "A avaliação física é o primeiro passo para um treino eficiente! Posso agendar sua avaliação gratuitamente. Qual o melhor dia e horário para você?",
+      },
+    ],
+    defaultFaq: "",
+    defaultPrompt: `Você é o assistente virtual de uma academia de ginástica ou centro fitness. Seu papel é apresentar planos, modalidades, agendar avaliações e converter interessados em alunos.
+
+COMPORTAMENTO:
+- Seja motivador, energético e positivo — o cliente está buscando saúde e bem-estar
+- Sempre ofereça uma aula experimental ou avaliação física gratuita como primeiro passo
+- Para interessados em planos, destaque os benefícios de cada modalidade e o custo-benefício
+- Ao qualificar o lead, pergunte o objetivo (emagrecer, ganhar massa, saúde, esporte específico)
+- Incentive o pagamento anual/trimestral ao apresentar os planos
+- Para solicitações de personal trainer, destaque a personalização e resultados mais rápidos
+
+INTENÇÕES PRINCIPAIS:
+1. Informações sobre planos e mensalidades
+2. Modalidades de treino e grade de aulas
+3. Agendamento de avaliação física e aula experimental
+4. Personal training e acompanhamento especializado
+5. Horários de funcionamento e infraestrutura`,
+  },
 };

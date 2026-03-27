@@ -194,7 +194,8 @@ export default function AtendimentoIAPage() {
   const [showBotGrid, setShowBotGrid] = useState(false);
   const [activatingBot, setActivatingBot] = useState<string | null>(null);
   const [botMsg, setBotMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
-  const [resettingPreset, setResettingPreset] = useState(false);
+  const [resettingSection, setResettingSection] = useState<string | null>(null);
+  const [resetFeedback, setResetFeedback] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
 
   // Save state per section key
   const [saving, setSaving] = useState<Record<string, boolean>>({});
@@ -293,12 +294,10 @@ export default function AtendimentoIAPage() {
           body:    JSON.stringify({ setup: answers }),
         });
         if (!res.ok) return;
-        const data = await res.json();
-        // Patch local state silently — no full control-center reload needed
-        if (data.newPrompt)  setAiIdentity((p) => ({ ...p, aiPrompt: data.newPrompt }));
-        if (data.newWelcome) setWelcome({ message: data.newWelcome });
+        // Reload canonical state — aiIdentity.aiPrompt must show manual layer only
         setAutoSaveStatus('saved');
         setTimeout(() => setAutoSaveStatus('idle'), 2500);
+        await reloadAll();
       } catch {
         setAutoSaveStatus('idle');
       }
@@ -316,12 +315,10 @@ export default function AtendimentoIAPage() {
         body:    JSON.stringify({ setup: latestGuidedAnswers.current }),
       });
       if (!res.ok) throw new Error("Erro ao salvar");
-      const data = await res.json();
-      // Patch silently from response — no second fetch needed
-      if (data.newPrompt)  setAiIdentity((p) => ({ ...p, aiPrompt: data.newPrompt }));
-      if (data.newWelcome) setWelcome({ message: data.newWelcome });
       setSaved((s) => ({ ...s, guidedSetup: true }));
       setTimeout(() => setSaved((s) => ({ ...s, guidedSetup: false })), 3000);
+      // Reload canonical state — aiIdentity.aiPrompt must show manual layer only
+      await reloadAll();
     } catch (e: any) {
       alert(e.message);
     } finally {
@@ -355,31 +352,28 @@ export default function AtendimentoIAPage() {
   }
 
 
-  async function resetPreset() {
-    if (!window.confirm(
-      "Tem certeza? Isso vai remover o bot ativo, o bloco preset do prompt e todas as automações e serviços semeados pelo preset.\n\nAutomações e serviços criados manualmente são preservados."
-    )) return;
-
-    setResettingPreset(true);
-    setBotMsg(null);
+  async function resetSection(scope: string, confirmMsg: string) {
+    if (!window.confirm(confirmMsg)) return;
+    setResettingSection(scope);
+    setResetFeedback(null);
     try {
       const res = await fetch("/api/ai-control-center/reset", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ scope: "preset" }),
+        body: JSON.stringify({ scope }),
       });
       const d = await res.json();
       if (res.ok && d.success) {
-        setBotMsg({ type: "ok", text: "Preset resetado. Automações e serviços do sistema removidos." });
         await reloadAll();
-        setTimeout(() => setBotMsg(null), 4000);
+        setResetFeedback({ type: "ok", text: "Resetado com sucesso." });
+        setTimeout(() => setResetFeedback(null), 4000);
       } else {
-        setBotMsg({ type: "err", text: d.error || "Erro ao resetar preset" });
+        setResetFeedback({ type: "err", text: d.error || "Erro ao resetar" });
       }
     } catch {
-      setBotMsg({ type: "err", text: "Erro ao conectar com o servidor" });
+      setResetFeedback({ type: "err", text: "Erro ao conectar com o servidor" });
     } finally {
-      setResettingPreset(false);
+      setResettingSection(null);
     }
   }
 
@@ -534,14 +528,33 @@ export default function AtendimentoIAPage() {
     <div className="max-w-5xl mx-auto space-y-6 pb-20">
 
       {/* ── Header ────────────────────────────────────────────────────────────── */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-gray-900 flex items-center gap-2">
-          🧠 Atendimento IA
-        </h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Configure todo o comportamento do atendimento automatizado em um só lugar.
-        </p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900 flex items-center gap-2">
+            🧠 Atendimento IA
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Configure todo o comportamento do atendimento automatizado em um só lugar.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => resetSection("all",
+            "RESET TOTAL — apaga tudo:\n\n• Bot ativo\n• Prompt compilado (preset + guided setup + manual)\n• Horários de atendimento\n• Mensagem de boas-vindas\n• Todas as automações (manuais e do preset)\n• Serviços do preset\n\nConfirma o reset total?"
+          )}
+          disabled={!!resettingSection}
+          className="shrink-0 px-4 py-2 text-xs font-semibold text-red-600 border border-red-200 rounded-xl hover:bg-red-50 transition-colors disabled:opacity-40"
+        >
+          {resettingSection === "all" ? "Resetando..." : "⚠️ Reset Total"}
+        </button>
       </div>
+
+      {/* ── Reset feedback ────────────────────────────────────────────────────── */}
+      {resetFeedback && (
+        <div className={`px-4 py-3 rounded-xl text-sm font-medium ${resetFeedback.type === "ok" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
+          {resetFeedback.text}
+        </div>
+      )}
 
       {/* ── 1. Contexto do Negócio ────────────────────────────────────────────── */}
       <SectionCard id="contexto" icon="🏢" title="Contexto do Negócio" subtitle="Informações que a IA usa para contextualizar as respostas">
@@ -667,12 +680,14 @@ export default function AtendimentoIAPage() {
             {activeBotKey && (
               <button
                 type="button"
-                onClick={resetPreset}
-                disabled={resettingPreset}
+                onClick={() => resetSection("preset",
+                  "Resetar preset?\n\nRemove o bot ativo, o bloco preset do prompt, todas as automações e serviços semeados pelo preset.\n\nAutomações e serviços manuais são preservados."
+                )}
+                disabled={!!resettingSection}
                 className="shrink-0 text-xs text-red-400 hover:text-red-600 underline underline-offset-2 transition-colors disabled:opacity-40"
-                title="Remove o bot ativo, o prompt derivado e as automações/serviços semeados pelo preset. Dados manuais são preservados."
+                title="Remove o bot ativo, o bloco preset do prompt e as automações/serviços semeados pelo preset. Dados manuais são preservados."
               >
-                {resettingPreset ? "Resetando..." : "Resetar preset"}
+                {resettingSection === "preset" ? "Resetando..." : "Resetar preset"}
               </button>
             )}
           </div>
@@ -716,6 +731,16 @@ export default function AtendimentoIAPage() {
             >
               {saving.guidedSetup ? 'Salvando...' : 'Salvar manualmente'}
             </button>
+            <button
+              type="button"
+              onClick={() => resetSection("guided_setup",
+                "Resetar Guided Setup?\n\nRemove as respostas do chat guiado e o bloco gerado no prompt.\n\nO prompt manual, o preset e a mensagem de boas-vindas são preservados."
+              )}
+              disabled={!!resettingSection}
+              className="text-xs text-red-400 hover:text-red-600 underline underline-offset-2 transition-colors disabled:opacity-40"
+            >
+              {resettingSection === "guided_setup" ? "Resetando..." : "Resetar guided setup"}
+            </button>
           </div>
         </div>
       </SectionCard>
@@ -744,7 +769,19 @@ export default function AtendimentoIAPage() {
               className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4f46e5]/20 focus:border-[#4f46e5]/40 transition-all resize-none leading-relaxed"
             />
           </div>
-          <SaveBtn saving={saving.aiIdentity} saved={saved.aiIdentity} onClick={() => putSection("aiIdentity", { aiIdentity })} />
+          <div className="flex items-center justify-between">
+            <SaveBtn saving={saving.aiIdentity} saved={saved.aiIdentity} onClick={() => putSection("aiIdentity", { aiIdentity })} />
+            <button
+              type="button"
+              onClick={() => resetSection("identity",
+                "Resetar Identidade da IA?\n\nApaga o prompt manual e zera os horários de atendimento.\n\nO bloco preset e o guided setup são preservados."
+              )}
+              disabled={!!resettingSection}
+              className="text-xs text-red-400 hover:text-red-600 underline underline-offset-2 transition-colors disabled:opacity-40 mt-4"
+            >
+              {resettingSection === "identity" ? "Resetando..." : "Resetar identidade manual"}
+            </button>
+          </div>
         </div>
       </SectionCard>
 
@@ -781,7 +818,19 @@ export default function AtendimentoIAPage() {
               {welcome.message}
             </div>
           )}
-          <SaveBtn saving={saving.welcome} saved={saved.welcome} onClick={() => putSection("welcome", { welcome: { message: welcome.message.trim() === "" ? "__clear__" : welcome.message } })} />
+          <div className="flex items-center justify-between">
+            <SaveBtn saving={saving.welcome} saved={saved.welcome} onClick={() => putSection("welcome", { welcome: { message: welcome.message.trim() === "" ? "__clear__" : welcome.message } })} />
+            <button
+              type="button"
+              onClick={() => resetSection("welcome",
+                "Resetar mensagem de boas-vindas?\n\nRemove a mensagem de boas-vindas atual.\nNenhuma outra configuração é alterada."
+              )}
+              disabled={!!resettingSection}
+              className="text-xs text-red-400 hover:text-red-600 underline underline-offset-2 transition-colors disabled:opacity-40 mt-4"
+            >
+              {resettingSection === "welcome" ? "Resetando..." : "Resetar boas-vindas"}
+            </button>
+          </div>
 
           {/* ── Session timeout ─────────────────────────────────────────────── */}
           <div className="pt-4 border-t border-gray-100 space-y-2">
@@ -944,20 +993,33 @@ export default function AtendimentoIAPage() {
       {/* ── 7. Automações Determinísticas ─────────────────────────────────────── */}
       <SectionCard id="automacoes" icon="⚡" title="Automações Determinísticas" subtitle="Respostas fixas disparadas antes da IA — por palavra-chave ou status de pedido">
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
             <p className="text-sm text-gray-500">
               {automations.length} automação{automations.length !== 1 ? "ões" : ""} · {activeAutomations} ativa{activeAutomations !== 1 ? "s" : ""}
             </p>
-            <button
-              onClick={() => {
-                setEditingAuto(null);
-                setAutoForm({ name: "", triggerType: "keyword", triggerValue: "", matchType: "exact", responseType: "text", responseText: "" });
-                setAutoModal(true);
-              }}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-[#4f46e5] text-white rounded-xl font-semibold text-sm hover:bg-[#4338ca] transition-all"
-            >
-              <PlusIcon className="w-4 h-4" /> Nova Automação
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => resetSection("automations",
+                  "Resetar automações manuais?\n\nRemove apenas as automações criadas manualmente.\nAs automações do preset ativo são preservadas."
+                )}
+                disabled={!!resettingSection}
+                className="text-xs text-red-400 hover:text-red-600 underline underline-offset-2 transition-colors disabled:opacity-40"
+                title="Remove apenas automações manuais. Automações do preset são preservadas."
+              >
+                {resettingSection === "automations" ? "Resetando..." : "Resetar manuais"}
+              </button>
+              <button
+                onClick={() => {
+                  setEditingAuto(null);
+                  setAutoForm({ name: "", triggerType: "keyword", triggerValue: "", matchType: "exact", responseType: "text", responseText: "" });
+                  setAutoModal(true);
+                }}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-[#4f46e5] text-white rounded-xl font-semibold text-sm hover:bg-[#4338ca] transition-all"
+              >
+                <PlusIcon className="w-4 h-4" /> Nova Automação
+              </button>
+            </div>
           </div>
 
           {automations.length === 0 ? (

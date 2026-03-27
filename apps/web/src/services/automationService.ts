@@ -241,30 +241,34 @@ export async function checkAutomationMatch(message: string, tenantId: string) {
   });
   const activeBotKey = (tenantRow as any)?.activeBotKey ?? null;
 
-  // Only fire: manual rules + system rules seeded by the active bot
-  const orClauses: any[] = [{ sourceType: 'manual' }];
-  if (activeBotKey) orClauses.push({ sourceType: 'system', sourceBotKey: activeBotKey });
+  function matchRule(rules: any[]): any | null {
+    for (const rule of rules) {
+      const trigger = rule.triggerValue.toLowerCase().trim();
+      if (rule.matchType === 'exact'    && msgText === trigger)        return rule;
+      if (rule.matchType === 'contains' && msgText.includes(trigger))  return rule;
+    }
+    return null;
+  }
 
-  const rules = await (prisma.automationRule as any).findMany({
+  // Pass 1 — manual rules always take priority over system rules
+  const manualRules = await (prisma.automationRule as any).findMany({
+    where: { tenantId, active: true, sourceType: 'manual', NOT: { triggerType: 'order_status' } },
+    orderBy: { createdAt: 'asc' },
+  });
+  const manualMatch = matchRule(manualRules);
+  if (manualMatch) return manualMatch;
+
+  // Pass 2 — system rules of the active bot, only when no manual rule matched
+  if (!activeBotKey) return null;
+  const systemRules = await (prisma.automationRule as any).findMany({
     where: {
       tenantId,
       active: true,
+      sourceType: 'system',
+      sourceBotKey: activeBotKey,
       NOT: { triggerType: 'order_status' },
-      OR: orClauses,
     },
-    // manual rules first (sourceType 'manual' > 'system' lexicographically desc), then by age
-    orderBy: [{ sourceType: 'desc' }, { createdAt: 'asc' }],
+    orderBy: { createdAt: 'asc' },
   });
-
-  for (const rule of rules) {
-    const trigger = rule.triggerValue.toLowerCase().trim();
-
-    if (rule.matchType === 'exact') {
-      if (msgText === trigger) return rule;
-    } else if (rule.matchType === 'contains') {
-      if (msgText.includes(trigger)) return rule;
-    }
-  }
-
-  return null;
+  return matchRule(systemRules);
 }

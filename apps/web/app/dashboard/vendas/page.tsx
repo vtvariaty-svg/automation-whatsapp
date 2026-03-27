@@ -395,6 +395,7 @@ function CatalogoTab() {
       <div className="bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-3 text-sm text-indigo-700">
         Este é exatamente o catálogo que o bot envia quando o cliente pede{" "}
         <em>"quais serviços"</em> ou <em>"mande catálogo"</em>.
+        Serviços exibidos: manuais ativos + serviços do bot ativo (preset).
       </div>
 
       {/* Products section */}
@@ -440,7 +441,7 @@ function CatalogoTab() {
             <span>📅</span> Serviços para Agendamento ({services.length})
           </h3>
           <p className="text-xs text-gray-400">
-            Exibidos pelo bot quando o cliente pede o catálogo. Para vender com checkout, vincule um Produto a cada serviço.
+            Serviços ativos do bot ativo (preset) + serviços manuais. Para vender com checkout, vincule um Produto a cada serviço.
           </p>
           <div className="bg-white rounded-2xl border border-gray-200/60 shadow-sm divide-y divide-gray-100">
             {services.map(s => (

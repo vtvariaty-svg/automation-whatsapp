@@ -46,13 +46,7 @@ function BotsIAContent() {
       .then((data) => {
         if (!data) return;
         if (data.activeBotKey) {
-          // fonte de verdade primária
           setActiveBotId(data.activeBotKey);
-        } else {
-          // fallback somente-leitura para tenants antigos (não persiste)
-          const bt = data.businessType || "";
-          const found = marketplaceBots.find((b) => b.niche === bt);
-          if (found) setActiveBotId(found.id);
         }
       })
       .catch(() => {});
@@ -336,9 +330,9 @@ function MeuBotTab({
         <h3 className="font-bold text-gray-900 text-sm mb-4">O que foi pré-configurado ao ativar</h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
-            { icon: "🤖", label: "Prompt da IA", desc: "Personalidade, tom e regras de comportamento" },
-            { icon: "👋", label: "Boas-vindas",  desc: "Mensagem enviada na primeira interação" },
+            { icon: "🤖", label: "Prompt da IA",  desc: "Personalidade, tom e regras de comportamento do nicho" },
             { icon: "⚡", label: `${bot.automations.length} automações`, desc: "Respostas rápidas para intenções comuns do segmento" },
+            { icon: "📋", label: "Serviços",      desc: "Serviços pré-cadastrados para agendamento (configure em Serviços)" },
           ].map((item) => (
             <div key={item.label} className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
               <span className="text-2xl">{item.icon}</span>

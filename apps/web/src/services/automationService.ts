@@ -234,22 +234,35 @@ export async function checkAutomationMatch(message: string, tenantId: string) {
   if (!message) return null;
   const msgText = message.toLowerCase().trim();
 
-  const rules = await prisma.automationRule.findMany({
-    where: { tenantId, active: true, NOT: { triggerType: 'order_status' } },
-    orderBy: { createdAt: 'asc' } // Process older rules first
+  // Resolve activeBotKey to filter system rules correctly
+  const tenantRow = await (prisma.tenant as any).findUnique({
+    where: { id: tenantId },
+    select: { activeBotKey: true },
+  });
+  const activeBotKey = (tenantRow as any)?.activeBotKey ?? null;
+
+  // Only fire: manual rules + system rules seeded by the active bot
+  const orClauses: any[] = [{ sourceType: 'manual' }];
+  if (activeBotKey) orClauses.push({ sourceType: 'system', sourceBotKey: activeBotKey });
+
+  const rules = await (prisma.automationRule as any).findMany({
+    where: {
+      tenantId,
+      active: true,
+      NOT: { triggerType: 'order_status' },
+      OR: orClauses,
+    },
+    // manual rules first (sourceType 'manual' > 'system' lexicographically desc), then by age
+    orderBy: [{ sourceType: 'desc' }, { createdAt: 'asc' }],
   });
 
   for (const rule of rules) {
     const trigger = rule.triggerValue.toLowerCase().trim();
-    
+
     if (rule.matchType === 'exact') {
-      if (msgText === trigger) {
-        return rule;
-      }
+      if (msgText === trigger) return rule;
     } else if (rule.matchType === 'contains') {
-      if (msgText.includes(trigger)) {
-        return rule;
-      }
+      if (msgText.includes(trigger)) return rule;
     }
   }
 

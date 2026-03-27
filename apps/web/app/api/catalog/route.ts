@@ -1,15 +1,14 @@
 /**
  * GET /api/catalog
- * Returns active products AND standalone services for the authenticated tenant.
+ * Returns active products AND services for the authenticated tenant.
  *
- * "Standalone services" = active Service records that are NOT linked to any Product
- * via Product.serviceId. These are the same items the bot lists under
- * "Serviços para Agendamento" in its catalog response, ensuring the dashboard
- * matches exactly what the bot presents.
+ * Services shown:
+ *   - manual active services (sourceType='manual' AND active=true)
+ *   - system active services seeded by the current bot
+ *     (sourceType='system' AND active=true AND sourceBotKey=tenant.activeBotKey)
  *
- * Source of truth:
- *   products  → Product.active = true
- *   services  → Service.active = true AND not referenced by any Product.serviceId
+ * "Standalone services" = services NOT linked to any Product via Product.serviceId.
+ * These are the items the bot lists under "Serviços para Agendamento".
  */
 
 import { NextResponse } from 'next/server';
@@ -21,6 +20,21 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: Request) {
   const auth = await getAuthTenant(request);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  // Resolve activeBotKey to filter system services correctly
+  const tenant = await (prisma.tenant as any).findUnique({
+    where: { id: auth.tenantId },
+    select: { activeBotKey: true },
+  });
+  const activeBotKey = (tenant as any)?.activeBotKey as string | null ?? null;
+
+  // Build OR clause for service visibility
+  const serviceOrClauses: any[] = [
+    { sourceType: 'manual', active: true },
+  ];
+  if (activeBotKey) {
+    serviceOrClauses.push({ sourceType: 'system', active: true, sourceBotKey: activeBotKey });
+  }
 
   const [products, allServices] = await Promise.all([
     prisma.product.findMany({
@@ -37,8 +51,11 @@ export async function GET(request: Request) {
       },
       orderBy: { createdAt: 'desc' },
     }),
-    prisma.service.findMany({
-      where: { tenantId: auth.tenantId, active: true },
+    (prisma.service as any).findMany({
+      where: {
+        tenantId: auth.tenantId,
+        OR: serviceOrClauses,
+      },
       select: {
         id: true,
         name: true,
@@ -53,7 +70,7 @@ export async function GET(request: Request) {
   const linkedServiceIds = new Set(
     products.filter((p) => p.serviceId).map((p) => p.serviceId as string)
   );
-  const standaloneServices = allServices.filter((s) => !linkedServiceIds.has(s.id));
+  const standaloneServices = (allServices as any[]).filter((s: any) => !linkedServiceIds.has(s.id));
 
   return NextResponse.json({
     products,

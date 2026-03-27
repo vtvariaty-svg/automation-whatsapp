@@ -5,6 +5,14 @@ import { marketplaceBots } from '@/lib/marketplace/bots';
 import { BOT_TEMPLATE_MAP } from '@/lib/marketplace/botTemplateMap';
 import { businessTemplates } from '@/lib/onboarding/templates';
 import { checkFeature } from '@/lib/services/entitlementsService';
+import {
+  PRESET_BLOCK_START,
+  PRESET_BLOCK_END,
+  extractManagedBlock,
+  replaceManagedBlock,
+  extractPromptWithoutManagedBlocks,
+  composePromptFromBlocks,
+} from '@/lib/ai/guidedSetup';
 
 /** Normaliza strings para comparação: trim + lowercase + colapso de espaços. */
 function norm(s: string): string {
@@ -41,9 +49,7 @@ export async function POST(request: Request) {
       const tenant = await tx.tenant.findUnique({ where: { id: auth.tenantId } });
       if (!tenant) throw new Error('Tenant não encontrado');
 
-      // ── 1. Deactivate system automations from PREVIOUS bots ───────────────
-      // Only deactivates rules that were seeded by another bot/preset.
-      // Manual user rules (sourceType = 'manual') are never touched.
+      // ── A. Deactivate system automations from OTHER bots ──────────────────
       await (tx.automationRule as any).updateMany({
         where: {
           tenantId: auth.tenantId,
@@ -53,14 +59,24 @@ export async function POST(request: Request) {
         data: { active: false },
       });
 
-      // ── 2. Read ACTIVE triggers AFTER deactivation (correct dedup baseline) ─
+      // ── B. Reactivate existing system automations for CURRENT bot ─────────
+      await (tx.automationRule as any).updateMany({
+        where: {
+          tenantId: auth.tenantId,
+          sourceType: 'system',
+          sourceBotKey: bot.id,
+        },
+        data: { active: true },
+      });
+
+      // ── C. Read ACTIVE triggers AFTER reactivation (correct dedup baseline)
       const existingRules = await tx.automationRule.findMany({
         where: { tenantId: auth.tenantId, active: true },
         select: { triggerValue: true },
       });
       const existingTriggers = new Set(existingRules.map((r) => norm(r.triggerValue)));
 
-      // ── 3. Automações-base do template (camada operacional do nicho) ──────
+      // ── D. Template automations (operational layer of the niche) ──────────
       let templateAutomationsCreated = 0;
       if (template && template.defaultAutomations.length > 0) {
         const templateToCreate = template.defaultAutomations.filter(
@@ -87,7 +103,7 @@ export async function POST(request: Request) {
         }
       }
 
-      // ── 4. Automações específicas do bot (camada de especialização) ───────
+      // ── E. Bot-specific automations (specialisation layer) ────────────────
       const botToCreate = bot.automations.filter(
         (a) => !existingTriggers.has(norm(a.triggerValue))
       );
@@ -109,42 +125,26 @@ export async function POST(request: Request) {
         });
       }
 
-      // ── 5. Compor prompt com hierarquia clara ─────────────────────────────
-      //   1. template.defaultPrompt — base operacional do nicho
-      //   2. bot.prompt             — especialização conversacional/comercial
-      //   3. Informações da empresa
-      //   4. Regra geral de idioma
-      const hoursText = tenant.businessHours || 'horário comercial';
-      const parts: string[] = [];
-      if (template?.defaultPrompt) {
-        parts.push(template.defaultPrompt);
-        parts.push('');
-      }
-      parts.push(bot.prompt);
-      parts.push('');
-      parts.push('INFORMAÇÕES DA EMPRESA:');
-      parts.push(`- Nome: ${tenant.name}`);
-      parts.push(`- Segmento: ${bot.nicheLabel}`);
-      parts.push(`- Horário de atendimento: ${hoursText}`);
-      parts.push('');
-      parts.push('REGRA GERAL: Responda sempre em português brasileiro de forma clara e objetiva.');
-      const systemPrompt = parts.join('\n');
-
-      // ── 6. Atualizar tenant ───────────────────────────────────────────────
-      // businessType NÃO é alterado — identidade do tenant definida no onboarding.
-      // activeBotKey é a fonte de verdade para qual bot/template está ativo.
-      // welcomeMessage é propriedade exclusiva do operador — nunca escrita aqui.
-      await tx.tenant.update({
-        where: { id: auth.tenantId },
-        data: {
-          aiPrompt: systemPrompt,
-          activeBotKey: bot.id,
+      // ── F. Services: deactivate other bots', reactivate current bot's ─────
+      await (tx.service as any).updateMany({
+        where: {
+          tenantId: auth.tenantId,
+          sourceType: 'system',
+          NOT: { sourceBotKey: bot.id },
         },
+        data: { active: false },
       });
 
-      // ── 7. Serviços padrão do template — idempotência por nome ───────────
-      // Cria apenas os serviços ainda não existentes (por nome normalizado).
-      // Preserva os serviços existentes ao trocar de bot.
+      await (tx.service as any).updateMany({
+        where: {
+          tenantId: auth.tenantId,
+          sourceType: 'system',
+          sourceBotKey: bot.id,
+        },
+        data: { active: true },
+      });
+
+      // ── G. Create missing template services (idempotent by name) ──────────
       let servicesCreated = 0;
       if (template && template.defaultServices.length > 0) {
         const existingSvcs = await tx.service.findMany({
@@ -172,6 +172,39 @@ export async function POST(request: Request) {
         }
       }
 
+      // ── H. Build PRESET block (bot context only — no overwrite of other layers)
+      const hoursText = (tenant as any).businessHours || 'horário comercial';
+      const presetLines: string[] = [];
+      if (template?.defaultPrompt) {
+        presetLines.push(template.defaultPrompt);
+        presetLines.push('');
+      }
+      presetLines.push(bot.prompt);
+      presetLines.push('');
+      presetLines.push('INFORMAÇÕES DA EMPRESA:');
+      presetLines.push(`- Nome: ${tenant.name}`);
+      presetLines.push(`- Segmento: ${bot.nicheLabel}`);
+      presetLines.push(`- Horário de atendimento: ${hoursText}`);
+      presetLines.push('');
+      presetLines.push('REGRA GERAL: Responda sempre em português brasileiro de forma clara e objetiva.');
+
+      const presetBlock = `${PRESET_BLOCK_START}\n${presetLines.join('\n')}\n${PRESET_BLOCK_END}`;
+
+      // ── I. Inject PRESET block into aiPrompt — preserve GUIDED + manual ───
+      const currentPrompt = (tenant as any).aiPrompt as string | null;
+      const guidedBlock   = extractManagedBlock(currentPrompt, '[GUIDED_SETUP_START]', '[GUIDED_SETUP_END]');
+      const manualLayer   = extractPromptWithoutManagedBlocks(currentPrompt);
+      const newPrompt     = composePromptFromBlocks({ presetBlock, guidedBlock, manualLayer });
+
+      // ── J. Update tenant — businessType / welcomeMessage are NOT touched ──
+      await tx.tenant.update({
+        where: { id: auth.tenantId },
+        data: {
+          aiPrompt:     newPrompt,
+          activeBotKey: bot.id,
+        } as any,
+      });
+
       return {
         tenant,
         templateAutomationsCreated,
@@ -185,16 +218,16 @@ export async function POST(request: Request) {
       };
     });
 
-    // ── 8. Checklist de itens pendentes ───────────────────────────────────────
+    // ── K. Checklist de itens pendentes ──────────────────────────────────────
     const pendingSetup: string[] = [];
     const hasChannel = !!(
-      result.tenant.whatsappToken ||
-      result.tenant.instagramPageId ||
-      result.tenant.facebookPageId
+      (result.tenant as any).whatsappToken ||
+      (result.tenant as any).instagramPageId ||
+      (result.tenant as any).facebookPageId
     );
     if (!hasChannel) pendingSetup.push('channel');
-    if (!result.tenant.businessHours?.trim()) pendingSetup.push('business_hours');
-    if (!result.tenant.welcomeMessage?.trim()) pendingSetup.push('welcome_message');
+    if (!(result.tenant as any).businessHours?.trim()) pendingSetup.push('business_hours');
+    if (!(result.tenant as any).welcomeMessage?.trim()) pendingSetup.push('welcome_message');
     if (bot.suggestedTools.includes('services') || bot.suggestedTools.includes('serviços')) pendingSetup.push('services');
     if (bot.suggestedTools.includes('produtos') || bot.suggestedTools.includes('products')) pendingSetup.push('products');
 

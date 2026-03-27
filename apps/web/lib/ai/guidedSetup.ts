@@ -32,6 +32,9 @@ export interface GuidedSetupAnswers {
 export const GUIDED_BLOCK_START = '[GUIDED_SETUP_START]';
 export const GUIDED_BLOCK_END   = '[GUIDED_SETUP_END]';
 
+export const PRESET_BLOCK_START = '[PRESET_BLOCK_START]';
+export const PRESET_BLOCK_END   = '[PRESET_BLOCK_END]';
+
 // ── Normalise raw JSON from DB or request ─────────────────────────────────────
 
 export function normalizeGuidedAnswers(raw: unknown): GuidedSetupAnswers {
@@ -102,29 +105,93 @@ export function buildManagedPromptBlock(answers: GuidedSetupAnswers): string {
   return `${GUIDED_BLOCK_START}\n${lines.join('\n')}\n${GUIDED_BLOCK_END}`;
 }
 
+// ── Generic managed block helpers ─────────────────────────────────────────────
+
+/** Extracts a managed block (including its markers) from a prompt, or null if absent. */
+export function extractManagedBlock(
+  prompt: string | null | undefined,
+  startMarker: string,
+  endMarker: string,
+): string | null {
+  const base = prompt ?? '';
+  const startIdx = base.indexOf(startMarker);
+  const endIdx   = base.indexOf(endMarker);
+  if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+    return base.slice(startIdx, endIdx + endMarker.length);
+  }
+  return null;
+}
+
+/** Replaces (or prepends) a managed block delimited by startMarker/endMarker. */
+export function replaceManagedBlock(
+  prompt: string | null | undefined,
+  startMarker: string,
+  endMarker: string,
+  newBlock: string,
+): string {
+  const base = prompt ?? '';
+  const startIdx = base.indexOf(startMarker);
+  const endIdx   = base.indexOf(endMarker);
+  if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+    const before = base.slice(0, startIdx);
+    const after  = base.slice(endIdx + endMarker.length);
+    return (before + newBlock + after).replace(/\n{3,}/g, '\n\n').trim();
+  }
+  const custom = base.trim();
+  return custom ? `${newBlock}\n\n${custom}` : newBlock;
+}
+
+/** Removes a managed block delimited by startMarker/endMarker. */
+export function removeManagedBlock(
+  prompt: string | null | undefined,
+  startMarker: string,
+  endMarker: string,
+): string {
+  const base = prompt ?? '';
+  const startIdx = base.indexOf(startMarker);
+  const endIdx   = base.indexOf(endMarker);
+  if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+    const before = base.slice(0, startIdx);
+    const after  = base.slice(endIdx + endMarker.length);
+    return (before + after).replace(/\n{3,}/g, '\n\n').trim();
+  }
+  return base;
+}
+
+/** Returns the raw prompt with ALL managed blocks stripped (manual layer only). */
+export function extractPromptWithoutManagedBlocks(prompt: string | null | undefined): string {
+  let result = removeManagedBlock(prompt, PRESET_BLOCK_START, PRESET_BLOCK_END);
+  result = removeManagedBlock(result, GUIDED_BLOCK_START, GUIDED_BLOCK_END);
+  return result.trim();
+}
+
+/**
+ * Compose the final aiPrompt from independently managed layers.
+ * Canonical order: PRESET block → GUIDED block → manual layer
+ */
+export function composePromptFromBlocks(opts: {
+  presetBlock?:  string | null;
+  guidedBlock?:  string | null;
+  manualLayer?:  string | null;
+}): string {
+  const parts: string[] = [];
+  if (opts.presetBlock?.trim())  parts.push(opts.presetBlock.trim());
+  if (opts.guidedBlock?.trim())  parts.push(opts.guidedBlock.trim());
+  if (opts.manualLayer?.trim())  parts.push(opts.manualLayer.trim());
+  return parts.join('\n\n');
+}
+
 // ── Merge managed block into existing prompt ──────────────────────────────────
 
 /**
- * Replaces the managed block inside `currentPrompt` if markers exist,
+ * Replaces the GUIDED block inside `currentPrompt` if markers exist,
  * otherwise prepends the new block — preserving all operator content outside the markers.
  */
 export function mergePromptBlock(
   currentPrompt: string | null | undefined,
   newBlock: string,
 ): string {
-  const base = currentPrompt ?? '';
-  const startIdx = base.indexOf(GUIDED_BLOCK_START);
-  const endIdx   = base.indexOf(GUIDED_BLOCK_END);
-
-  if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
-    const before = base.slice(0, startIdx);
-    const after  = base.slice(endIdx + GUIDED_BLOCK_END.length);
-    return before + newBlock + after;
-  }
-
-  // No existing managed block — prepend and preserve custom content
-  const custom = base.trim();
-  return custom ? `${newBlock}\n\n${custom}` : newBlock;
+  return replaceManagedBlock(currentPrompt, GUIDED_BLOCK_START, GUIDED_BLOCK_END, newBlock);
 }
 
 // ── Suggested welcome (only when tenant welcome is currently empty) ────────────

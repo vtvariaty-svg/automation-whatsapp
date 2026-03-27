@@ -6,6 +6,13 @@ import { updateTenantAISettings } from '@/src/services/tenantService';
 import { getAutomations } from '@/src/services/automationService';
 import { getServices } from '@/src/services/schedulingService';
 import { marketplaceBots } from '@/lib/marketplace/bots';
+import {
+  extractPromptWithoutManagedBlocks,
+  extractManagedBlock,
+  composePromptFromBlocks,
+  PRESET_BLOCK_START,
+  PRESET_BLOCK_END,
+} from '@/lib/ai/guidedSetup';
 
 export async function GET(req: Request) {
   const auth = await getAuthTenant(req);
@@ -44,7 +51,8 @@ export async function GET(req: Request) {
         address: businessConfig?.address || '',
       },
       aiIdentity: {
-        aiPrompt: (tenant as any).aiPrompt || '',
+        // Expose only the manual layer — PRESET and GUIDED blocks are managed separately
+        aiPrompt: extractPromptWithoutManagedBlocks((tenant as any).aiPrompt),
         businessHours: (tenant as any).businessHours || '',
       },
       welcome: {
@@ -86,6 +94,8 @@ export async function GET(req: Request) {
         responseType: a.responseType,
         response: a.responseText,
         active: a.active,
+        sourceType: (a as any).sourceType || 'manual',
+        sourceBotKey: (a as any).sourceBotKey || null,
       })),
       schedulingBehavior: {
         enabled: servicesCount > 0,
@@ -98,6 +108,8 @@ export async function GET(req: Request) {
           name: s.name,
           duration: s.durationMinutes,
           active: s.active !== false,
+          sourceType: (s as any).sourceType || 'manual',
+          sourceBotKey: (s as any).sourceBotKey || null,
         })),
       },
       handoff: {
@@ -132,12 +144,33 @@ export async function PUT(req: Request) {
 
     // AI identity + welcome
     if (body.aiIdentity !== undefined || body.welcome !== undefined) {
-      const aiData: Record<string, string> = {};
-      if (body.aiIdentity?.aiPrompt !== undefined) aiData.ai_prompt = body.aiIdentity.aiPrompt;
-      if (body.aiIdentity?.businessHours !== undefined) aiData.business_hours = body.aiIdentity.businessHours;
-      if (body.welcome?.message !== undefined) aiData.welcome_message = body.welcome.message;
-      if (Object.keys(aiData).length > 0) {
-        await updateTenantAISettings(auth.tenantId, aiData);
+      const tenantData: Record<string, any> = {};
+
+      if (body.aiIdentity?.aiPrompt !== undefined) {
+        // Preserve PRESET and GUIDED blocks — only update the manual layer
+        const current = await prisma.tenant.findUnique({
+          where: { id: auth.tenantId },
+          select: { aiPrompt: true } as any,
+        });
+        const currentPrompt = (current as any)?.aiPrompt as string | null;
+        const presetBlock   = extractManagedBlock(currentPrompt, PRESET_BLOCK_START, PRESET_BLOCK_END);
+        const guidedBlock   = extractManagedBlock(currentPrompt, '[GUIDED_SETUP_START]', '[GUIDED_SETUP_END]');
+        tenantData.aiPrompt = composePromptFromBlocks({
+          presetBlock,
+          guidedBlock,
+          manualLayer: body.aiIdentity.aiPrompt,
+        });
+      }
+
+      if (body.aiIdentity?.businessHours !== undefined) {
+        tenantData.businessHours = body.aiIdentity.businessHours;
+      }
+      if (body.welcome?.message !== undefined) {
+        tenantData.welcomeMessage = body.welcome.message;
+      }
+
+      if (Object.keys(tenantData).length > 0) {
+        await prisma.tenant.update({ where: { id: auth.tenantId }, data: tenantData as any });
       }
     }
 

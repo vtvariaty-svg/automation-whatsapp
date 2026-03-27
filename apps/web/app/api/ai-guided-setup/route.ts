@@ -1,7 +1,10 @@
 /**
  * GET /api/ai-guided-setup   — returns current structured setup + hasWelcome flag
- * PUT /api/ai-guided-setup   — saves structured setup, merges managed prompt block,
- *                              updates businessHours / name, auto-suggests welcome when empty
+ * PUT /api/ai-guided-setup   — saves structured setup, updates GUIDED block in aiPrompt.
+ *
+ * Ownership: this route owns ONLY `aiGuidedSetup` and the GUIDED block inside `aiPrompt`.
+ * It NEVER writes: tenant.name, tenant.businessHours, tenant.welcomeMessage.
+ * Those fields belong to their respective sections in the AI Control Center.
  */
 import { NextResponse } from 'next/server';
 import { getAuthTenant } from '@/lib/getAuthTenant';
@@ -9,8 +12,11 @@ import { prisma } from '@/lib/prisma';
 import {
   normalizeGuidedAnswers,
   buildManagedPromptBlock,
-  mergePromptBlock,
-  buildSuggestedWelcome,
+  extractManagedBlock,
+  extractPromptWithoutManagedBlocks,
+  composePromptFromBlocks,
+  PRESET_BLOCK_START,
+  PRESET_BLOCK_END,
 } from '@/lib/ai/guidedSetup';
 
 export async function GET(req: Request) {
@@ -20,15 +26,15 @@ export async function GET(req: Request) {
   try {
     const tenant = await prisma.tenant.findUnique({
       where:  { id: auth.tenantId },
-      select: { aiGuidedSetup: true, welcomeMessage: true },
+      select: { aiGuidedSetup: true, welcomeMessage: true } as any,
     });
     if (!tenant) return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
 
-    const setup = normalizeGuidedAnswers(tenant.aiGuidedSetup);
+    const setup = normalizeGuidedAnswers((tenant as any).aiGuidedSetup);
 
     return NextResponse.json({
       setup,
-      hasWelcome: !!tenant.welcomeMessage?.trim(),
+      hasWelcome: !!(tenant as any).welcomeMessage?.trim(),
     });
   } catch (err: any) {
     console.error('[ai-guided-setup] GET error:', err);
@@ -46,35 +52,36 @@ export async function PUT(req: Request) {
 
     const tenant = await prisma.tenant.findUnique({
       where:  { id: auth.tenantId },
-      select: { aiPrompt: true, welcomeMessage: true },
+      select: { aiPrompt: true } as any,
     });
     if (!tenant) return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
 
-    // Build and merge the managed block into the existing prompt
-    const newBlock  = buildManagedPromptBlock(answers);
-    const newPrompt = mergePromptBlock(tenant.aiPrompt, newBlock);
+    // Build new GUIDED block
+    const newGuidedBlock = buildManagedPromptBlock(answers);
 
-    const updates: Record<string, unknown> = {
-      aiGuidedSetup: answers,
-      aiPrompt:      newPrompt,
-    };
+    // Preserve PRESET block and manual layer — only replace GUIDED block
+    const currentPrompt = (tenant as any).aiPrompt as string | null;
+    const presetBlock   = extractManagedBlock(currentPrompt, PRESET_BLOCK_START, PRESET_BLOCK_END);
+    const manualLayer   = extractPromptWithoutManagedBlocks(currentPrompt);
+    const newPrompt     = composePromptFromBlocks({
+      presetBlock,
+      guidedBlock: newGuidedBlock,
+      manualLayer,
+    });
 
-    // Scalar fields — only when explicitly provided
-    if (answers.companyName)   updates.name          = answers.companyName;
-    if (answers.businessHours) updates.businessHours = answers.businessHours;
-
-    // Auto-suggest welcome ONLY when currently empty and we have enough context
-    if (!tenant.welcomeMessage?.trim() && Object.keys(answers).length >= 2) {
-      updates.welcomeMessage = buildSuggestedWelcome(answers);
-    }
-
-    await prisma.tenant.update({ where: { id: auth.tenantId }, data: updates });
+    await prisma.tenant.update({
+      where: { id: auth.tenantId },
+      data: {
+        aiGuidedSetup: answers,
+        aiPrompt:      newPrompt,
+      } as any,
+    });
 
     return NextResponse.json({
       ok:           true,
-      managedBlock: newBlock,
-      newPrompt:    newPrompt,
-      newWelcome:   (updates.welcomeMessage as string) ?? null,
+      managedBlock: newGuidedBlock,
+      newPrompt,
+      newWelcome:   null,
     });
   } catch (err: any) {
     console.error('[ai-guided-setup] PUT error:', err);

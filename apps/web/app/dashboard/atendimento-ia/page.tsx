@@ -39,6 +39,8 @@ interface AutomationRule {
   responseType: string;
   response: string;
   active: boolean;
+  sourceType?: string;
+  sourceBotKey?: string | null;
 }
 
 interface ServiceItem {
@@ -338,18 +340,10 @@ export default function AtendimentoIAPage() {
       });
       const d = await res.json();
       if (res.ok && d.success) {
-        setActiveBotKey(botId);
         setShowBotGrid(false);
         setBotMsg({ type: "ok", text: "Bot ativado com sucesso!" });
         setTimeout(() => setBotMsg(null), 3000);
-        // Reload AI identity after activation (bot overwrites prompt/welcome)
-        const r2 = await fetch("/api/ai-control-center", { headers: { Authorization: `Bearer ${token}` } });
-        if (r2.ok) {
-          const d2: ControlCenterData = await r2.json();
-          setAiIdentity(d2.aiIdentity);
-          setWelcome(d2.welcome);
-          setAutomations(d2.automations);
-        }
+        await reloadAll();
       } else {
         setBotMsg({ type: "err", text: d.error || "Erro ao ativar bot" });
       }
@@ -363,27 +357,21 @@ export default function AtendimentoIAPage() {
 
   async function resetPreset() {
     if (!window.confirm(
-      "Tem certeza? Isso vai remover o bot ativo, o prompt derivado e todas as automações e serviços semeados pelo preset.\n\nAutomações e serviços criados manualmente são preservados."
+      "Tem certeza? Isso vai remover o bot ativo, o bloco preset do prompt e todas as automações e serviços semeados pelo preset.\n\nAutomações e serviços criados manualmente são preservados."
     )) return;
 
     setResettingPreset(true);
     setBotMsg(null);
     try {
-      const res = await fetch("/api/marketplace/reset", {
+      const res = await fetch("/api/ai-control-center/reset", {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ scope: "preset" }),
       });
       const d = await res.json();
       if (res.ok && d.success) {
-        setActiveBotKey(null);
-        setAiIdentity((p) => ({ ...p, aiPrompt: "" }));
         setBotMsg({ type: "ok", text: "Preset resetado. Automações e serviços do sistema removidos." });
-        // Reload automations list
-        const r2 = await fetch("/api/ai-control-center", { headers: { Authorization: `Bearer ${token}` } });
-        if (r2.ok) {
-          const d2: ControlCenterData = await r2.json();
-          setAutomations(d2.automations);
-        }
+        await reloadAll();
         setTimeout(() => setBotMsg(null), 4000);
       } else {
         setBotMsg({ type: "err", text: d.error || "Erro ao resetar preset" });
@@ -416,6 +404,38 @@ export default function AtendimentoIAPage() {
   function showAutoToast(msg: string) {
     setAutoToast(msg);
     setTimeout(() => setAutoToast(""), 3000);
+  }
+
+  async function reloadAll() {
+    const [res, gsRes] = await Promise.all([
+      fetch("/api/ai-control-center", { headers: { Authorization: `Bearer ${token}` } }).catch(() => null),
+      fetch("/api/ai-guided-setup",   { headers: { Authorization: `Bearer ${token}` } }).catch(() => null),
+    ]);
+    if (res?.ok) {
+      const d: ControlCenterData = await res.json();
+      setBusinessCtx(d.businessContext);
+      setAiIdentity(d.aiIdentity);
+      setWelcome(d.welcome);
+      setSessionConfig(d.session || { timeoutHours: 24 });
+      setHandoff(d.handoff);
+      setServices(d.schedulingBehavior.services);
+      setProducts(d.commercialBehavior.products);
+      setAutomations(d.automations);
+      setActiveBotKey(d.botPreset.activeBotKey);
+      setSchedulingMeta({
+        enabled: d.schedulingBehavior.enabled,
+        mode: d.schedulingBehavior.mode,
+        servicesCount: d.schedulingBehavior.servicesCount,
+        professionalsCount: d.schedulingBehavior.professionalsCount,
+      });
+      setOperationalConfig(d.operationalConfig || { openingHours: "", templateBookingConfirmed: "", templateReminder24h: "" });
+    }
+    if (gsRes?.ok) {
+      const gs = await gsRes.json();
+      const setup = gs.setup ?? {};
+      setInitialGuidedSetup(setup);
+      latestGuidedAnswers.current = setup;
+    }
   }
 
   async function reloadAutomations() {
@@ -951,7 +971,14 @@ export default function AtendimentoIAPage() {
                 <div key={a.id} className="flex items-center gap-3 px-4 py-3 bg-white hover:bg-gray-50/50 transition-colors">
                   <Toggle value={a.active} onChange={() => toggleAutoActive(a)} />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{a.name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium text-gray-900 truncate">{a.name}</p>
+                      {a.sourceType === "system" ? (
+                        <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-600 font-semibold">preset</span>
+                      ) : (
+                        <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 font-semibold">manual</span>
+                      )}
+                    </div>
                     <p className="text-xs text-gray-400 truncate">
                       {a.triggerType === "order_status"
                         ? `Pedido: ${a.triggerValue}`

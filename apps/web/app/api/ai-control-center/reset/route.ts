@@ -24,7 +24,7 @@ import {
   composePromptFromBlocks,
 } from '@/lib/ai/guidedSetup';
 
-type Scope = 'all' | 'preset' | 'guided_setup' | 'identity' | 'welcome' | 'automations';
+type Scope = 'all' | 'preset' | 'guided_setup' | 'identity' | 'welcome' | 'automations' | 'business_context' | 'scheduling';
 
 export async function POST(request: Request) {
   const auth = await getAuthTenant(request);
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Body inválido' }, { status: 400 });
   }
 
-  const validScopes: Scope[] = ['all', 'preset', 'guided_setup', 'identity', 'welcome', 'automations'];
+  const validScopes: Scope[] = ['all', 'preset', 'guided_setup', 'identity', 'welcome', 'automations', 'business_context', 'scheduling'];
   if (!validScopes.includes(scope)) {
     return NextResponse.json({ error: `scope inválido. Use: ${validScopes.join(' | ')}` }, { status: 400 });
   }
@@ -53,11 +53,13 @@ export async function POST(request: Request) {
       });
       const currentPrompt = (tenant as any)?.aiPrompt as string | null ?? '';
 
-      const doPreset       = scope === 'preset'       || scope === 'all';
-      const doGuidedSetup  = scope === 'guided_setup' || scope === 'all';
-      const doIdentity     = scope === 'identity'     || scope === 'all';
-      const doWelcome      = scope === 'welcome'      || scope === 'all';
-      const doAutomations  = scope === 'automations'  || scope === 'all';
+      const doPreset          = scope === 'preset'          || scope === 'all';
+      const doGuidedSetup     = scope === 'guided_setup'    || scope === 'all';
+      const doIdentity        = scope === 'identity'        || scope === 'all';
+      const doWelcome         = scope === 'welcome'         || scope === 'all';
+      const doAutomations     = scope === 'automations'     || scope === 'all';
+      const doBusinessContext = scope === 'business_context' || scope === 'all';
+      const doScheduling      = scope === 'scheduling'      || scope === 'all';
 
       // ── PRESET scope ─────────────────────────────────────────────────────
       if (doPreset) {
@@ -126,6 +128,63 @@ export async function POST(request: Request) {
           where: { tenantId: auth.tenantId, sourceType: 'manual' },
         });
         stats.manualAutomationsDeleted = manualDeleted;
+      }
+
+      // ── BUSINESS_CONTEXT scope ───────────────────────────────────────────
+      if (doBusinessContext) {
+        await (tx.tenant as any).update({
+          where: { id: auth.tenantId },
+          data: {
+            name: '', // Required field
+            businessType: null,
+            phone: null,
+            businessConfig: {
+              upsert: {
+                create: { address: null },
+                update: { address: null },
+              },
+            },
+          },
+        });
+      }
+
+      // ── SCHEDULING scope ─────────────────────────────────────────────────
+      if (doScheduling) {
+        // Delete related entities (manual + system)
+        const { count: svcCount } = await (tx.service as any).deleteMany({
+          where: { tenantId: auth.tenantId },
+        });
+        const { count: profCount } = await (tx.professional as any).deleteMany({
+          where: { tenantId: auth.tenantId },
+        });
+        const { count: blockCount } = await (tx.availabilityBlock as any).deleteMany({
+          where: { tenantId: auth.tenantId },
+        });
+
+        // Clear scheduling operational config
+        await (tx.tenant as any).update({
+          where: { id: auth.tenantId },
+          data: {
+            businessConfig: {
+              upsert: {
+                create: {
+                  openingHours: null,
+                  templateBookingConfirmed: null,
+                  templateReminder24h: null,
+                },
+                update: {
+                  openingHours: null,
+                  templateBookingConfirmed: null,
+                  templateReminder24h: null,
+                },
+              },
+            },
+          },
+        });
+
+        stats.servicesDeleted = svcCount;
+        stats.professionalsDeleted = profCount;
+        stats.blocksDeleted = blockCount;
       }
     });
 

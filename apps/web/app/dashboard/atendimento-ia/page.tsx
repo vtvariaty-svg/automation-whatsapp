@@ -540,7 +540,7 @@ export default function AtendimentoIAPage() {
         <button
           type="button"
           onClick={() => resetSection("all",
-            "RESET TOTAL — apaga tudo:\n\n• Bot ativo\n• Prompt compilado (preset + guided setup + manual)\n• Horários de atendimento\n• Mensagem de boas-vindas\n• Todas as automações (manuais e do preset)\n• Serviços do preset\n\nConfirma o reset total?"
+            "RESET TOTAL — apaga tudo:\n\n• Bot ativo\n• Nome e contexto do negócio\n• Prompt compilado (preset + guided setup + manual)\n• Horários e templates de agendamento\n• Mensagem de boas-vindas\n• Todas as automações (manuais e do preset)\n• TODOS os serviços, profissionais e bloqueios\n\nConfirma o reset total?"
           )}
           disabled={!!resettingSection}
           className="shrink-0 px-4 py-2 text-xs font-semibold text-red-600 border border-red-200 rounded-xl hover:bg-red-50 transition-colors disabled:opacity-40"
@@ -591,7 +591,19 @@ export default function AtendimentoIAPage() {
               placeholder="Rua, número, bairro, cidade - UF"
             />
           </div>
-          <SaveBtn saving={saving.businessCtx} saved={saved.businessCtx} onClick={() => putSection("businessCtx", { businessContext: businessCtx })} />
+          <div className="flex items-center justify-between">
+            <SaveBtn saving={saving.businessCtx} saved={saved.businessCtx} onClick={() => putSection("businessCtx", { businessContext: businessCtx })} />
+            <button
+              type="button"
+              onClick={() => resetSection("business_context",
+                "Resetar contexto do negócio?\n\nLimpa o nome da empresa, tipo de negócio, telefone e endereço.\nO prompt da IA e outras configurações são preservados."
+              )}
+              disabled={!!resettingSection}
+              className="text-xs text-red-400 hover:text-red-600 underline underline-offset-2 transition-colors disabled:opacity-40 mt-4"
+            >
+              {resettingSection === "business_context" ? "Resetando..." : "Resetar contexto"}
+            </button>
+          </div>
         </div>
       </SectionCard>
 
@@ -898,13 +910,25 @@ export default function AtendimentoIAPage() {
             </div>
           )}
 
-          <div className="flex gap-4 pt-1">
-            <Link href="/dashboard/services" className="text-sm font-semibold text-[#4f46e5] hover:text-[#4338ca] transition-colors">
-              Gerenciar serviços →
-            </Link>
-            <Link href="/dashboard/professionals" className="text-sm font-semibold text-[#4f46e5] hover:text-[#4338ca] transition-colors">
-              Gerenciar profissionais →
-            </Link>
+          <div className="flex items-center justify-between pt-1">
+            <div className="flex gap-4">
+              <Link href="/dashboard/services" className="text-sm font-semibold text-[#4f46e5] hover:text-[#4338ca] transition-colors">
+                Gerenciar serviços →
+              </Link>
+              <Link href="/dashboard/professionals" className="text-sm font-semibold text-[#4f46e5] hover:text-[#4338ca] transition-colors">
+                Gerenciar profissionais →
+              </Link>
+            </div>
+            <button
+              type="button"
+              onClick={() => resetSection("scheduling",
+                "Resetar agendamento?\n\nATENÇÃO: Isso apagará TODOS os serviços, profissionais e bloqueios de agenda permanentemente.\n\nHistórico de agendamentos realizados NÃO será afetado.\nConfigurações de horários e templates operacionais também serão limpos."
+              )}
+              disabled={!!resettingSection}
+              className="text-xs text-red-400 hover:text-red-600 underline underline-offset-2 transition-colors disabled:opacity-40"
+            >
+              {resettingSection === "scheduling" ? "Resetando..." : "Resetar agendamento"}
+            </button>
           </div>
         </div>
       </SectionCard>

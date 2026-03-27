@@ -331,15 +331,25 @@ function ProdutosTab() {
 
 // ── Tab: Catálogo ─────────────────────────────────────────────────────────────
 
+interface CatalogService {
+  id: string;
+  name: string;
+  durationMinutes: number;
+}
+
 function CatalogoTab() {
   const [products, setProducts] = useState<Omit<Product, "active">[]>([]);
+  const [services, setServices] = useState<CatalogService[]>([]);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState<string | null>(null);
 
   useEffect(() => {
     authFetch("/api/catalog")
       .then(r => r.ok ? r.json() : null)
-      .then(data => { if (data?.products) setProducts(data.products); })
+      .then(data => {
+        if (data?.products) setProducts(data.products);
+        if (data?.services) setServices(data.services);
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
@@ -367,53 +377,81 @@ function CatalogoTab() {
     );
   }
 
-  if (products.length === 0) {
+  if (products.length === 0 && services.length === 0) {
     return (
       <div className="bg-white rounded-2xl border border-gray-200/60 p-12 text-center">
         <span className="text-3xl block mb-3">🛍️</span>
         <h3 className="font-bold text-gray-900 mb-1">Catálogo vazio</h3>
         <p className="text-sm text-gray-500">
-          Publique produtos na aba <strong>Produtos</strong> (badge ✓ Catálogo) para aparecerem aqui.
+          Publique produtos na aba <strong>Produtos</strong> ou ative um bot para adicionar serviços automaticamente.
         </p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      {/* Info banner */}
       <div className="bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-3 text-sm text-indigo-700">
-        <strong>{products.length} produto{products.length !== 1 ? "s" : ""}</strong> publicados.
-        Use <strong>Copiar texto p/ IA</strong> para gerar o conteúdo que o bot enviará nas conversas.
+        Este é exatamente o catálogo que o bot envia quando o cliente pede{" "}
+        <em>"quais serviços"</em> ou <em>"mande catálogo"</em>.
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {products.map(p => (
-          <div key={p.id} className="bg-white rounded-2xl border border-emerald-200/60 shadow-sm p-5">
-            <div className="flex items-start justify-between mb-2">
-              <div className="flex items-center gap-2 flex-wrap">
-                {p.category && (
-                  <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-xs font-semibold uppercase">{p.category}</span>
-                )}
-                <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase">✓ Catálogo</span>
+
+      {/* Products section */}
+      {products.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="text-sm font-bold text-gray-700 flex items-center gap-2">
+            <span>📦</span> Produtos ({products.length})
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {products.map(p => (
+              <div key={p.id} className="bg-white rounded-2xl border border-emerald-200/60 shadow-sm p-5">
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {p.category && (
+                      <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-xs font-semibold uppercase">{p.category}</span>
+                    )}
+                    <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase">✓ Catálogo</span>
+                  </div>
+                  <p className="text-lg font-bold text-[#4f46e5] shrink-0 ml-2">{fmtBRL(p.price, p.currency || "BRL")}</p>
+                </div>
+                <h3 className="font-bold text-gray-900 mb-1">{p.name}</h3>
+                <p className="text-sm text-gray-500 line-clamp-2 mb-4">{p.description || "Sem descrição"}</p>
+                <button
+                  onClick={() => handleCopy(p)}
+                  className={`w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all ${
+                    copied === p.id
+                      ? "bg-emerald-100 text-emerald-700"
+                      : "bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+                  }`}
+                >
+                  {copied === p.id ? "✓ Copiado!" : "📋 Copiar texto p/ IA"}
+                </button>
               </div>
-              <p className="text-lg font-bold text-[#4f46e5] shrink-0 ml-2">{fmtBRL(p.price, p.currency || "BRL")}</p>
-            </div>
-            <h3 className="font-bold text-gray-900 mb-1">{p.name}</h3>
-            <p className="text-sm text-gray-500 line-clamp-2 mb-4">{p.description || "Sem descrição"}</p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => handleCopy(p)}
-                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all ${
-                  copied === p.id
-                    ? "bg-emerald-100 text-emerald-700"
-                    : "bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
-                }`}
-              >
-                {copied === p.id ? "✓ Copiado!" : "📋 Copiar texto p/ IA"}
-              </button>
-            </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </div>
+      )}
+
+      {/* Standalone services section */}
+      {services.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="text-sm font-bold text-gray-700 flex items-center gap-2">
+            <span>📅</span> Serviços para Agendamento ({services.length})
+          </h3>
+          <p className="text-xs text-gray-400">
+            Exibidos pelo bot quando o cliente pede o catálogo. Para vender com checkout, vincule um Produto a cada serviço.
+          </p>
+          <div className="bg-white rounded-2xl border border-gray-200/60 shadow-sm divide-y divide-gray-100">
+            {services.map(s => (
+              <div key={s.id} className="flex items-center justify-between px-5 py-3">
+                <p className="text-sm font-medium text-gray-900">{s.name}</p>
+                <span className="text-xs text-gray-400">{s.durationMinutes}min</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

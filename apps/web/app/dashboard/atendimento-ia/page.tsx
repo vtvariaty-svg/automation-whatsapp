@@ -192,6 +192,7 @@ export default function AtendimentoIAPage() {
   const [showBotGrid, setShowBotGrid] = useState(false);
   const [activatingBot, setActivatingBot] = useState<string | null>(null);
   const [botMsg, setBotMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+  const [resettingPreset, setResettingPreset] = useState(false);
 
   // Save state per section key
   const [saving, setSaving] = useState<Record<string, boolean>>({});
@@ -359,6 +360,40 @@ export default function AtendimentoIAPage() {
     }
   }
 
+
+  async function resetPreset() {
+    if (!window.confirm(
+      "Tem certeza? Isso vai remover o bot ativo, o prompt derivado e todas as automações e serviços semeados pelo preset.\n\nAutomações e serviços criados manualmente são preservados."
+    )) return;
+
+    setResettingPreset(true);
+    setBotMsg(null);
+    try {
+      const res = await fetch("/api/marketplace/reset", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const d = await res.json();
+      if (res.ok && d.success) {
+        setActiveBotKey(null);
+        setAiIdentity((p) => ({ ...p, aiPrompt: "" }));
+        setBotMsg({ type: "ok", text: "Preset resetado. Automações e serviços do sistema removidos." });
+        // Reload automations list
+        const r2 = await fetch("/api/ai-control-center", { headers: { Authorization: `Bearer ${token}` } });
+        if (r2.ok) {
+          const d2: ControlCenterData = await r2.json();
+          setAutomations(d2.automations);
+        }
+        setTimeout(() => setBotMsg(null), 4000);
+      } else {
+        setBotMsg({ type: "err", text: d.error || "Erro ao resetar preset" });
+      }
+    } catch {
+      setBotMsg({ type: "err", text: "Erro ao conectar com o servidor" });
+    } finally {
+      setResettingPreset(false);
+    }
+  }
 
   async function toggleService(serviceId: string, active: boolean) {
     setServices((prev) => prev.map((s) => (s.id === serviceId ? { ...s, active } : s)));
@@ -605,9 +640,22 @@ export default function AtendimentoIAPage() {
           )}
 
           {/* Preset aplicado automaticamente — sem seleção manual separada */}
-          <p className="text-xs text-gray-400 pt-4 border-t border-gray-100">
-            💡 Ao ativar um bot, a configuração base do seu tipo de negócio — serviços padrão e automações — é aplicada automaticamente.
-          </p>
+          <div className="pt-4 border-t border-gray-100 flex items-start justify-between gap-4">
+            <p className="text-xs text-gray-400">
+              💡 Ao ativar um bot, a configuração base do seu tipo de negócio — serviços padrão e automações — é aplicada automaticamente.
+            </p>
+            {activeBotKey && (
+              <button
+                type="button"
+                onClick={resetPreset}
+                disabled={resettingPreset}
+                className="shrink-0 text-xs text-red-400 hover:text-red-600 underline underline-offset-2 transition-colors disabled:opacity-40"
+                title="Remove o bot ativo, o prompt derivado e as automações/serviços semeados pelo preset. Dados manuais são preservados."
+              >
+                {resettingPreset ? "Resetando..." : "Resetar preset"}
+              </button>
+            )}
+          </div>
         </div>
       </SectionCard>
 

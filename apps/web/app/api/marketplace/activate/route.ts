@@ -37,28 +37,37 @@ export async function POST(request: Request) {
     const template = tmplKey ? businessTemplates[tmplKey] : null;
 
     // ── Fluxo crítico em transação atômica ────────────────────────────────────
-    // Cobre: leitura de estado atual, update do tenant, criação de automações
-    // (template + bot) e criação de serviços faltantes.
-    // Em caso de erro em qualquer etapa o banco reverte integralmente.
     const result = await prisma.$transaction(async (tx) => {
       const tenant = await tx.tenant.findUnique({ where: { id: auth.tenantId } });
       if (!tenant) throw new Error('Tenant não encontrado');
 
-      // ── 1. Ler triggerValues existentes (normalizados) ────────────────────
+      // ── 1. Deactivate system automations from PREVIOUS bots ───────────────
+      // Only deactivates rules that were seeded by another bot/preset.
+      // Manual user rules (sourceType = 'manual') are never touched.
+      await (tx.automationRule as any).updateMany({
+        where: {
+          tenantId: auth.tenantId,
+          sourceType: 'system',
+          NOT: { sourceBotKey: bot.id },
+        },
+        data: { active: false },
+      });
+
+      // ── 2. Read ACTIVE triggers AFTER deactivation (correct dedup baseline) ─
       const existingRules = await tx.automationRule.findMany({
-        where: { tenantId: auth.tenantId },
+        where: { tenantId: auth.tenantId, active: true },
         select: { triggerValue: true },
       });
       const existingTriggers = new Set(existingRules.map((r) => norm(r.triggerValue)));
 
-      // ── 2. Automações-base do template (camada operacional do nicho) ──────
+      // ── 3. Automações-base do template (camada operacional do nicho) ──────
       let templateAutomationsCreated = 0;
       if (template && template.defaultAutomations.length > 0) {
         const templateToCreate = template.defaultAutomations.filter(
           (a) => !existingTriggers.has(norm(a.triggerValue))
         );
         if (templateToCreate.length > 0) {
-          await tx.automationRule.createMany({
+          await (tx.automationRule as any).createMany({
             data: templateToCreate.map((a) => ({
               tenantId: auth.tenantId,
               name: a.name,
@@ -68,21 +77,22 @@ export async function POST(request: Request) {
               responseType: a.responseType || 'text',
               responseText: a.responseText,
               active: true,
+              sourceType: 'system',
+              sourceBotKey: bot.id,
             })),
             skipDuplicates: true,
           });
-          // Marcar como existentes para o step seguinte evitar colisão intra-transação
           templateToCreate.forEach((a) => existingTriggers.add(norm(a.triggerValue)));
           templateAutomationsCreated = templateToCreate.length;
         }
       }
 
-      // ── 3. Automações específicas do bot (camada de especialização) ───────
+      // ── 4. Automações específicas do bot (camada de especialização) ───────
       const botToCreate = bot.automations.filter(
         (a) => !existingTriggers.has(norm(a.triggerValue))
       );
       if (botToCreate.length > 0) {
-        await tx.automationRule.createMany({
+        await (tx.automationRule as any).createMany({
           data: botToCreate.map((a) => ({
             tenantId: auth.tenantId,
             name: a.name,
@@ -92,12 +102,14 @@ export async function POST(request: Request) {
             responseType: 'text',
             responseText: a.responseText,
             active: true,
+            sourceType: 'system',
+            sourceBotKey: bot.id,
           })),
           skipDuplicates: true,
         });
       }
 
-      // ── 4. Compor prompt com hierarquia clara ─────────────────────────────
+      // ── 5. Compor prompt com hierarquia clara ─────────────────────────────
       //   1. template.defaultPrompt — base operacional do nicho
       //   2. bot.prompt             — especialização conversacional/comercial
       //   3. Informações da empresa
@@ -118,12 +130,10 @@ export async function POST(request: Request) {
       parts.push('REGRA GERAL: Responda sempre em português brasileiro de forma clara e objetiva.');
       const systemPrompt = parts.join('\n');
 
-      // ── 5. Atualizar tenant ───────────────────────────────────────────────
-      // businessType NÃO é alterado aqui — pertence à identidade do tenant
-      // definida no onboarding e usada pelo sidebar, checklist e módulos.
-      // activeBotKey é a fonte de verdade para qual bot/template está ativo;
-      // o template é sempre derivável via BOT_TEMPLATE_MAP[activeBotKey].
-      // welcomeMessage é de propriedade exclusiva do operador — nunca escrita aqui.
+      // ── 6. Atualizar tenant ───────────────────────────────────────────────
+      // businessType NÃO é alterado — identidade do tenant definida no onboarding.
+      // activeBotKey é a fonte de verdade para qual bot/template está ativo.
+      // welcomeMessage é propriedade exclusiva do operador — nunca escrita aqui.
       await tx.tenant.update({
         where: { id: auth.tenantId },
         data: {
@@ -132,7 +142,7 @@ export async function POST(request: Request) {
         },
       });
 
-      // ── 6. Serviços padrão do template — idempotência por nome ───────────
+      // ── 7. Serviços padrão do template — idempotência por nome ───────────
       // Cria apenas os serviços ainda não existentes (por nome normalizado).
       // Preserva os serviços existentes ao trocar de bot.
       let servicesCreated = 0;
@@ -147,12 +157,14 @@ export async function POST(request: Request) {
           (svc) => !existingSvcNames.has(norm(svc.name))
         );
         if (svcsToCreate.length > 0) {
-          await tx.service.createMany({
+          await (tx.service as any).createMany({
             data: svcsToCreate.map((svc) => ({
               tenantId: auth.tenantId,
               name: svc.name,
               durationMinutes: svc.durationMinutes,
               active: true,
+              sourceType: 'system',
+              sourceBotKey: bot.id,
             })),
             skipDuplicates: true,
           });
@@ -173,7 +185,7 @@ export async function POST(request: Request) {
       };
     });
 
-    // ── 7. Checklist de itens pendentes ───────────────────────────────────────
+    // ── 8. Checklist de itens pendentes ───────────────────────────────────────
     const pendingSetup: string[] = [];
     const hasChannel = !!(
       result.tenant.whatsappToken ||

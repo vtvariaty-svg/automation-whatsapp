@@ -590,11 +590,15 @@ model AutomationRule {
   // COMM1 — extended action (null = legacy text/template behavior)
   actionType   String?  // send_checkout | send_external_link | handoff_human | send_offer
   actionConfig Json?    // arbitrary config: { productId, message, phone, url, ... }
+  // P1 — source tracking: manual = user created, system = seeded by bot preset
+  sourceType   String   @default("manual") // "manual" | "system"
+  sourceBotKey String?  // bot/preset that created this rule — null for manual rules
 
   tenant Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   logs   AutomationLog[]
 
   @@index([tenantId, active])
+  @@index([tenantId, sourceType])
 }
 
 model AutomationLog {
@@ -625,6 +629,9 @@ model Service {
   // AG1 — per-service buffers (override global)
   bufferBeforeMinutes Int      @default(0)
   bufferAfterMinutes  Int      @default(0)
+  // P1 — source tracking: manual = user created, system = seeded by bot preset
+  sourceType          String   @default("manual") // "manual" | "system"
+  sourceBotKey        String?  // bot/preset that seeded this service — null for manual records
 
   tenant        Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   // AG5 — professionals assigned to this service

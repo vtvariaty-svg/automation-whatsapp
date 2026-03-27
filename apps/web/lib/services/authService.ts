@@ -1,6 +1,10 @@
 import { prisma } from '../prisma';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
+import { sendEmail } from '../email/client';
+import { getVerificationEmailHtml } from '../email/templates/verificationTemplate';
+import { PLANS, TRIAL_DAYS } from '../config/plans';
 
 if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET environment variable is required');
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -17,77 +21,90 @@ export const verifyPassword = async (password: string, hash: string) => {
   return await bcrypt.compare(password, hash);
 };
 
-import crypto from 'crypto';
-import { sendEmail } from '../email/client';
-import { getVerificationEmailHtml } from '../email/templates/verificationTemplate';
-import { PLANS, TRIAL_DAYS } from '../config/plans';
-
 // Set REQUIRE_EMAIL_VERIFICATION=true to enable email verification.
 // Defaults to false (no verification) when the variable is absent.
 const requireEmailVerification = process.env.REQUIRE_EMAIL_VERIFICATION === 'true';
 
+/**
+ * registerUser
+ * Creates a new account atomically.
+ * Ensures Tenant, BusinessConfig, Subscription and User are created in a single transaction.
+ */
 export const registerUser = async (name: string, email: string, passwordPlain: string, role: string = 'user', plan?: string) => {
   const existingUser = await prisma.user.findUnique({ where: { email } });
   if (existingUser) throw new Error('User already exists');
 
   const passwordHash = await bcrypt.hash(passwordPlain, 10);
 
-  const tenant = await prisma.tenant.create({
-    data: {
-      name: `${name}'s Workspace`,
-      businessConfig: {
-        create: {
-          address: '',
-          openingHours: '',
-          timezone: 'America/Sao_Paulo',
-          templateBookingConfirmed: null,
-          templateReminder24h: null,
-          templateReminder2h: null,
+  // Prepare verification token data if needed (before transaction to avoid extra await inside)
+  const unhashedToken = requireEmailVerification ? crypto.randomBytes(32).toString('hex') : null;
+  const tokenHash = unhashedToken ? crypto.createHash('sha256').update(unhashedToken).digest('hex') : null;
+
+  // Execute all persistence in a single transaction
+  const result = await prisma.$transaction(async (tx) => {
+    // 1. Create Tenant with nested BusinessConfig
+    const tenant = await tx.tenant.create({
+      data: {
+        name: `${name}'s Workspace`,
+        businessConfig: {
+          create: {
+            address: '',
+            openingHours: '',
+            timezone: 'America/Sao_Paulo',
+            templateBookingConfirmed: null,
+            templateReminder24h: null,
+            templateReminder2h: null,
+          }
         }
       }
-    }
-  });
-
-  // Create subscription if a valid plan slug was passed
-  const planConfig = plan ? PLANS[plan] : null;
-  if (planConfig) {
-    const trialEnd = planConfig.hasTrial ? new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000) : null;
-    await prisma.subscription.create({
-      data: {
-        tenantId: tenant.id,
-        plan: planConfig.slug,
-        status: planConfig.hasTrial ? 'trialing' : 'active',
-        currentPeriodStart: new Date(),
-        ...(trialEnd && { trialEnd }),
-      },
     });
-  }
 
-  const user = await prisma.user.create({
-    data: {
-      email,
-      passwordHash,
-      tenantId: tenant.id,
-      role,
-      // When verification is disabled, mark email as verified immediately
-      ...(!requireEmailVerification && { emailVerifiedAt: new Date() }),
+    // 2. Create Subscription if plan is provided
+    const planConfig = plan ? PLANS[plan] : null;
+    if (planConfig) {
+      const trialEnd = planConfig.hasTrial ? new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000) : null;
+      await tx.subscription.create({
+        data: {
+          tenantId: tenant.id,
+          plan: planConfig.slug,
+          status: planConfig.hasTrial ? 'trialing' : 'active',
+          currentPeriodStart: new Date(),
+          ...(trialEnd && { trialEnd }),
+        },
+      });
     }
-  });
 
-  if (requireEmailVerification) {
-    // Criar token de verificação e enviar e-mail
-    const unhashedToken = crypto.randomBytes(32).toString('hex');
-    const tokenHash = crypto.createHash('sha256').update(unhashedToken).digest('hex');
-
-    await prisma.verificationToken.create({
+    // 3. Create User
+    const user = await tx.user.create({
       data: {
-        identifier: email,
-        tokenHash,
-        type: 'EMAIL_VERIFICATION',
-        expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24) // 24 hours
+        email,
+        passwordHash,
+        tenantId: tenant.id,
+        role,
+        // When verification is disabled, mark email as verified immediately
+        ...(!requireEmailVerification && { emailVerifiedAt: new Date() }),
       }
     });
 
+    // 4. Create Verification Token if required
+    if (requireEmailVerification && tokenHash) {
+      await tx.verificationToken.create({
+        data: {
+          identifier: email,
+          tokenHash,
+          type: 'EMAIL_VERIFICATION',
+          expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24) // 24 hours
+        }
+      });
+    }
+
+    return { user, tenant };
+  });
+
+  const { user, tenant } = result;
+
+  // Handle post-registration logic (emails, tokens) outside transaction
+  if (requireEmailVerification && unhashedToken) {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const verifyLink = `${baseUrl}/verify-email?token=${unhashedToken}`;
 
@@ -104,7 +121,7 @@ export const registerUser = async (name: string, email: string, passwordPlain: s
     };
   }
 
-  // Verificação desabilitada — retorna token JWT para login imediato
+  // Verification disabled — return JWT token for immediate login
   const token = generateToken(user.id, user.tenantId, user.role);
   return {
     message: 'Conta criada com sucesso.',

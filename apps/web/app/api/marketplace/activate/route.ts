@@ -32,6 +32,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Tenant não encontrado' }, { status: 404 });
     }
 
+    // Resolve template for this bot
+    const tmplKey = BOT_TEMPLATE_MAP[bot.id];
+    const template = tmplKey ? businessTemplates[tmplKey] : null;
+
     // 1. Buscar triggerValues já existentes para evitar duplicatas
     const existing = await prisma.automationRule.findMany({
       where: { tenantId: auth.tenantId },
@@ -39,14 +43,38 @@ export async function POST(request: Request) {
     });
     const existingTriggers = new Set(existing.map((r) => r.triggerValue.toLowerCase()));
 
-    // 2. Criar apenas as automações cujo gatilho ainda não existe
-    const toCreate = bot.automations.filter(
+    // 2. Criar automações do template (base operacional do nicho) — dedup por triggerValue
+    let templateAutomationsCreated = 0;
+    if (template && template.defaultAutomations.length > 0) {
+      const templateToCreate = template.defaultAutomations.filter(
+        (a) => !existingTriggers.has(a.triggerValue.toLowerCase())
+      );
+      if (templateToCreate.length > 0) {
+        await prisma.automationRule.createMany({
+          data: templateToCreate.map((a) => ({
+            tenantId: auth.tenantId,
+            name: a.name,
+            triggerType: a.triggerType || 'keyword',
+            triggerValue: a.triggerValue,
+            matchType: a.matchType,
+            responseType: a.responseType || 'text',
+            responseText: a.responseText,
+            active: true,
+          })),
+        });
+        templateToCreate.forEach((a) => existingTriggers.add(a.triggerValue.toLowerCase()));
+        templateAutomationsCreated = templateToCreate.length;
+      }
+    }
+
+    // 3. Criar automações específicas do bot — dedup por triggerValue
+    const botToCreate = bot.automations.filter(
       (a) => !existingTriggers.has(a.triggerValue.toLowerCase())
     );
 
-    if (toCreate.length > 0) {
+    if (botToCreate.length > 0) {
       await prisma.automationRule.createMany({
-        data: toCreate.map((a) => ({
+        data: botToCreate.map((a) => ({
           tenantId: auth.tenantId,
           name: a.name,
           triggerType: 'keyword',
@@ -59,49 +87,69 @@ export async function POST(request: Request) {
       });
     }
 
-    // 3. Montar e gravar o prompt completo
+    // 4. Compor prompt com hierarquia clara:
+    //    1. template.defaultPrompt — base operacional do nicho
+    //    2. bot.prompt             — especialização conversacional/comercial
+    //    3. Informações da empresa
+    //    4. Regra geral de idioma
     const hoursText = tenant.businessHours || 'horário comercial';
-    const systemPrompt = [
-      bot.prompt,
-      '',
-      'INFORMAÇÕES DA EMPRESA:',
-      `- Nome: ${tenant.name}`,
-      `- Segmento: ${bot.nicheLabel}`,
-      `- Horário de atendimento: ${hoursText}`,
-      '',
-      'REGRA GERAL: Responda sempre em português brasileiro de forma clara e objetiva.',
-    ].join('\n');
+    const parts: string[] = [];
 
-    // 4. Atualizar tenant com novo prompt e activeBotKey
+    if (template?.defaultPrompt) {
+      parts.push(template.defaultPrompt);
+      parts.push('');
+    }
+
+    parts.push(bot.prompt);
+    parts.push('');
+    parts.push('INFORMAÇÕES DA EMPRESA:');
+    parts.push(`- Nome: ${tenant.name}`);
+    parts.push(`- Segmento: ${bot.nicheLabel}`);
+    parts.push(`- Horário de atendimento: ${hoursText}`);
+    parts.push('');
+    parts.push('REGRA GERAL: Responda sempre em português brasileiro de forma clara e objetiva.');
+
+    const systemPrompt = parts.join('\n');
+
+    // 5. Atualizar tenant com novo prompt, activeBotKey e businessType coerente com o template
     // welcomeMessage é de propriedade exclusiva do operador — bot activation nunca a escreve.
-    // IMPORTANTE: businessType não é alterado aqui — pertence ao onboarding do tenant.
     await prisma.tenant.update({
       where: { id: auth.tenantId },
       data: {
         aiPrompt: systemPrompt,
         activeBotKey: bot.id,
+        ...(template?.businessType ? { businessType: template.businessType } : {}),
       },
     });
 
-    // 5. Apply template default services — bot covers automations + prompt.
-    // Only creates services if the tenant has none yet (idempotent).
-    const tmplKey = BOT_TEMPLATE_MAP[bot.id];
-    const template = tmplKey ? businessTemplates[tmplKey] : null;
+    // 6. Aplicar serviços padrão do template com idempotência por nome
+    // Cria apenas os serviços ainda não existentes — preserva os existentes ao trocar de bot.
+    let servicesCreated = 0;
     if (template && template.defaultServices.length > 0) {
-      const svcCount = await prisma.service.count({ where: { tenantId: auth.tenantId } });
-      if (svcCount === 0) {
+      const existingSvcs = await prisma.service.findMany({
+        where: { tenantId: auth.tenantId },
+        select: { name: true },
+      });
+      const existingSvcNames = new Set(existingSvcs.map((s) => s.name.toLowerCase()));
+
+      const svcsToCreate = template.defaultServices.filter(
+        (svc) => !existingSvcNames.has(svc.name.toLowerCase())
+      );
+
+      if (svcsToCreate.length > 0) {
         await prisma.service.createMany({
-          data: template.defaultServices.map((svc) => ({
+          data: svcsToCreate.map((svc) => ({
             tenantId: auth.tenantId,
             name: svc.name,
             durationMinutes: svc.durationMinutes,
             active: true,
           })),
         });
+        servicesCreated = svcsToCreate.length;
       }
     }
 
-    // 6. Calcular itens pendentes para o checklist de ativação
+    // 7. Calcular itens pendentes para o checklist de ativação
     const pendingSetup: string[] = [];
     const hasChannel = !!(tenant.whatsappToken || tenant.instagramPageId || tenant.facebookPageId);
     if (!hasChannel) pendingSetup.push('channel');
@@ -113,8 +161,9 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       botId,
-      automationsCreated: toCreate.length,
-      automationsSkipped: bot.automations.length - toCreate.length,
+      automationsCreated: templateAutomationsCreated + botToCreate.length,
+      automationsSkipped: (template?.defaultAutomations.length ?? 0) + bot.automations.length - templateAutomationsCreated - botToCreate.length,
+      servicesCreated,
       pendingSetup,
     });
   } catch (error: any) {

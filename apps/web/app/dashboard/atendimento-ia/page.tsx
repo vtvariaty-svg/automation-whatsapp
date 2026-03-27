@@ -84,13 +84,6 @@ const BLUEPRINT_DISPLAY: Record<Blueprint, { color: string; tagColor: string }> 
   hibrido:           { color: "from-sky-500 to-blue-600",      tagColor: "bg-sky-100 text-sky-700"       },
 };
 
-const NICHOS = [
-  { id: "clínica",     label: "Clínica / Consultório",  emoji: "🏥" },
-  { id: "salão",       label: "Salão / Barbearia",       emoji: "💇" },
-  { id: "restaurante", label: "Restaurante / Delivery",  emoji: "🍽️" },
-  { id: "ecommerce",   label: "Loja / E-commerce",       emoji: "🛍️" },
-  { id: "outro",       label: "Outro",                   emoji: "🏢" },
-];
 
 const ORDER_STATUS_OPTIONS = [
   { value: "draft",           label: "Pedido criado"         },
@@ -200,11 +193,6 @@ export default function AtendimentoIAPage() {
   const [activatingBot, setActivatingBot] = useState<string | null>(null);
   const [botMsg, setBotMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
-  // Niche
-  const [selectedNiche, setSelectedNiche] = useState("");
-  const [applyingNiche, setApplyingNiche] = useState(false);
-  const [nicheMsg, setNicheMsg] = useState("");
-
   // Save state per section key
   const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [saved,  setSaved]  = useState<Record<string, boolean>>({});
@@ -250,7 +238,6 @@ export default function AtendimentoIAPage() {
         setProducts(d.commercialBehavior.products);
         setAutomations(d.automations);
         setActiveBotKey(d.botPreset.activeBotKey);
-        setSelectedNiche(d.businessContext.businessType || "");
         setSchedulingMeta({
           enabled: d.schedulingBehavior.enabled,
           mode: d.schedulingBehavior.mode,
@@ -372,35 +359,6 @@ export default function AtendimentoIAPage() {
     }
   }
 
-  async function applyNiche() {
-    if (!selectedNiche) return;
-    setApplyingNiche(true);
-    setNicheMsg("");
-    try {
-      const res = await fetch("/api/tenant/apply-niche", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ businessType: selectedNiche }),
-      });
-      if (res.ok) {
-        setNicheMsg("Preset aplicado! Prompt e boas-vindas atualizados.");
-        const r2 = await fetch("/api/ai-control-center", { headers: { Authorization: `Bearer ${token}` } });
-        if (r2.ok) {
-          const d2: ControlCenterData = await r2.json();
-          setAiIdentity(d2.aiIdentity);
-          setWelcome(d2.welcome);
-        }
-      } else {
-        const err = await res.json();
-        setNicheMsg(`Erro: ${err.error}`);
-      }
-    } catch {
-      setNicheMsg("Erro ao aplicar preset");
-    } finally {
-      setApplyingNiche(false);
-      setTimeout(() => setNicheMsg(""), 4000);
-    }
-  }
 
   async function toggleService(serviceId: string, active: boolean) {
     setServices((prev) => prev.map((s) => (s.id === serviceId ? { ...s, active } : s)));

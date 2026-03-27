@@ -68,7 +68,7 @@ export default function OnboardingStep1() {
     try {
       const token = localStorage.getItem("auth_token");
 
-      // 1. Save business context
+      // Single call: saves context AND activates bot server-side
       const res = await fetch("/api/onboarding/step1", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -78,19 +78,6 @@ export default function OnboardingStep1() {
       if (!res.ok || !data.success) {
         setError(data.error || "Erro ao salvar");
         return;
-      }
-
-      // 2. Activate bot if selected (non-blocking on failure)
-      if (selectedBotId) {
-        try {
-          await fetch("/api/marketplace/activate", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ botId: selectedBotId }),
-          });
-        } catch (botErr) {
-          console.warn("Bot activation failed, continuing:", botErr);
-        }
       }
 
       router.push("/onboarding/step/2");

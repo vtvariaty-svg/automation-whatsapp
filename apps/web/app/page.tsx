@@ -1089,7 +1089,7 @@ function Footer() {
           <div className="flex flex-col gap-1 text-center md:text-left">
             <p className="text-sm text-slate-500">&copy; {new Date().getFullYear()} Variaty. Todos os direitos reservados.</p>
             <p className="text-xs text-slate-600 font-medium">
-              Contamei Tecnologia e Sistemas Digitais LTDA — CNPJ 64.790.325/0001-06
+              Contamei Tecnologia e Sistemas Digitais LTDA — CNPJ 64.790.325/0001-06 — Celular: (16) 99436-7481
             </p>
           </div>
           <p className="text-xs text-slate-600 font-medium tracking-wide">

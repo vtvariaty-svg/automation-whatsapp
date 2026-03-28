@@ -120,8 +120,11 @@ export default function TermsPage() {
         </div>
       </main>
 
-      <footer className="border-t border-gray-100 py-8 text-center text-sm text-gray-400">
-        © 2026 Variaty Secretary IA. Todos os direitos reservados.
+      <footer className="border-t border-gray-100 py-8 text-center text-sm text-gray-400 flex flex-col gap-1">
+        <p>© 2026 Variaty. Todos os direitos reservados.</p>
+        <p className="text-xs">
+          Contamei Tecnologia e Sistemas Digitais LTDA — CNPJ 64.790.325/0001-06 — Celular: (16) 99436-7481
+        </p>
       </footer>
     </div>
   );

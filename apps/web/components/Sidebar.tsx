@@ -209,7 +209,6 @@ export default function Sidebar() {
         <div className="text-[10px] text-gray-500 leading-tight px-1">
           <p className="font-semibold text-gray-400">Contamei Tecnologia e Sistemas Digitais LTDA</p>
           <p>CNPJ: 64.790.325/0001-06</p>
-          <p>Celular: (16) 99436-7481</p>
         </div>
       </div>
     </>

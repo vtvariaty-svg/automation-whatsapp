@@ -81,7 +81,7 @@ export async function POST(req: Request) {
           // Clear all period/plan fields that belong to the canceled paid subscription.
           stripeSubscriptionId: null,
           planId: null,
-          trialEnd: null,
+          trialEnd: null, // Trial reset
           currentPeriodStart: null,
           currentPeriodEnd: null,
           // stripeCustomerId intentionally kept — see comment above.

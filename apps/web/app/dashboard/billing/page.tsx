@@ -30,8 +30,8 @@ const PLANS = [
     price: 49.90,
     oldPrice: 139.00,
     popular: true,
-    highlight: '7 dias grátis para testar',
-    hasTrial: true,
+    highlight: 'Garanta o valor promocional agora',
+    hasTrial: false,
     isConsultative: false,
     features: [
       'WhatsApp + Instagram + Facebook',
@@ -311,9 +311,9 @@ export default function BillingPage() {
                 }`}
               >
                 {plan.popular && !isCurrent && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <span className="bg-[#4f46e5] text-white text-xs font-bold px-4 py-1 rounded-full shadow whitespace-nowrap">
-                      RECOMENDADO
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-[90%] flex justify-center">
+                    <span className="bg-gradient-to-r from-red-600 to-rose-500 text-white text-[10px] font-bold px-4 py-1.5 rounded-full shadow-lg shadow-rose-500/30 whitespace-nowrap uppercase tracking-wider ring-2 ring-white">
+                      PREÇO PROMOCIONAL POR TEMPO LIMITADO
                     </span>
                   </div>
                 )}
@@ -336,20 +336,18 @@ export default function BillingPage() {
                   ) : (
                     <div className="flex flex-col">
                       {plan.oldPrice && (
-                        <p className="text-sm font-bold text-gray-400 line-through decoration-rose-500/50 mb-0.5">
-                          De R$ {plan.oldPrice.toFixed(2).replace('.', ',')}
+                        <p className="text-sm font-bold text-gray-400 line-through decoration-rose-500/70 mb-0.5">
+                          de R$ {plan.oldPrice.toFixed(2).replace('.', ',')}
                         </p>
                       )}
-                      <div>
-                        <span className="text-3xl font-bold text-gray-900">
+                      <div className="flex items-baseline gap-1">
+                        {plan.oldPrice && <span className="text-sm font-bold text-gray-500 mr-1">por</span>}
+                        <span className="text-4xl font-extrabold text-gray-900 tracking-tight">
                           R$ {plan.price.toFixed(2).replace('.', ',')}
                         </span>
-                        <span className="text-sm text-gray-400">/mês</span>
+                        <span className="text-sm font-semibold text-gray-400">/mês</span>
                       </div>
                     </div>
-                  )}
-                  {plan.hasTrial && (
-                    <p className="text-xs text-emerald-600 font-semibold mt-1">✓ 7 dias grátis de trial</p>
                   )}
                 </div>
 
@@ -394,8 +392,6 @@ export default function BillingPage() {
                       ? 'Plano atual'
                       : plan.isConsultative
                       ? 'Falar com vendas'
-                      : plan.hasTrial
-                      ? 'Começar trial grátis'
                       : 'Assinar'}
                   </Button>
                 )}
@@ -405,10 +401,7 @@ export default function BillingPage() {
         </div>
       </div>
 
-      {/* Trial disclaimer */}
-      <p className="text-xs text-gray-400 text-center">
-        O período de teste de 7 dias é exclusivo do plano Pro. Nenhuma cobrança durante o trial — cancele quando quiser.
-      </p>
+      {/* Trial disclaimer removed */}
 
       {/* Free downgrade confirmation modal */}
       {confirmFreeDowngrade && (

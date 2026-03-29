@@ -33,7 +33,7 @@ export function PrecosSection() {
       preco: "49,90",
       precoAntigo: "139,00",
       descricao: "A inteligência de vendas para crescer rápido",
-      nota: "7 dias grátis · Sem taxas ocultas",
+      nota: "Sem contrato · Cancele quando quiser",
       features: [
         "WhatsApp Oficial, Instagram e Facebook",
         "10.000 mensagens de IA por mês",
@@ -47,7 +47,7 @@ export function PrecosSection() {
         "Prospecção Inteligente Ativa",
         "Painel White-label de agência",
       ],
-      botaoTexto: "Começar 7 dias grátis",
+      botaoTexto: "Assinar agora",
       botaoEstilo: "bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-500/25",
       popular: true,
       href: "/register?plan=pro",
@@ -101,8 +101,8 @@ export function PrecosSection() {
               }`}
             >
               {plano.popular && (
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-blue-600 text-white text-xs font-bold uppercase tracking-wider py-1.5 px-5 rounded-full whitespace-nowrap shadow-md shadow-blue-500/30">
-                  Mais escolhido
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-red-600 to-rose-500 text-white text-[10px] sm:text-xs font-bold uppercase tracking-wider py-1.5 px-5 rounded-full whitespace-nowrap shadow-lg shadow-rose-500/40 ring-2 ring-white">
+                  PREÇO PROMOCIONAL POR TEMPO LIMITADO
                 </div>
               )}
 
@@ -125,15 +125,23 @@ export function PrecosSection() {
                 ) : (
                   <div className="flex flex-col">
                     {plano.precoAntigo && (
-                      <span className="text-sm font-bold text-gray-400 line-through decoration-red-500/50 mb-1">
-                        De R$ {plano.precoAntigo}
-                      </span>
+                      <div className="flex flex-col mb-1.5">
+                        <span className="text-sm font-bold text-gray-400 line-through decoration-red-500/70">
+                          de R$ {plano.precoAntigo}
+                        </span>
+                      </div>
                     )}
                     <div className="flex items-baseline gap-1">
+                      {plano.precoAntigo && <span className="text-lg font-bold text-gray-500 mr-1">por</span>}
                       <span className="text-xl font-bold text-gray-400">R$</span>
-                      <span className="text-4xl font-extrabold text-gray-900">{plano.preco}</span>
-                      <span className="text-gray-500 font-medium text-sm">/mês</span>
+                      <span className="text-5xl font-extrabold text-gray-900 tracking-tight">{plano.preco}</span>
+                      <span className="text-gray-500 font-semibold text-base">/mês</span>
                     </div>
+                    {plano.precoAntigo && (
+                      <p className="text-emerald-600 text-[11px] font-bold uppercase tracking-wider mt-2 bg-emerald-50 border border-emerald-100 inline-block px-2.5 py-1 rounded-md">
+                        Garanta o valor promocional agora
+                      </p>
+                    )}
                   </div>
                 )}
               </div>

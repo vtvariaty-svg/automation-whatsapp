@@ -21,8 +21,9 @@ const PLANS = [
     id: "pro",
     name: "Pro",
     price: "R$ 49,90",
-    priceNote: "/mês — 7 dias grátis",
-    badge: "7 DIAS GRÁTIS",
+    oldPrice: "139,00",
+    priceNote: "Garanta o valor promocional agora",
+    badge: "PREÇO PROMOCIONAL POR TEMPO LIMITADO",
     highlight: true,
     channels: ["WhatsApp", "Instagram", "Facebook"],
     features: ["10.000 mensagens/mês", "5 agentes", "Automações ilimitadas", "CRM avançado", "AI Copilot"],
@@ -38,7 +39,7 @@ const PLANS = [
     highlight: false,
     channels: ["WhatsApp", "Instagram", "Facebook"],
     features: ["Mensagens ilimitadas", "Agentes ilimitados", "White-label", "Painel de agência", "Tudo do Pro"],
-    cta: "Assinar Business",
+    cta: "Falar com vendas",
     ctaStyle: "bg-gray-900 text-white hover:bg-gray-800",
   },
 ];
@@ -109,19 +110,30 @@ export default function OnboardingPlanPage() {
             }`}
           >
             {plan.badge && (
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                <span className="px-3 py-1 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-[10px] font-bold rounded-full uppercase tracking-wider shadow-md">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-[90%] flex justify-center">
+                <span className={`px-4 py-1.5 text-white text-[9px] sm:text-[10px] font-bold rounded-full uppercase tracking-wider shadow-lg ring-2 ring-white whitespace-nowrap ${plan.badge === 'PREÇO PROMOCIONAL POR TEMPO LIMITADO' ? 'bg-gradient-to-r from-red-600 to-rose-500 shadow-rose-500/40' : 'bg-gradient-to-r from-indigo-600 to-purple-600'}`}>
                   {plan.badge}
                 </span>
               </div>
             )}
 
-            <div className={`px-5 pt-7 pb-5 border-b ${plan.highlight ? "border-indigo-100 bg-indigo-50/30" : "border-gray-100"}`}>
+            <div className={`px-5 pt-8 pb-5 border-b ${plan.highlight ? "border-indigo-100 bg-indigo-50/30" : "border-gray-100"}`}>
               <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-1">{plan.name}</p>
-              <p className="text-2xl font-extrabold text-gray-900">{plan.price}</p>
-              <p className={`text-xs mt-0.5 ${plan.highlight ? "text-indigo-600 font-semibold" : "text-gray-400"}`}>
-                {plan.priceNote}
-              </p>
+              {plan.oldPrice && (
+                <p className="text-xs font-bold text-gray-400 line-through decoration-red-500/70 mb-0.5">
+                  de R$ {plan.oldPrice}
+                </p>
+              )}
+              <div className="flex items-baseline gap-1">
+                {plan.oldPrice && <span className="text-sm font-bold text-gray-500 mr-1">por</span>}
+                <p className="text-4xl font-extrabold text-gray-900 tracking-tight">{plan.price}</p>
+                <span className="text-sm font-semibold text-gray-500">/mês</span>
+              </div>
+              {plan.priceNote && (
+                 <p className={`mt-2 inline-block px-2 py-1 rounded text-[11px] font-bold uppercase tracking-wider ${plan.highlight ? "bg-emerald-50 text-emerald-700 border border-emerald-100" : "text-gray-400"}`}>
+                   {plan.priceNote}
+                 </p>
+              )}
               <div className="flex flex-wrap gap-1.5 mt-3">
                 {plan.channels.map((ch) => (
                   <span key={ch} className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-[10px] font-semibold">
@@ -161,7 +173,7 @@ export default function OnboardingPlanPage() {
       </div>
 
       <p className="text-center text-xs text-gray-400 mt-6">
-        Sem cartão de crédito para plano Free e Standard (trial). Cancele quando quiser.
+        Sem cartão de crédito para assinar o plano Free. Assine o plano Pro com cancelamento a qualquer momento.
       </p>
     </div>
   );

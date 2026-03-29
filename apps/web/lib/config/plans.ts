@@ -31,7 +31,7 @@ export const PLANS: Record<string, PlanConfig> = {
     limitMessages: 10000,
     // [!] IMPORTANT: The environment variable STRIPE_PRICE_PRO must map to a product of R$ 49,90 in Stripe.
     stripePriceId: process.env.STRIPE_PRICE_PRO || 'price_pro_placeholder',
-    hasTrial: true, // Pro is now the main public paid plan
+    hasTrial: false, // Pro no longer has an upfront free trial
     isPublic: true,
   },
   business: {

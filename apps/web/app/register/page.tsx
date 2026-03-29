@@ -8,8 +8,8 @@ import { Input } from "@/components/ui/Input";
 import { useAuth } from "@/hooks/useAuth";
 import { WHATSAPP_BUSINESS_URL } from "@/lib/config/plans";
 
-const PLAN_LABELS: Record<string, { nome: string; preco: string; cor: string }> = {
-  pro:      { nome: "Pro", preco: "De R$ 139,00 por R$ 49,90 · 7 dias grátis", cor: "bg-blue-600 text-white" },
+const PLAN_LABELS: Record<string, { nome: string; preco: string; cor: string; alert?: string }> = {
+  pro:      { nome: "Pro", preco: "de R$ 139,00 por R$ 49,90/mês", cor: "bg-gradient-to-r from-red-600 to-rose-500 text-white shadow-md", alert: "PREÇO PROMOCIONAL POR TEMPO LIMITADO" },
   business: { nome: "Business", preco: "Plano Consultivo", cor: "bg-gray-900 text-white" },
   free:     { nome: "Gratuito", preco: "Sem custo", cor: "bg-gray-200 text-gray-700" },
   // Backward compatibility for old checkout links
@@ -99,13 +99,21 @@ function RegisterForm() {
         Comece agora
       </h2>
 
-      <div className="mt-3 mb-6 flex items-center gap-3 p-3.5 rounded-xl border border-blue-200 bg-blue-50">
-        <div className={`text-xs font-bold px-2.5 py-1 rounded-lg ${planLabel.cor}`}>
-          {planLabel.nome}
-        </div>
-        <div>
-          <p className="text-sm font-semibold text-gray-800">Plano selecionado</p>
-          <p className="text-xs text-gray-500">{planLabel.preco}</p>
+      <div className={`mt-3 mb-6 p-4 rounded-xl border ${planLabel.alert ? 'border-rose-200 bg-rose-50/50 relative overflow-hidden' : 'border-blue-200 bg-blue-50'}`}>
+        {planLabel.alert && (
+          <div className="text-[10px] sm:text-xs font-bold text-rose-600 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            {planLabel.alert}
+          </div>
+        )}
+        <div className="flex items-center gap-3">
+          <div className={`text-xs font-bold px-3 py-1.5 rounded-lg ${planLabel.cor}`}>
+            {planLabel.nome}
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-gray-800">Plano selecionado</p>
+            <p className={`text-sm ${planLabel.alert ? 'font-bold text-gray-900 mt-0.5 tracking-tight' : 'text-gray-500 text-xs mt-0.5'}`}>{planLabel.preco}</p>
+          </div>
         </div>
       </div>
 

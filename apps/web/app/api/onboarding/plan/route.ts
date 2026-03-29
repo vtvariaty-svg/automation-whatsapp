@@ -3,7 +3,7 @@ import { requireAuth } from '@/lib/auth/session';
 import { createSubscription, getSubscription } from '@/lib/services/subscriptionService';
 import { createCustomer, createCheckoutSession } from '@/lib/services/stripeService';
 import { prisma } from '@/lib/prisma';
-import { PLANS } from '@/lib/config/plans';
+import { PLANS, WHATSAPP_BUSINESS_URL } from '@/lib/config/plans';
 
 export async function POST(req: Request) {
   try {
@@ -15,7 +15,7 @@ export async function POST(req: Request) {
 
     const existing = await getSubscription(auth.tenantId);
 
-    // Free and Standard (trial): create/update subscription directly, no Stripe checkout needed
+    // Free and legacy Standard: create/update subscription directly, no Stripe checkout needed
     if (plan === 'free' || plan === 'standard') {
       const hasTrial = PLANS[plan].hasTrial ?? false;
       const trialEnd = hasTrial ? new Date(Date.now() + 7 * 86_400_000) : null;
@@ -35,7 +35,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ continue: true, trial: hasTrial, trialEnd });
     }
 
-    // Pro / Business: redirect to Stripe checkout
+    // Block Consultative / Business plans from attempting Stripe API initialization
+    if (PLANS[plan].isConsultative || plan === 'business') {
+      return NextResponse.json({
+        noCheckout: true,
+        contactSales: true,
+        contactUrl: WHATSAPP_BUSINESS_URL,
+        message: "O plano selecionado é consultivo. Fale com nossa equipe comercial para continuar."
+      }, { status: 200 });
+    }
+
+    // Pro (or remaining paid self-service): redirect to Stripe checkout
     // Success URL returns to onboarding step 1 to continue setup
     const tenant = await prisma.tenant.findUnique({
       where: { id: auth.tenantId },

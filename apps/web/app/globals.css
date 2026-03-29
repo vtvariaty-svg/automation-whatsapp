@@ -4,10 +4,44 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #0f172a;
+  
+  /* Brand Tokens */
+  --brand-navy: #080d19;
+  --brand-blue: #2563eb;
+  --brand-indigo: #4f46e5;
 }
 
 body {
   background-color: var(--background);
   color: var(--foreground);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background-color: rgba(37, 99, 235, 0.2);
+  color: var(--brand-navy);
+}
+
+@layer utilities {
+  .glass-nav {
+    @apply bg-white/95 backdrop-blur-xl border-b border-gray-100 shadow-sm shadow-indigo-900/5;
+  }
+  
+  .glass-drawer {
+    @apply bg-[#080d19]/95 backdrop-blur-2xl border-l border-indigo-500/10 shadow-[-20px_0_60px_rgba(0,0,0,0.3)];
+  }
+  
+  .glow-accent {
+    @apply absolute w-64 h-64 bg-indigo-500/20 rounded-full blur-[80px] mix-blend-screen pointer-events-none;
+  }
+  
+  .btn-premium {
+    @apply bg-blue-600 text-white shadow-lg shadow-blue-500/30 hover:bg-blue-700 hover:shadow-blue-500/40 transition-all hover:-translate-y-0.5 ring-2 ring-blue-500/20;
+  }
+  
+  .dropdown-shadow {
+    filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.1));
+  }
 }

@@ -4,41 +4,39 @@ import { WHATSAPP_BUSINESS_URL } from "@/lib/config/plans";
 export function CTASection() {
   return (
     <section className="relative bg-[#080d19] overflow-hidden pt-32 pb-40">
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
-      <div className="absolute top-0 right-1/4 w-[600px] h-[600px] bg-blue-600/10 rounded-full blur-[120px]" />
-      <div className="absolute bottom-0 left-1/4 w-[500px] h-[500px] bg-indigo-600/10 rounded-full blur-[120px]" />
-
-      {/* Wave Transition Top to blend with previous white section perfectly if needed */}
-      <div className="absolute top-0 w-full leading-none z-0 transform rotate-180">
-        <svg 
-          className="absolute top-0 w-full text-white fill-current -z-10" 
-          viewBox="0 0 1440 120"
-          preserveAspectRatio="none"
-          style={{ height: '40px', display: 'block', width: '100%' }}
-        >
-          <path d="M0,64L80,69.3C160,75,320,85,480,80C640,75,800,53,960,48C1120,43,1280,53,1360,58.7L1440,64L1440,120L1360,120C1280,120,1120,120,960,120C800,120,640,120,480,120C320,120,160,120,80,120L0,120Z"></path>
-        </svg>
+      
+      {/* Wave Transition Top from White FAQ */}
+      <div className="absolute top-0 left-0 right-0 w-full z-0 overflow-hidden pointer-events-none rotate-180">
+        <img 
+          src="/landing-v4/backgrounds/wave-mid.svg" 
+          alt="" 
+          className="w-full min-w-[1440px] h-[60px] md:h-[120px] object-cover object-top" 
+        />
       </div>
 
-      <div className="relative max-w-4xl mx-auto px-4 text-center z-10">
-        <h2 className="text-4xl md:text-6xl lg:text-7xl font-extrabold text-white mb-6 leading-[1.05] tracking-tight">
+      {/* Premium Background Atmosphere */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-30" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-blue-600/10 rounded-full blur-[120px] pointer-events-none mix-blend-screen" />
+
+      <div className="relative max-w-4xl mx-auto px-4 text-center z-10 pt-16">
+        <h2 className="text-5xl md:text-6xl lg:text-7xl font-extrabold text-white mb-6 leading-[1.05] tracking-tight drop-shadow-sm">
           Sua máquina de vendas,
-          <br />
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">
-            automatizada hoje.
+          <br className="hidden md:block" />
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400">
+            {" "}automatizada hoje.
           </span>
         </h2>
         <p className="text-lg md:text-xl text-slate-300 mb-14 max-w-2xl mx-auto font-medium leading-relaxed">
-          Sem setups complexos. Sem focar em tecnologia estrutural. Apenas configure suas regras de negócio e veja a IA qualificar sua base 24h por dia.
+          Sem setups complexos. Esqueça integrações intermináveis. Configure suas regras e veja a IA qualificar sua base 24h por dia.
         </p>
 
-        <div className="flex flex-col items-center justify-center gap-6">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-5">
           <Link
             href="/register"
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-3 text-lg md:text-xl font-extrabold bg-blue-600 text-white px-12 py-6 rounded-2xl hover:bg-blue-500 shadow-[0_0_60px_rgba(37,99,235,0.4)] transition-all hover:-translate-y-1 ring-4 ring-blue-500/20"
+            className="w-full sm:w-auto flex items-center justify-center gap-3 text-lg font-extrabold bg-blue-600 text-white px-10 py-5 rounded-2xl shadow-[0_0_40px_rgba(37,99,235,0.4)] hover:bg-blue-500 hover:shadow-[0_0_60px_rgba(37,99,235,0.6)] transition-all hover:-translate-y-1 ring-2 ring-blue-500/30 group"
           >
-            Quero automatizar agora
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            Começar Gratuitamente
+            <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
             </svg>
           </Link>
@@ -46,24 +44,23 @@ export function CTASection() {
             href={WHATSAPP_BUSINESS_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 text-sm font-bold text-slate-400 hover:text-white transition-colors uppercase tracking-wider"
+            className="w-full sm:w-auto flex items-center justify-center gap-3 bg-white/5 hover:bg-white/10 border border-white/10 px-8 py-5 rounded-2xl text-slate-200 font-bold transition-all backdrop-blur-sm group hover:-translate-y-1"
           >
-            Ou fale com o comercial
+            <svg className="w-5 h-5 fill-[#25D366] opacity-90 group-hover:opacity-100" viewBox="0 0 24 24">
+               <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347zM12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492l4.623-1.467A11.933 11.933 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818c-2.168 0-4.19-.597-5.924-1.634l-.425-.252-2.74.87.883-2.665-.278-.443A9.748 9.748 0 012.182 12c0-5.417 4.401-9.818 9.818-9.818S21.818 6.583 21.818 12s-4.401 9.818-9.818 9.818z"/>
+            </svg>
+            Falar com Vendas
           </a>
         </div>
       </div>
 
-      {/* Wave Section Transition Bottom (V4 explicit asset hook) */}
-      <div className="absolute bottom-0 w-full leading-none z-0">
+      {/* Wave Section Transition Bottom perfectly aligning into Footer */}
+      <div className="absolute bottom-[-1px] left-0 right-0 w-full z-0 overflow-hidden pointer-events-none">
         <img 
           src="/landing-v4/backgrounds/wave-bottom.svg" 
           alt="" 
-          className="absolute bottom-0 w-full h-16 md:h-32 object-cover object-top opacity-100" 
+          className="w-full min-w-[1440px] h-[60px] md:h-[120px] object-cover object-bottom" 
         />
-        {/* Fallback internal generic wave */}
-        <svg className="absolute bottom-0 w-full h-12 md:h-24 text-white fill-current -z-10" preserveAspectRatio="none" viewBox="0 0 1440 320">
-          <path d="M0,256L48,229.3C96,203,192,149,288,154.7C384,160,480,224,576,250.7C672,277,768,267,864,240C960,213,1056,171,1152,176C1248,181,1344,235,1392,261.3L1440,288L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
-        </svg>
       </div>
     </section>
   );

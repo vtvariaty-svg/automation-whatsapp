@@ -6,21 +6,28 @@ import { useState, useEffect } from "react";
 export function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  // Prevent scrolling when mobile menu is open
+  // Close on Escape key & manage body scroll
   useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsMenuOpen(false);
+    };
+
     if (isMenuOpen) {
       document.body.style.overflow = "hidden";
+      window.addEventListener("keydown", handleEsc);
     } else {
       document.body.style.overflow = "";
     }
+
     return () => {
       document.body.style.overflow = "";
+      window.removeEventListener("keydown", handleEsc);
     };
   }, [isMenuOpen]);
 
   return (
     <>
-      <nav className="fixed top-0 left-0 right-0 z-[60] bg-white/95 backdrop-blur-xl border-b border-gray-100 shadow-sm shadow-indigo-900/5 transition-all duration-300">
+      <nav className="fixed top-0 left-0 right-0 z-[60] glass-nav transition-all duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-20">
           
           {/* Left: Logo */}
@@ -28,7 +35,7 @@ export function Navbar() {
             <img src="/logo.webp" alt="Variaty" className="h-20 w-auto" />
           </Link>
           
-          {/* Center: Desktop Links (Hidden on mobile/tablet) */}
+          {/* Center: Desktop Links */}
           <div className="hidden lg:flex items-center gap-10 text-sm font-semibold text-gray-600">
             <Link href="/como-funciona" className="hover:text-blue-600 transition-colors">Como Funciona</Link>
             <Link href="/precos" className="hover:text-blue-600 transition-colors">Planos</Link>
@@ -39,28 +46,26 @@ export function Navbar() {
           
           {/* Right: CTAs + Mobile Toggle */}
           <div className="flex items-center gap-3 sm:gap-4 relative z-[70]">
-            {/* Login Link (Desktop Only) */}
             <Link href="/login" className="hidden lg:block text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors">
               Entrar
             </Link>
             
-            {/* Primary CTA (Kept visible on mobile for high conversion) */}
             <Link
               href="/register"
-              className="text-sm font-bold bg-blue-600 text-white px-4 sm:px-6 py-2.5 rounded-lg hover:bg-blue-700 shadow-lg shadow-blue-500/30 hover:shadow-blue-500/40 transition-all hover:-translate-y-0.5 whitespace-nowrap ring-2 ring-blue-500/20"
+              className="text-sm font-bold px-4 sm:px-6 py-2.5 rounded-lg whitespace-nowrap btn-premium"
             >
               <span className="hidden sm:inline">Teste grátis</span>
               <span className="sm:hidden">Começar</span>
             </Link>
 
-            {/* Mobile Hamburger Toggle */}
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="lg:hidden p-2 -mr-2 text-gray-600 hover:bg-gray-100 hover:text-gray-900 rounded-lg transition-colors focus:outline-none"
-              aria-label="Menu"
+              className="lg:hidden p-2 -mr-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none"
+              aria-expanded={isMenuOpen}
+              aria-label="Toggle Navigation"
             >
               {isMenuOpen ? (
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               ) : (
@@ -75,41 +80,52 @@ export function Navbar() {
 
       {/* Mobile Drawer Overlay */}
       <div
-        className={`fixed inset-0 min-h-screen bg-gray-900/60 backdrop-blur-sm z-[50] transition-opacity duration-300 lg:hidden ${
+        className={`fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[50] transition-opacity duration-300 lg:hidden ${
           isMenuOpen ? "opacity-100" : "opacity-0 pointer-events-none"
         }`}
         onClick={() => setIsMenuOpen(false)}
+        aria-hidden="true"
       />
 
-      {/* Mobile Menu Panel */}
+      {/* Mobile Menu Drawer - Premium Navy Brand */}
       <div
-        className={`fixed top-0 right-0 w-[85%] sm:w-80 h-full bg-white z-[55] shadow-2xl border-l border-gray-100 transition-transform duration-300 ease-out lg:hidden ${
+        className={`fixed top-0 right-0 w-[85%] sm:w-[360px] h-full z-[55] glass-drawer transition-transform duration-400 ease-[cubic-bezier(0.25,1,0.5,1)] lg:hidden ${
           isMenuOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
-        <div className="flex flex-col h-full pt-28 pb-8 px-6 overflow-y-auto">
-          <div className="flex flex-col gap-6 text-lg font-bold text-gray-800">
-            <Link href="/como-funciona" onClick={() => setIsMenuOpen(false)} className="hover:text-blue-600 transition-colors">Como Funciona</Link>
-            <Link href="/precos" onClick={() => setIsMenuOpen(false)} className="hover:text-blue-600 transition-colors">Planos</Link>
-            <Link href="/demo" onClick={() => setIsMenuOpen(false)} className="hover:text-blue-600 transition-colors">Demo</Link>
-            <Link href="/faq" onClick={() => setIsMenuOpen(false)} className="hover:text-blue-600 transition-colors">FAQ</Link>
-            <Link href="/contato" onClick={() => setIsMenuOpen(false)} className="hover:text-blue-600 transition-colors">Fale Conosco</Link>
+        <div className="glow-accent top-[-10%] right-[-20%]" />
+        <div className="glow-accent bottom-[10%] left-[-20%] opacity-50 bg-blue-500/20" />
+
+        <div className="flex flex-col h-full pt-28 pb-10 px-8 overflow-y-auto relative z-10">
+          <div className="flex flex-col gap-8 text-lg font-bold text-white/90">
+            <Link href="/como-funciona" onClick={() => setIsMenuOpen(false)} className="hover:text-blue-400 transition-colors">Como Funciona</Link>
+            <Link href="/precos" onClick={() => setIsMenuOpen(false)} className="hover:text-blue-400 transition-colors">Planos</Link>
+            <Link href="/demo" onClick={() => setIsMenuOpen(false)} className="hover:text-blue-400 transition-colors">Demo</Link>
+            <Link href="/faq" onClick={() => setIsMenuOpen(false)} className="hover:text-blue-400 transition-colors">FAQ</Link>
+            <Link href="/contato" onClick={() => setIsMenuOpen(false)} className="hover:text-blue-400 transition-colors">Fale Conosco</Link>
           </div>
           
-          <div className="mt-auto pt-8 border-t border-gray-100 flex flex-col gap-4">
+          <div className="mt-auto pt-10 border-t border-white/10 flex flex-col gap-4">
+            <div className="relative p-6 rounded-2xl bg-white/5 border border-white/10 shadow-2xl overflow-hidden group">
+               <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+               <p className="text-white font-extrabold text-xl mb-1 relative z-10">Pronto para escalar?</p>
+               <p className="text-white/60 text-sm mb-5 relative z-10">Automatize sua operação em minutos.</p>
+               
+               <Link
+                 href="/register"
+                 onClick={() => setIsMenuOpen(false)}
+                 className="block text-center w-full font-extrabold btn-premium py-3.5 rounded-xl text-sm relative z-10"
+               >
+                 Criar Conta Grátis
+               </Link>
+            </div>
+
             <Link 
               href="/login" 
               onClick={() => setIsMenuOpen(false)}
-              className="text-center font-bold text-gray-600 hover:text-gray-900 py-3.5 rounded-xl border-2 border-gray-100 hover:border-gray-200 transition-colors"
+              className="text-center font-bold text-white/70 hover:text-white py-3 transition-colors mt-2"
             >
-              Fazer Login
-            </Link>
-            <Link
-              href="/register"
-              onClick={() => setIsMenuOpen(false)}
-              className="text-center font-extrabold bg-blue-600 text-white py-4 rounded-xl hover:bg-blue-700 shadow-xl shadow-blue-500/30 ring-2 ring-blue-500/20 transition-all"
-            >
-              Criar Conta Grátis
+              Já tenho conta (Login)
             </Link>
           </div>
         </div>

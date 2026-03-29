@@ -7,7 +7,14 @@ const COOKIE_MAX_AGE = 86400;
 
 export async function POST(req: Request) {
   try {
-    const { name, email, password, plan, eventId } = await req.json();
+    let { name, email, password, plan, eventId } = await req.json();
+
+    // Prevent direct self-service registration of consultative/admin tiers 
+    // Defaults fallback to 'free' if user is tampering with payload.
+    if (plan === 'business' || plan === 'superadmin') {
+      plan = 'free';
+    }
+
     const result = await registerUser(name, email, password, 'user', plan);
 
     // If an eventId was provided from the landing page, fire the Conversions API 'Lead' event.

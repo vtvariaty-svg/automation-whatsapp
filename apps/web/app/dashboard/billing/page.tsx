@@ -13,6 +13,7 @@ const PLANS = [
     price: 0,
     highlight: 'Comece gratuitamente',
     hasTrial: false,
+    isConsultative: false,
     features: [
       'Instagram DM automatizado',
       'Até 1.000 contatos',
@@ -20,58 +21,42 @@ const PLANS = [
       '5 automações',
       'Painel de conversas básico',
     ],
-    missing: ['WhatsApp', 'Facebook', 'Analytics avançado'],
-  },
-  {
-    slug: 'standard',
-    name: 'Standard',
-    price: 49.90,
-    popular: true,
-    highlight: '7 dias grátis para testar',
-    hasTrial: true,
-    features: [
-      'Instagram DM + WhatsApp Business',
-      'Comentários Instagram com auto-DM',
-      'Até 5.000 contatos',
-      '3.000 mensagens IA/mês',
-      '15 automações',
-      'CRM básico, agenda e pedidos',
-      'Follow-up automático',
-      'Analytics básico',
-    ],
-    missing: ['Facebook Messenger', 'Segmentos dinâmicos', 'AI Copilot'],
+    missing: ['WhatsApp', 'Facebook', 'Analytics avançado', 'Testes A/B'],
   },
   {
     slug: 'pro',
     name: 'Pro',
     price: 97.00,
-    highlight: 'Para times que precisam de mais',
-    hasTrial: false,
+    popular: true,
+    highlight: '7 dias grátis para testar',
+    hasTrial: true,
+    isConsultative: false,
     features: [
-      'Instagram + WhatsApp + Facebook',
+      'WhatsApp + Instagram + Facebook',
+      'Comentários do Instagram',
       'Até 20.000 contatos',
       '10.000 mensagens IA/mês',
       'Automações ilimitadas',
-      'CRM avançado + segmentos dinâmicos',
+      'CRM avançado + segmentos',
       'Testes A/B',
-      'Analytics avançado',
-      'AI Copilot + Insights',
+      'Analytics e AI Copilot',
       'Templates premium',
     ],
-    missing: ['White-label', 'Painel de agência'],
+    missing: ['White-label', 'Painel de agência', 'Prospecção IA'],
   },
   {
     slug: 'business',
     name: 'Business',
     price: 197.00,
-    highlight: 'Escala total e white-label',
+    highlight: 'Vendas consultivas B2B',
     hasTrial: false,
+    isConsultative: true,
     features: [
       'Tudo do Pro',
-      'Contatos ilimitados',
-      'Mensagens ilimitadas',
-      'White-label e marca própria',
-      'Painel de agência / revenda',
+      'Contatos e mensagens ilimitadas',
+      'White-label com a sua marca',
+      'Painel de agência e revenda',
+      'Prospecção Inteligente (IA)',
       'Suporte prioritário',
       'Onboarding dedicado',
       'Limites customizados',
@@ -142,10 +127,24 @@ export default function BillingPage() {
       return;
     }
 
+    // For consultative plans, redirect to WhatsApp or Contato page
+    if (planSlug === 'business') {
+      window.location.href = '/contato';
+      return;
+    }
+
     setCheckoutLoading(planSlug);
     try {
       const data = await billingApi.createCheckout(planSlug);
-      if (data.checkoutUrl) window.location.href = data.checkoutUrl;
+      
+      if (data.contactSales && data.contactUrl) {
+        window.location.href = data.contactUrl;
+        return;
+      }
+      
+      if (data.checkoutUrl) {
+        window.location.href = data.checkoutUrl;
+      }
     } catch (err: any) {
       showMessage(err?.message || 'Erro ao criar sessão de pagamento. Tente novamente.', false);
     } finally {
@@ -295,7 +294,7 @@ export default function BillingPage() {
           {subscription?.hasSubscription ? 'Alterar plano' : 'Escolha seu plano'}
         </h3>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {PLANS.map((plan) => {
             const isCurrent = subscription?.plan === plan.slug;
             return (
@@ -312,7 +311,7 @@ export default function BillingPage() {
                 {plan.popular && !isCurrent && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                     <span className="bg-[#4f46e5] text-white text-xs font-bold px-4 py-1 rounded-full shadow whitespace-nowrap">
-                      MAIS POPULAR
+                      RECOMENDADO
                     </span>
                   </div>
                 )}
@@ -330,6 +329,8 @@ export default function BillingPage() {
                 <div className="mb-5">
                   {plan.price === 0 ? (
                     <span className="text-3xl font-bold text-gray-900">Grátis</span>
+                  ) : plan.isConsultative ? (
+                    <span className="text-3xl font-bold text-gray-900">Custom</span>
                   ) : (
                     <>
                       <span className="text-3xl font-bold text-gray-900">
@@ -339,7 +340,7 @@ export default function BillingPage() {
                     </>
                   )}
                   {plan.hasTrial && (
-                    <p className="text-xs text-emerald-600 font-semibold mt-1">✓ 7 dias grátis</p>
+                    <p className="text-xs text-emerald-600 font-semibold mt-1">✓ 7 dias grátis de trial</p>
                   )}
                 </div>
 
@@ -379,9 +380,11 @@ export default function BillingPage() {
                     onClick={() => handleCheckout(plan.slug)}
                   >
                     {checkoutLoading === plan.slug
-                      ? 'Redirecionando...'
+                      ? 'Aguarde...'
                       : isCurrent
                       ? 'Plano atual'
+                      : plan.isConsultative
+                      ? 'Falar com vendas'
                       : plan.hasTrial
                       ? 'Começar trial grátis'
                       : 'Assinar'}
@@ -393,9 +396,9 @@ export default function BillingPage() {
         </div>
       </div>
 
-      {/* Trial disclaimer — only Standard has trial */}
+      {/* Trial disclaimer */}
       <p className="text-xs text-gray-400 text-center">
-        O período de teste de 7 dias é exclusivo do plano Standard. Nenhuma cobrança durante o trial — cancele quando quiser.
+        O período de teste de 7 dias é exclusivo do plano Pro. Nenhuma cobrança durante o trial — cancele quando quiser.
       </p>
 
       {/* Free downgrade confirmation modal */}

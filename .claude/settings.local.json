@@ -1,5 +1,4 @@
 {
-  "model": "claude-opus-4-6",
   "permissions": {
     "allow": [
       "Bash(git add:*)",
@@ -76,7 +75,11 @@
       "Bash(cmd.exe /c \"cd C:\\\\\\\\Users\\\\\\\\vinic\\\\\\\\Documents\\\\\\\\automation-whatsapp && git diff --stat\")",
       "Bash(cmd.exe /c \"cd C:\\\\\\\\Users\\\\\\\\vinic\\\\\\\\Documents\\\\\\\\automation-whatsapp && git status && git diff --name-only\")",
       "Bash(cmd.exe /c \"git log --oneline origin/main -3 2>&1\")",
-      "Bash(cmd.exe /c \"git fetch origin && git log --oneline origin/main -3\")"
+      "Bash(cmd.exe /c \"git fetch origin && git log --oneline origin/main -3\")",
+      "Bash(grep -v \"^$\")",
+      "Bash(grep -v \"^\\\\.$\")",
+      "Bash(find C:UsersvinicDocumentsautomation-whatsappappsweb -type f \\\\\\(-name *pixel* -o -name *meta* -o -name *capi* \\\\\\))"
     ]
-  }
+  },
+  "model": "claude-opus-4-6"
 }

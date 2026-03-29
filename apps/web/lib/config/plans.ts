@@ -1,6 +1,6 @@
-// ─── PLAN_V2: 4-plan commercial structure ─────────────────────────────────
-// Free → Standard → Pro → Business
-// Trial ONLY for Standard (7 days). Free has no trial. Pro/Business have no trial.
+// ─── PLAN_V3: 3-plan commercial structure ─────────────────────────────────
+// Free → Pro → Business (Consultative)
+// Legacy templates (Starter/Standard) kept locally for backward compatibility
 // ──────────────────────────────────────────────────────────────────────────────
 
 export interface PlanConfig {
@@ -9,7 +9,9 @@ export interface PlanConfig {
   price: number; // BRL/month. 0 = free
   limitMessages: number;
   stripePriceId: string;
-  hasTrial: boolean; // ONLY Standard = true
+  hasTrial: boolean; 
+  isPublic: boolean;
+  isConsultative?: boolean;
 }
 
 export const PLANS: Record<string, PlanConfig> = {
@@ -20,14 +22,7 @@ export const PLANS: Record<string, PlanConfig> = {
     limitMessages: 500,
     stripePriceId: '',
     hasTrial: false,
-  },
-  standard: {
-    name: 'Standard',
-    slug: 'standard',
-    price: 49.90,
-    limitMessages: 3000,
-    stripePriceId: process.env.STRIPE_PRICE_STANDARD || 'price_standard_placeholder',
-    hasTrial: true, // 7-day trial — ONLY this plan
+    isPublic: true,
   },
   pro: {
     name: 'Pro',
@@ -35,7 +30,8 @@ export const PLANS: Record<string, PlanConfig> = {
     price: 97.00,
     limitMessages: 10000,
     stripePriceId: process.env.STRIPE_PRICE_PRO || 'price_pro_placeholder',
-    hasTrial: false,
+    hasTrial: true, // Pro is now the main public paid plan
+    isPublic: true,
   },
   business: {
     name: 'Business',
@@ -44,19 +40,31 @@ export const PLANS: Record<string, PlanConfig> = {
     limitMessages: -1, // unlimited
     stripePriceId: process.env.STRIPE_PRICE_BUSINESS || 'price_business_placeholder',
     hasTrial: false,
+    isPublic: true,
+    isConsultative: true,
   },
-  // Legacy alias — existing DB rows with plan='starter' fall back to free entitlements
+  // Legacy aliases
+  standard: {
+    name: 'Standard (Legacy)',
+    slug: 'standard',
+    price: 49.90,
+    limitMessages: 3000,
+    stripePriceId: process.env.STRIPE_PRICE_STANDARD || 'price_standard_placeholder',
+    hasTrial: false,
+    isPublic: false,
+  },
   starter: {
-    name: 'Starter',
+    name: 'Starter (Legacy)',
     slug: 'starter',
     price: 39.90,
     limitMessages: 1000,
     stripePriceId: process.env.STRIPE_PRICE_STARTER || 'price_starter_placeholder',
     hasTrial: false,
+    isPublic: false,
   },
 };
 
-export const TRIAL_DAYS = 7; // applies only to Standard
+export const TRIAL_DAYS = 7;
 
 export const getPlan = (slug: string): PlanConfig | undefined => PLANS[slug];
 
@@ -113,29 +121,7 @@ export const PLAN_ENTITLEMENTS: Record<string, PlanEntitlements> = {
     limits: { messages: 500, agents: 1, automations: 5, contacts: 1000, conversations: 200 },
   },
 
-  // ── Standard ────────────────────────────────────────────────────────────
-  standard: {
-    channels: ['instagram', 'whatsapp'],
-    features: {
-      whatsapp: true,
-      instagram: true,
-      facebook: false,
-      instagramComments: true,
-      advancedCRM: false,
-      dynamicSegments: false,
-      abTesting: false,
-      aiCopilot: false,
-      conversionSequences: true,
-      premiumTemplates: false,
-      whiteLabel: false,
-      agencyReseller: false,
-      advancedAnalytics: false,
-      leadProspectingIntel: false,
-    },
-    limits: { messages: 3000, agents: 2, automations: 15, contacts: 5000, conversations: 5000 },
-  },
-
-  // ── Pro ─────────────────────────────────────────────────────────────────
+  // ── Pro (Main Paid Plan) ────────────────────────────────────────────────
   pro: {
     channels: ['instagram', 'whatsapp', 'facebook'],
     features: {
@@ -157,7 +143,7 @@ export const PLAN_ENTITLEMENTS: Record<string, PlanEntitlements> = {
     limits: { messages: 10000, agents: 5, automations: UNLIMITED, contacts: 20000, conversations: UNLIMITED },
   },
 
-  // ── Business ────────────────────────────────────────────────────────────
+  // ── Business (Consultative) ─────────────────────────────────────────────
   business: {
     channels: ['instagram', 'whatsapp', 'facebook'],
     features: {
@@ -185,7 +171,29 @@ export const PLAN_ENTITLEMENTS: Record<string, PlanEntitlements> = {
     },
   },
 
-  // ── Legacy: starter rows in DB fall back to free ─────────────────────────
+  // ── Legacy: Standard ────────────────────────────────────────────────────
+  standard: {
+    channels: ['instagram', 'whatsapp'],
+    features: {
+      whatsapp: true,
+      instagram: true,
+      facebook: false,
+      instagramComments: true,
+      advancedCRM: false,
+      dynamicSegments: false,
+      abTesting: false,
+      aiCopilot: false,
+      conversionSequences: true,
+      premiumTemplates: false,
+      whiteLabel: false,
+      agencyReseller: false,
+      advancedAnalytics: false,
+      leadProspectingIntel: false,
+    },
+    limits: { messages: 3000, agents: 2, automations: 15, contacts: 5000, conversations: 5000 },
+  },
+
+  // ── Legacy: starter rows in DB fall back to free entitlements ───────────
   starter: {
     channels: ['instagram'],
     features: {
@@ -207,7 +215,7 @@ export const PLAN_ENTITLEMENTS: Record<string, PlanEntitlements> = {
     limits: { messages: 1000, agents: 1, automations: 5, contacts: 1000, conversations: 500 },
   },
 
-  // ── Superadmin: all features, unlimited ────────────────────────────────
+  // ── Superadmin: all features, unlimited ─────────────────────────────────
   superadmin: {
     channels: ['instagram', 'whatsapp', 'facebook'],
     features: {
@@ -239,26 +247,26 @@ export const PLAN_ENTITLEMENTS: Record<string, PlanEntitlements> = {
 // ─── Upgrade messages ─────────────────────────────────────────────────────
 
 export const FEATURE_UPGRADE_MESSAGES: Record<FeatureKey, string> = {
-  whatsapp: 'WhatsApp está disponível a partir do plano Standard. Faça upgrade para conectar.',
-  instagram: 'Instagram DM está disponível em todos os planos pagos.',
-  facebook: 'Facebook Messenger está disponível nos planos Pro e Business.',
-  instagramComments: 'Comentários do Instagram estão disponíveis a partir do plano Standard.',
-  advancedCRM: 'CRM Avançado (tags, segmentos, lead score) está disponível nos planos Pro e Business.',
-  dynamicSegments: 'Segmentos dinâmicos e testes A/B estão disponíveis nos planos Pro e Business.',
-  abTesting: 'Testes A/B estão disponíveis nos planos Pro e Business.',
-  aiCopilot: 'AI Copilot e Insights estão disponíveis nos planos Pro e Business.',
-  conversionSequences: 'Sequências de conversão estão disponíveis a partir do plano Standard.',
-  premiumTemplates: 'Templates premium estão disponíveis nos planos Pro e Business.',
-  whiteLabel: 'White-label está disponível exclusivamente no plano Business.',
-  agencyReseller: 'Painel de agência e revenda estão disponíveis exclusivamente no plano Business.',
-  advancedAnalytics: 'Analytics avançado (atribuição, funis e métricas de vendas) está disponível nos planos Pro e Business.',
-  leadProspectingIntel: 'Prospecção IA está disponível exclusivamente no plano Business.',
+  whatsapp: 'WhatsApp está disponível a partir do plano Pro. Faça upgrade para conectar.',
+  instagram: 'Instagram DM está disponível em todos os planos.',
+  facebook: 'Facebook Messenger está disponível no plano Pro.',
+  instagramComments: 'Comentários do Instagram estão disponíveis a partir do plano Pro.',
+  advancedCRM: 'CRM Avançado (tags, segmentos, lead score) está disponível no plano Pro.',
+  dynamicSegments: 'Segmentos dinâmicos e testes A/B estão disponíveis no plano Pro.',
+  abTesting: 'Testes A/B estão disponíveis no plano Pro.',
+  aiCopilot: 'AI Copilot e Insights estão disponíveis no plano Pro.',
+  conversionSequences: 'Sequências de conversão estão disponíveis a partir do plano Pro.',
+  premiumTemplates: 'Templates premium estão disponíveis no plano Pro.',
+  whiteLabel: 'White-label é exclusivo do plano Business (Consultivo).',
+  agencyReseller: 'Painel de revenda é exclusivo do plano Business (Consultivo).',
+  advancedAnalytics: 'Analytics avançado está disponível a partir do plano Pro.',
+  leadProspectingIntel: 'Prospecção IA requer o plano Business (Consultivo).',
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────
 
 /** The minimum paid plan for a feature (used for upgrade CTA labels). */
-export const PLAN_ORDER = ['free', 'standard', 'pro', 'business'];
+export const PLAN_ORDER = ['free', 'starter', 'standard', 'pro', 'business'];
 
 export const isPaidPlan = (slug: string) => slug !== 'free' && slug !== 'starter';
 

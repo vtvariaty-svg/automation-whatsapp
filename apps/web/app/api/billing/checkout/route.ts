@@ -14,8 +14,22 @@ export async function POST(req: Request) {
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { plan } = await req.json();
-    if (!PLANS[plan]) {
+    const planConfig = PLANS[plan];
+
+    if (!planConfig) {
       return NextResponse.json({ error: 'Invalid plan' }, { status: 400 });
+    }
+
+    if (planConfig.isConsultative) {
+      return NextResponse.json(
+        { 
+          noCheckout: true, 
+          contactSales: true, 
+          contactUrl: '/contato',
+          message: 'O plano selecionado é consultivo. Entre em contato com a equipe comercial para assinar.' 
+        },
+        { status: 200 }
+      );
     }
 
     // ── Downgrade to Free ─────────────────────────────────────────────────────
@@ -77,7 +91,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ plan: 'free', price: 0, noCheckout: true, downgraded: true, canceledStripeSubscription });
     }
 
-    // ── Paid plan checkout (Standard / Pro / Business) ────────────────────────
+    // ── Paid plan checkout (Pro) ────────────────────────
     const tenant = await prisma.tenant.findUnique({
       where: { id: session.tenantId },
       include: { users: true },

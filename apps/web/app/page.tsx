@@ -3,8 +3,10 @@ import { Navbar } from "@/components/marketing/landing/Navbar";
 import { HeroSection } from "@/components/marketing/landing/HeroSection";
 import { IntegracoesStrip } from "@/components/marketing/landing/IntegracoesStrip";
 import { CredibilidadeStrip } from "@/components/marketing/landing/CredibilidadeStrip";
-import { PricingTeaserSection } from "@/components/marketing/landing/PricingTeaserSection";
+import { ComoFuncionaSection } from "@/components/marketing/landing/ComoFuncionaSection";
 import { BeneficiosSection } from "@/components/marketing/landing/BeneficiosSection";
+import { PricingTeaserSection } from "@/components/marketing/landing/PricingTeaserSection";
+import { TestimonialSection } from "@/components/marketing/landing/TestimonialSection";
 import { FAQSection } from "@/components/marketing/landing/FAQSection";
 import { CTASection } from "@/components/marketing/landing/CTASection";
 import { Footer } from "@/components/marketing/landing/Footer";
@@ -31,8 +33,10 @@ export default function LandingPage() {
       <HeroSection />
       <IntegracoesStrip />
       <CredibilidadeStrip />
-      <PricingTeaserSection />
+      <ComoFuncionaSection />
       <BeneficiosSection />
+      <TestimonialSection />
+      <PricingTeaserSection />
       <FAQSection />
       <CTASection />
       <Footer />

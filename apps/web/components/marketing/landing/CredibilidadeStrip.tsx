@@ -39,15 +39,19 @@ export function CredibilidadeStrip() {
   ];
 
   return (
-    <section className="py-12 bg-white border-b border-gray-100">
+    <section className="py-20 bg-gray-50 border-b border-gray-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="text-center mb-12">
+           <h3 className="text-2xl font-extrabold text-gray-900 tracking-tight">O que você ganha no primeiro dia</h3>
+           <p className="text-gray-500 font-medium mt-2">Tecnologia corporativa empacotada em uma interface simples.</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {items.map((item, i) => (
-            <div key={i} className="flex flex-col items-center text-center gap-3 p-6 rounded-2xl bg-gray-50 border border-gray-100">
-              <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center">{item.icon}</div>
+            <div key={i} className="flex flex-col items-center text-center gap-4 p-8 rounded-[2rem] bg-white border border-gray-100/80 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:-translate-y-1 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300">
+              <div className="w-16 h-16 rounded-2xl bg-blue-50 flex items-center justify-center shadow-inner text-blue-600">{item.icon}</div>
               <div>
-                <p className="font-bold text-gray-900 text-sm">{item.label}</p>
-                <p className="text-xs text-gray-500 mt-0.5">{item.sub}</p>
+                <p className="font-extrabold text-gray-900 text-base">{item.label}</p>
+                <p className="text-sm font-medium text-gray-500 mt-1.5 leading-relaxed">{item.sub}</p>
               </div>
             </div>
           ))}

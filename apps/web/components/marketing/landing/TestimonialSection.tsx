@@ -4,15 +4,26 @@ export function TestimonialSection() {
       <div className="absolute top-1/2 left-0 w-96 h-96 bg-blue-50/50 rounded-full blur-[100px] -translate-y-1/2" />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        
+        {/* Strong Social Proof Header */}
+        <div className="text-center mb-16">
+          <h2 className="text-4xl md:text-5xl lg:text-5xl font-extrabold text-gray-900 tracking-tight mb-4 drop-shadow-sm">
+            Mais de <span className="text-blue-600">5.000</span> empresas atendidas
+          </h2>
+          <p className="text-lg md:text-xl text-gray-500 font-medium max-w-2xl mx-auto">
+            Empresas modernas já usam a Variaty para automatizar atendimento, agendamento e escalar vendas.
+          </p>
+        </div>
+
         <div className="bg-gray-900 rounded-[2.5rem] overflow-hidden shadow-2xl shadow-blue-900/10">
           <div className="grid grid-cols-1 lg:grid-cols-2">
             
-            {/* Left Side: Testimonial Photo Fallback to shape if not found */}
-            <div className="relative h-64 sm:h-80 lg:h-auto bg-gray-800">
+            {/* Left Side: Testimonial Photo */}
+            <div className="relative min-h-[400px] sm:min-h-[500px] lg:min-h-[600px] bg-gray-800 flex items-end">
                <img 
                  src="/landing-v4/social-proof/testimonial-person.webp" 
                  alt="Cliente Variaty" 
-                 className="absolute inset-0 w-full h-full object-cover object-center opacity-90"
+                 className="absolute inset-0 w-full h-full object-cover object-top opacity-90"
                />
                <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-gray-900 via-gray-900/40 to-transparent lg:w-full lg:h-full w-full h-1/2 bottom-0" />
             </div>

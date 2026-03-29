@@ -11,7 +11,6 @@ export function TestimonialSection() {
             <div className="relative h-64 sm:h-80 lg:h-auto bg-gray-800">
                <img 
                  src="/landing-v4/social-proof/testimonial-person.webp" 
-                 onError={(e) => { e.currentTarget.style.display='none'; }}
                  alt="Cliente Variaty" 
                  className="absolute inset-0 w-full h-full object-cover object-center opacity-90"
                />

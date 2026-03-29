@@ -1,0 +1,35 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g1" x1="0" y1="0" x2="1600" y2="0" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#312E81"/>
+      <stop offset="0.45" stop-color="#4F46E5"/>
+      <stop offset="1" stop-color="#C4B5FD"/>
+    </linearGradient>
+    <linearGradient id="g2" x1="0" y1="0" x2="1600" y2="0" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4338CA"/>
+      <stop offset="0.5" stop-color="#6366F1"/>
+      <stop offset="1" stop-color="#A78BFA"/>
+    </linearGradient>
+    <linearGradient id="g3" x1="0" y1="0" x2="1600" y2="0" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#EDE9FE" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#DDD6FE" stop-opacity="0.9"/>
+    </linearGradient>
+    <linearGradient id="g4" x1="0" y1="0" x2="1600" y2="0" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#F8FAFC"/>
+    </linearGradient>
+    <filter id="blurSoft" x="0" y="300" width="1600" height="420" filterUnits="userSpaceOnUse">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+  </defs>
+
+  <rect width="1600" height="900" fill="transparent"/>
+
+  <path d="M0 520C160 500 250 540 380 590C560 660 760 735 1030 720C1230 709 1400 640 1600 585V900H0V520Z" fill="url(#g1)"/>
+  <path d="M0 610C180 565 315 590 470 635C660 690 830 740 1035 736C1248 732 1415 665 1600 625V900H0V610Z" fill="url(#g2)" fill-opacity="0.72"/>
+  <path d="M0 545C175 570 312 640 480 693C688 758 875 782 1110 750C1315 721 1456 653 1600 600V900H0V545Z" fill="url(#g3)" fill-opacity="0.55"/>
+  <g filter="url(#blurSoft)">
+    <path d="M0 690C260 640 430 640 640 700C860 762 1060 762 1250 718C1380 688 1488 662 1600 661V900H0V690Z" fill="#C7B8FF" fill-opacity="0.35"/>
+  </g>
+  <path d="M0 660C205 626 415 648 618 707C813 764 1000 792 1212 764C1345 747 1468 713 1600 726V900H0V660Z" fill="url(#g4)"/>
+</svg>

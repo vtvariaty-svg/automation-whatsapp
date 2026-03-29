@@ -1,0 +1,29 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g1b" x1="0" y1="0" x2="1600" y2="0" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#312E81"/>
+      <stop offset="0.48" stop-color="#4F46E5"/>
+      <stop offset="1" stop-color="#C4B5FD"/>
+    </linearGradient>
+    <linearGradient id="g2b" x1="0" y1="0" x2="1600" y2="0" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4338CA"/>
+      <stop offset="0.5" stop-color="#6366F1"/>
+      <stop offset="1" stop-color="#A78BFA"/>
+    </linearGradient>
+    <linearGradient id="g3b" x1="0" y1="0" x2="1600" y2="0" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#EDE9FE" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#DDD6FE" stop-opacity="0.82"/>
+    </linearGradient>
+    <linearGradient id="g4b" x1="0" y1="0" x2="1600" y2="0" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#F8FAFC"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1600" height="900" fill="transparent"/>
+
+  <path d="M0 690C152 660 302 708 470 774C660 847 854 865 1054 834C1248 805 1426 742 1600 706V900H0V690Z" fill="url(#g1b)"/>
+  <path d="M0 744C170 714 324 734 492 789C683 850 872 868 1079 845C1261 824 1430 782 1600 780V900H0V744Z" fill="url(#g2b)" fill-opacity="0.66"/>
+  <path d="M0 666C182 690 354 756 543 816C734 876 946 877 1177 840C1352 812 1491 752 1600 712V900H0V666Z" fill="url(#g3b)" fill-opacity="0.55"/>
+  <path d="M0 770C194 738 413 746 622 804C829 862 1018 873 1224 846C1363 828 1484 797 1600 805V900H0V770Z" fill="url(#g4b)"/>
+</svg>

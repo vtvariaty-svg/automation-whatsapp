@@ -57,7 +57,6 @@ export function CTASection() {
       <div className="absolute bottom-0 w-full leading-none z-0">
         <img 
           src="/landing-v4/backgrounds/wave-bottom.svg" 
-          onError={(e) => { e.currentTarget.style.display='none'; }}
           alt="" 
           className="absolute bottom-0 w-full h-16 md:h-32 object-cover object-top opacity-100" 
         />

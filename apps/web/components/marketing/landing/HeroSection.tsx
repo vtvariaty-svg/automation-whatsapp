@@ -99,7 +99,7 @@ export function HeroSection() {
                <div className="relative w-full aspect-[16/10] bg-slate-100 flex items-center justify-center text-slate-300 font-medium text-sm">
                   {/* Dashboard Image */}
                   {/* Uses the fallback logic if not found to avoid next.js layout breaks visually */}
-                  <img src="/landing-v4/hero/hero-dashboard-main.webp" onError={(e) => { e.currentTarget.style.display='none'; }} alt="Interface do CRM e Robô Variaty" className="absolute inset-0 w-full h-full object-cover object-top" />
+                  <img src="/landing-v4/hero/hero-dashboard-main.webp" alt="Interface do CRM e Robô Variaty" className="absolute inset-0 w-full h-full object-cover object-top" />
                </div>
              </div>
 
@@ -107,14 +107,14 @@ export function HeroSection() {
              <div className="absolute bottom-10 left-0 lg:-left-6 w-[32%] rounded-[2rem] shadow-[0_30px_60px_rgba(0,0,0,0.15)] border-4 border-gray-900 bg-white z-20 overflow-hidden">
                 <div className="relative w-full aspect-[9/19] bg-[#eef1f5] flex items-center justify-center">
                   <div className="absolute top-0 inset-x-0 h-5 bg-gray-900 rounded-b-xl w-1/2 mx-auto z-10" />
-                  <img src="/landing-v4/hero/hero-phone-left.webp" onError={(e) => { e.currentTarget.style.display='none'; }} alt="Atendimento no WhatsApp" className="absolute inset-0 w-full h-full object-cover" />
+                  <img src="/landing-v4/hero/hero-phone-left.webp" alt="Atendimento no WhatsApp" className="absolute inset-0 w-full h-full object-cover" />
                 </div>
              </div>
 
              {/* Phone Mockup Right */}
              <div className="hidden sm:block absolute bottom-24 -right-2 lg:-right-8 w-[28%] rounded-[1.8rem] shadow-[0_25px_50px_rgba(0,0,0,0.12)] border-2 border-gray-100 bg-white z-30 overflow-hidden hover:-translate-y-2 transition-transform duration-500">
                 <div className="relative w-full aspect-[9/19] bg-white flex items-center justify-center">
-                   <img src="/landing-v4/hero/hero-phone-right.webp" onError={(e) => { e.currentTarget.style.display='none'; }} alt="Tela de Atendimento" className="absolute inset-0 w-full h-full object-cover" />
+                   <img src="/landing-v4/hero/hero-phone-right.webp" alt="Tela de Atendimento" className="absolute inset-0 w-full h-full object-cover" />
                 </div>
              </div>
 
@@ -131,7 +131,7 @@ export function HeroSection() {
 
              {/* Floating Proof Card 2 (Image Based) */}
              <div className="absolute bottom-1/3 -right-6 lg:-right-16 z-40 animate-bounce" style={{ animationDuration: '5s', animationDelay: '1s' }}>
-               <img src="/landing-v4/hero/hero-floating-card-1.webp" onError={(e) => e.currentTarget.style.display='none'} alt="Notificação Flutuante" className="h-20 w-auto drop-shadow-xl" />
+               <img src="/landing-v4/hero/hero-floating-card-1.webp" alt="Notificação Flutuante" className="h-20 w-auto drop-shadow-xl" />
              </div>
 
           </div>

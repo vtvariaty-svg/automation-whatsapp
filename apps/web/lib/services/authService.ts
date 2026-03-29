@@ -59,20 +59,19 @@ export const registerUser = async (name: string, email: string, passwordPlain: s
       }
     });
 
-    // 2. Create Subscription if plan is provided
-    const planConfig = plan ? PLANS[plan] : null;
-    if (planConfig) {
-      const trialEnd = planConfig.hasTrial ? new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000) : null;
-      await tx.subscription.create({
-        data: {
-          tenantId: tenant.id,
-          plan: planConfig.slug,
-          status: planConfig.hasTrial ? 'trialing' : 'active',
-          currentPeriodStart: new Date(),
-          ...(trialEnd && { trialEnd }),
-        },
-      });
-    }
+    // 2. Create Subscription guaranteeing a default fallback to Free
+    const planConfig = (plan && PLANS[plan]) ? PLANS[plan] : PLANS['free'];
+    const trialEnd = planConfig.hasTrial ? new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000) : null;
+    
+    await tx.subscription.create({
+      data: {
+        tenantId: tenant.id,
+        plan: planConfig.slug,
+        status: planConfig.hasTrial ? 'trialing' : 'active',
+        currentPeriodStart: new Date(),
+        ...(trialEnd && { trialEnd }),
+      },
+    });
 
     // 3. Create User
     const user = await tx.user.create({

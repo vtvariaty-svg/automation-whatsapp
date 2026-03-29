@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { WHATSAPP_BUSINESS_URL } from "@/lib/config/plans";
 
 export function PrecosSection() {
   const planos = [
@@ -29,7 +30,8 @@ export function PrecosSection() {
     {
       nome: "Pro",
       slug: "pro",
-      preco: "97,00",
+      preco: "49,90",
+      precoAntigo: "139,00",
       descricao: "A inteligência de vendas para crescer rápido",
       nota: "7 dias grátis · Sem taxas ocultas",
       features: [
@@ -69,7 +71,7 @@ export function PrecosSection() {
       botaoTexto: "Falar com consultor",
       botaoEstilo: "bg-gray-900 text-white hover:bg-gray-800",
       popular: false,
-      href: "/contato",
+      href: WHATSAPP_BUSINESS_URL,
     },
   ];
 
@@ -121,10 +123,17 @@ export function PrecosSection() {
                     <span className="text-4xl font-extrabold text-gray-900">Custom</span>
                   </div>
                 ) : (
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-xl font-bold text-gray-400">R$</span>
-                    <span className="text-4xl font-extrabold text-gray-900">{plano.preco}</span>
-                    <span className="text-gray-500 font-medium text-sm">/mês</span>
+                  <div className="flex flex-col">
+                    {plano.precoAntigo && (
+                      <span className="text-sm font-bold text-gray-400 line-through decoration-red-500/50 mb-1">
+                        De R$ {plano.precoAntigo}
+                      </span>
+                    )}
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-xl font-bold text-gray-400">R$</span>
+                      <span className="text-4xl font-extrabold text-gray-900">{plano.preco}</span>
+                      <span className="text-gray-500 font-medium text-sm">/mês</span>
+                    </div>
                   </div>
                 )}
               </div>

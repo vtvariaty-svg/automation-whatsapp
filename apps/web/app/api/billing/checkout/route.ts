@@ -6,7 +6,7 @@ import { requireAuth } from '@/lib/auth/session';
 import { getSubscription, createSubscription } from '@/lib/services/subscriptionService';
 import { createCustomer, createCheckoutSession, cancelSubscription } from '@/lib/services/stripeService';
 import { prisma } from '@/lib/prisma';
-import { PLANS } from '@/lib/config/plans';
+import { PLANS, WHATSAPP_BUSINESS_URL } from '@/lib/config/plans';
 
 export async function POST(req: Request) {
   try {
@@ -25,7 +25,7 @@ export async function POST(req: Request) {
         { 
           noCheckout: true, 
           contactSales: true, 
-          contactUrl: '/contato',
+          contactUrl: WHATSAPP_BUSINESS_URL,
           message: 'O plano selecionado é consultivo. Entre em contato com a equipe comercial para assinar.' 
         },
         { status: 200 }

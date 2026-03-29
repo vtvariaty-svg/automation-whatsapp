@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { WHATSAPP_BUSINESS_URL } from "@/lib/config/plans";
 
 const PLANS = [
   {
@@ -17,24 +18,12 @@ const PLANS = [
     ctaStyle: "border border-gray-300 text-gray-700 hover:bg-gray-50",
   },
   {
-    id: "standard",
-    name: "Standard",
+    id: "pro",
+    name: "Pro",
     price: "R$ 49,90",
     priceNote: "/mês — 7 dias grátis",
     badge: "7 DIAS GRÁTIS",
     highlight: true,
-    channels: ["WhatsApp", "Instagram"],
-    features: ["3.000 mensagens/mês", "2 agentes", "15 automações", "Agendamentos", "Templates WhatsApp"],
-    cta: "Iniciar teste grátis",
-    ctaStyle: "bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:shadow-lg hover:shadow-indigo-200/50",
-  },
-  {
-    id: "pro",
-    name: "Pro",
-    price: "R$ 97,00",
-    priceNote: "/mês",
-    badge: null,
-    highlight: false,
     channels: ["WhatsApp", "Instagram", "Facebook"],
     features: ["10.000 mensagens/mês", "5 agentes", "Automações ilimitadas", "CRM avançado", "AI Copilot"],
     cta: "Assinar Pro",
@@ -43,8 +32,8 @@ const PLANS = [
   {
     id: "business",
     name: "Business",
-    price: "R$ 197,00",
-    priceNote: "/mês",
+    price: "Custom",
+    priceNote: "",
     badge: null,
     highlight: false,
     channels: ["WhatsApp", "Instagram", "Facebook"],
@@ -60,6 +49,11 @@ export default function OnboardingPlanPage() {
   const [error, setError] = useState("");
 
   const handleSelect = async (planId: string) => {
+    if (planId === "business") {
+      window.open(WHATSAPP_BUSINESS_URL, "_blank");
+      return;
+    }
+
     setLoading(planId);
     setError("");
     try {

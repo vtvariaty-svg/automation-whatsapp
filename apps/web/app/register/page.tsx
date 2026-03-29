@@ -6,9 +6,10 @@ import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { useAuth } from "@/hooks/useAuth";
+import { WHATSAPP_BUSINESS_URL } from "@/lib/config/plans";
 
 const PLAN_LABELS: Record<string, { nome: string; preco: string; cor: string }> = {
-  pro:      { nome: "Pro", preco: "R$97,00/mês · 7 dias grátis", cor: "bg-blue-600 text-white" },
+  pro:      { nome: "Pro", preco: "De R$ 139,00 por R$ 49,90 · 7 dias grátis", cor: "bg-blue-600 text-white" },
   business: { nome: "Business", preco: "Plano Consultivo", cor: "bg-gray-900 text-white" },
   free:     { nome: "Gratuito", preco: "Sem custo", cor: "bg-gray-200 text-gray-700" },
   // Backward compatibility for old checkout links
@@ -18,8 +19,15 @@ const PLAN_LABELS: Record<string, { nome: string; preco: string; cor: string }> 
 
 function RegisterForm() {
   const searchParams = useSearchParams();
-  const planSlug = searchParams.get("plan") ?? undefined;
-  const planLabel = planSlug ? PLAN_LABELS[planSlug] : null;
+  const rawPlan = searchParams.get("plan");
+  let planSlug = rawPlan || "free";
+  
+  // Guard against tampered invalid plans in URL
+  if (!PLAN_LABELS[planSlug] || planSlug === 'superadmin') {
+    planSlug = "free";
+  }
+
+  const planLabel = PLAN_LABELS[planSlug];
 
   if (planSlug === 'business') {
     return (
@@ -33,10 +41,10 @@ function RegisterForm() {
         <p className="text-gray-600 mb-8 leading-relaxed font-medium">
           O plano Business é desenhado sob medida para grandes operações e revendas. Fale com nossa equipe para construir sua arquitetura e dimensionar limites.
         </p>
-        <Link href="/contato" className="inline-flex w-full items-center justify-center bg-[#25D366] text-white px-8 py-4 rounded-xl font-bold hover:bg-[#20b858] transition-all shadow-lg shadow-[#25D366]/20">
+        <a href={WHATSAPP_BUSINESS_URL} target="_blank" rel="noopener noreferrer" className="inline-flex w-full items-center justify-center bg-[#25D366] text-white px-8 py-4 rounded-xl font-bold hover:bg-[#20b858] transition-all shadow-lg shadow-[#25D366]/20">
           <svg className="w-5 h-5 mr-3 fill-current" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347zM12 0C5.373 0 0 5.373 0 12c0 2.625.846 5.059 2.284 7.034L.789 23.492l4.623-1.467A11.933 11.933 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818c-2.168 0-4.19-.597-5.924-1.634l-.425-.252-2.74.87.883-2.665-.278-.443A9.748 9.748 0 012.182 12c0-5.417 4.401-9.818 9.818-9.818S21.818 6.583 21.818 12s-4.401 9.818-9.818 9.818z"/></svg>
           Falar com um consultor
-        </Link>
+        </a>
         <p className="mt-8 text-sm text-gray-500 font-medium">
           Prefere explorar primeiro na prática?<br />
           <Link href="/register?plan=free" className="text-blue-600 font-bold hover:underline">
@@ -91,21 +99,15 @@ function RegisterForm() {
         Comece agora
       </h2>
 
-      {planLabel ? (
-        <div className="mt-3 mb-6 flex items-center gap-3 p-3.5 rounded-xl border border-blue-200 bg-blue-50">
-          <div className={`text-xs font-bold px-2.5 py-1 rounded-lg ${planLabel.cor}`}>
-            {planLabel.nome}
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-gray-800">Plano selecionado</p>
-            <p className="text-xs text-gray-500">{planLabel.preco}</p>
-          </div>
+      <div className="mt-3 mb-6 flex items-center gap-3 p-3.5 rounded-xl border border-blue-200 bg-blue-50">
+        <div className={`text-xs font-bold px-2.5 py-1 rounded-lg ${planLabel.cor}`}>
+          {planLabel.nome}
         </div>
-      ) : (
-        <p className="mt-2 text-sm text-gray-600 mb-8 font-medium">
-          Comece agora. Crie uma conta no plano Free sem compromisso, ou escolha o plano Pro e ganhe 7 dias de Trial para operar completo.
-        </p>
-      )}
+        <div>
+          <p className="text-sm font-semibold text-gray-800">Plano selecionado</p>
+          <p className="text-xs text-gray-500">{planLabel.preco}</p>
+        </div>
+      </div>
 
       <form className="space-y-5" onSubmit={handleSubmit}>
         {error && (

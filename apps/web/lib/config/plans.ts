@@ -27,8 +27,9 @@ export const PLANS: Record<string, PlanConfig> = {
   pro: {
     name: 'Pro',
     slug: 'pro',
-    price: 97.00,
+    price: 49.90, // Real billing price (Promotional)
     limitMessages: 10000,
+    // [!] IMPORTANT: The environment variable STRIPE_PRICE_PRO must map to a product of R$ 49,90 in Stripe.
     stripePriceId: process.env.STRIPE_PRICE_PRO || 'price_pro_placeholder',
     hasTrial: true, // Pro is now the main public paid plan
     isPublic: true,
@@ -69,6 +70,8 @@ export const TRIAL_DAYS = 7;
 export const getPlan = (slug: string): PlanConfig | undefined => PLANS[slug];
 
 export const getPlanLimit = (slug: string): number => PLANS[slug]?.limitMessages ?? 0;
+
+export const WHATSAPP_BUSINESS_URL = "https://wa.me/5519995993220?text=Ol%C3%A1%2C%20quero%20entender%20o%20plano%20Business%20da%20Variaty.";
 
 // ─── Feature & Limit keys ─────────────────────────────────────────────────
 

@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { billingApi } from '@/lib/api/client';
+import { WHATSAPP_BUSINESS_URL } from '@/lib/config/plans';
 
 const PLANS = [
   {
@@ -26,7 +27,8 @@ const PLANS = [
   {
     slug: 'pro',
     name: 'Pro',
-    price: 97.00,
+    price: 49.90,
+    oldPrice: 139.00,
     popular: true,
     highlight: '7 dias grátis para testar',
     hasTrial: true,
@@ -129,7 +131,7 @@ export default function BillingPage() {
 
     // For consultative plans, redirect to WhatsApp or Contato page
     if (planSlug === 'business') {
-      window.location.href = '/contato';
+      window.open(WHATSAPP_BUSINESS_URL, '_blank');
       return;
     }
 
@@ -332,12 +334,19 @@ export default function BillingPage() {
                   ) : plan.isConsultative ? (
                     <span className="text-3xl font-bold text-gray-900">Custom</span>
                   ) : (
-                    <>
-                      <span className="text-3xl font-bold text-gray-900">
-                        R$ {plan.price.toFixed(2).replace('.', ',')}
-                      </span>
-                      <span className="text-sm text-gray-400">/mês</span>
-                    </>
+                    <div className="flex flex-col">
+                      {plan.oldPrice && (
+                        <p className="text-sm font-bold text-gray-400 line-through decoration-rose-500/50 mb-0.5">
+                          De R$ {plan.oldPrice.toFixed(2).replace('.', ',')}
+                        </p>
+                      )}
+                      <div>
+                        <span className="text-3xl font-bold text-gray-900">
+                          R$ {plan.price.toFixed(2).replace('.', ',')}
+                        </span>
+                        <span className="text-sm text-gray-400">/mês</span>
+                      </div>
+                    </div>
                   )}
                   {plan.hasTrial && (
                     <p className="text-xs text-emerald-600 font-semibold mt-1">✓ 7 dias grátis de trial</p>

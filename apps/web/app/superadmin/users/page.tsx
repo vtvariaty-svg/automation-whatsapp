@@ -271,9 +271,9 @@ export default function SuperAdminUsers() {
                     className="w-full border border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-slate-900 focus:border-slate-900 outline-none bg-white"
                   >
                     <option value="free">Free – R$ 0 (500 msgs)</option>
-                    <option value="standard">Standard – R$ 49,90 (3.000 msgs, Trial 7 dias)</option>
-                    <option value="pro">Pro – R$ 97,00 (10.000 msgs)</option>
-                    <option value="business">Business – R$ 197,00 (Ilimitado)</option>
+                    <option value="standard">Standard – R$ 49,90 (Legado)</option>
+                    <option value="pro">Pro – R$ 49,90 (10.000 msgs, Trial 7 dias)</option>
+                    <option value="business">Business – Consultivo (Ilimitado)</option>
                   </select>
                 </div>
                 

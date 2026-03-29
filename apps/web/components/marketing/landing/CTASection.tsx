@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { WHATSAPP_BUSINESS_URL } from "@/lib/config/plans";
 
 export function CTASection() {
   return (
@@ -32,12 +33,14 @@ export function CTASection() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
             </svg>
           </Link>
-          <Link
-            href="/contato"
+          <a
+            href={WHATSAPP_BUSINESS_URL}
+            target="_blank"
+            rel="noopener noreferrer"
             className="w-full sm:w-auto inline-flex items-center justify-center text-base font-bold text-slate-300 border border-slate-600 px-8 py-5 rounded-xl hover:border-slate-400 hover:text-white transition-all"
           >
             Falar com consultor
-          </Link>
+          </a>
         </div>
 
         <p className="mt-6 text-sm text-slate-500 font-medium">

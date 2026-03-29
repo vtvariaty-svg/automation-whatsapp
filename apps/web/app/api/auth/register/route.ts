@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { registerUser } from '@/lib/services/authService';
 import { sendLeadEventToMetaCapi } from '@/lib/services/metaCapiService';
+import { PLANS } from '@/lib/config/plans';
 
 // JWT expires in 1d = 86400 seconds
 const COOKIE_MAX_AGE = 86400;
@@ -10,8 +11,8 @@ export async function POST(req: Request) {
     let { name, email, password, plan, eventId } = await req.json();
 
     // Prevent direct self-service registration of consultative/admin tiers 
-    // Defaults fallback to 'free' if user is tampering with payload.
-    if (plan === 'business' || plan === 'superadmin') {
+    // And fallback to 'free' if user provides invalid/missing payload plan.
+    if (!plan || !PLANS[plan] || plan === 'business' || plan === 'superadmin') {
       plan = 'free';
     }
 

@@ -1,6 +1,7 @@
 import MetaPixel from "@/components/marketing/MetaPixel";
 import { Navbar } from "@/components/marketing/landing/Navbar";
 import { Footer } from "@/components/marketing/landing/Footer";
+import Link from "next/link";
 
 export const metadata = {
   title: "Ver Demo — Variaty",
@@ -31,12 +32,12 @@ export default function DemoPage() {
             </svg>
             Falar com a IA (Demo)
           </a>
-          <a
+          <Link
             href="/register"
             className="flex items-center justify-center bg-blue-600 text-white px-8 py-4 rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/25 w-full sm:w-auto"
           >
             Teste grátis
-          </a>
+          </Link>
         </div>
       </div>
       <Footer />

@@ -65,7 +65,7 @@ export function Navbar() {
               aria-label="Toggle Navigation"
             >
               {isMenuOpen ? (
-                <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-6 h-6 text-gray-900" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               ) : (
@@ -89,7 +89,7 @@ export function Navbar() {
 
       {/* Mobile Menu Drawer - Premium Navy Brand */}
       <div
-        className={`fixed top-0 right-0 w-[85%] sm:w-[360px] h-full z-[55] glass-drawer transition-transform duration-400 ease-[cubic-bezier(0.25,1,0.5,1)] lg:hidden ${
+        className={`fixed top-0 right-0 w-[85%] sm:w-[360px] h-full z-[55] glass-drawer transition-transform duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] lg:hidden ${
           isMenuOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >

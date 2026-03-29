@@ -43,7 +43,7 @@ export function TestimonialSection() {
                <img 
                  src="/landing-v4/social-proof/testimonial-person.webp" 
                  alt="Cliente Variaty" 
-                 className="absolute inset-0 w-full h-full object-[center_top] sm:object-cover sm:object-top opacity-95 group-hover:scale-[1.02] transition-transform duration-700"
+                 className="absolute inset-0 w-full h-full object-cover object-top opacity-95 group-hover:scale-[1.02] transition-transform duration-700"
                />
                
                {/* Elegant Gradient Overlays for smooth blend */}

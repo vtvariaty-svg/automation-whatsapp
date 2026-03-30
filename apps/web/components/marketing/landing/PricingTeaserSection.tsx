@@ -7,7 +7,7 @@ export function PricingTeaserSection() {
       label: "Entrada",
       price: "R$ 0",
       period: "/mês",
-      desc: "Para testar a plataforma e sentir a diferença antes de investir.",
+      desc: "Comece sem pagar nada. Sinta a IA em ação antes de decidir.",
       cta: "Criar conta grátis",
       href: "/register",
       features: ["1 canal conectado", "IA básica", "Até 100 atendimentos/mês", "Dashboard de métricas"],
@@ -21,7 +21,7 @@ export function PricingTeaserSection() {
       price: "R$ 49,90",
       period: "/mês",
       badge: "Preço promocional por tempo limitado",
-      desc: "Para operações em crescimento que precisam de mais volume e automação.",
+      desc: "O plano ideal para quem quer crescer com IA sem travar no volume.",
       cta: "Começar no Pro",
       href: "/register",
       features: ["3 canais conectados", "IA avançada com personalidade", "Agendamentos automáticos", "CRM e pipeline", "Suporte prioritário"],
@@ -32,7 +32,7 @@ export function PricingTeaserSection() {
       label: "Consultivo",
       price: "Sob consulta",
       period: "",
-      desc: "Para operações de alto volume, white-label e configurações personalizadas.",
+      desc: "Alto volume, white-label ou integração especial? A gente desenha junto.",
       cta: "Falar com especialista",
       href: "https://wa.me/5519995993220?text=Quero%20conhecer%20o%20plano%20Business%20da%20Variaty",
       isExternal: true,
@@ -51,11 +51,11 @@ export function PricingTeaserSection() {
           <span className="inline-block text-indigo-600 font-extrabold tracking-widest text-xs uppercase bg-indigo-50 px-3 py-1.5 rounded-md mb-6 ring-1 ring-indigo-100">
             Planos
           </span>
-          <h2 className="text-3xl md:text-5xl font-extrabold text-[#0f172a] tracking-tight mb-5">
-            Planos para o seu momento
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-[#0f172a] tracking-tight mb-5">
+            Comece grátis. Escale quando precisar.
           </h2>
-          <p className="text-lg text-slate-500 font-medium max-w-xl mx-auto">
-            Comece grátis. Cresça no ritmo da sua operação.
+          <p className="text-base md:text-lg text-slate-500 font-medium max-w-lg mx-auto">
+            Três planos desenhados para onde você está agora — e para onde vai crescer.
           </p>
         </div>
 
@@ -147,7 +147,7 @@ export function PricingTeaserSection() {
             href="/precos"
             className="inline-flex items-center gap-2 text-sm font-bold text-indigo-600 hover:text-indigo-700 transition-colors"
           >
-            Ver comparação completa de recursos
+            Ver todos os recursos e comparar planos →
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
           </Link>
         </div>

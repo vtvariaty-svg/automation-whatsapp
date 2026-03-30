@@ -39,10 +39,10 @@ export async function graphFetch(url: string): Promise<{ ok: boolean; data: any;
 export type IgDiagnosticCode =
   | 'no_pages_found'
   | 'graph_permission_error'
-  | 'page_exists_but_no_instagram_link'
-  | 'connected_instagram_account_present_but_not_instagram_business_account'
-  | 'instagram_business_account_present_but_messaging_unavailable'
-  | 'page_token_probe_only_success'
+  | 'connected_instagram_account_present_but_instagram_business_account_missing'
+  | 'instagram_business_account_present'
+  | 'page_token_probe_success_only'
+  | 'page_token_probe_failed'
   | 'unknown_probe_failure'
   | 'ok';
 
@@ -79,10 +79,12 @@ export async function discoverInstagramCandidates(
   pagesFound: number;
   pagesWithIg: number;
 }> {
-  // Step 1 – list managed pages
+  console.log('[IG_CALLBACK_DEBUG] start');
   const accountsResult = await graphFetch(
-    `${GRAPH_BASE}/me/accounts?fields=id,name,tasks&access_token=${userToken}`,
+    `${GRAPH_BASE}/me/accounts?fields=id,name,tasks,access_token,instagram_business_account,connected_instagram_account&access_token=${userToken}`,
   );
+  
+  console.log(`[IG_CALLBACK_DEBUG] Probe 1 (/me/accounts): success=${accountsResult.ok}, error=${accountsResult.graphError?.message}`);
 
   if (!accountsResult.ok) {
     const isPermErr =
@@ -126,7 +128,7 @@ export async function discoverInstagramCandidates(
     rawPages.map(async (rawPage) => {
       // Step 2 – full page probe with user token
       const pageResult = await graphFetch(
-        `${GRAPH_BASE}/${rawPage.id}?fields=name,access_token,tasks,instagram_business_account,connected_instagram_account&access_token=${userToken}`,
+        `${GRAPH_BASE}/${rawPage.id}?fields=id,name,tasks,access_token,instagram_business_account,connected_instagram_account&access_token=${userToken}`,
       );
 
       const pageData = pageResult.data ?? {};
@@ -137,21 +139,28 @@ export async function discoverInstagramCandidates(
       let connectedIgId: string | null = pageData.connected_instagram_account?.id ?? null;
       let usedPageTokenProbe = false;
 
+      console.log(`[IG_CALLBACK_DEBUG] Probe 2 (userToken) for page ${rawPage.id}: name=${rawPage.name}, hasPageToken=${!!pageToken}, tasks=${tasks.join(',')}, igBusiness=${!!igAccountId}, igConnected=${!!connectedIgId}, error=${pageResult.graphError?.message}`);
+
       // Step 3 – fallback probe with page token if user-token probe missed the IG link
       if (!igAccountId && pageToken) {
         const fallback = await graphFetch(
-          `${GRAPH_BASE}/${rawPage.id}?fields=instagram_business_account,connected_instagram_account&access_token=${pageToken}`,
+          `${GRAPH_BASE}/${rawPage.id}?fields=id,name,tasks,instagram_business_account,connected_instagram_account&access_token=${pageToken}`,
         );
         igAccountId = fallback.data?.instagram_business_account?.id ?? null;
         if (!connectedIgId) connectedIgId = fallback.data?.connected_instagram_account?.id ?? null;
-        if (igAccountId) usedPageTokenProbe = true;
+        usedPageTokenProbe = true;
+        
+        console.log(`[IG_CALLBACK_DEBUG] Probe 3 (pageToken) for page ${rawPage.id}: igBusiness=${!!igAccountId}, igConnected=${!!connectedIgId}, error=${fallback.graphError?.message}`);
       }
 
       if (!igAccountId) {
-        // Did we at least find a connected IG that isn't business?
-        const diagnostic: IgDiagnosticCode = connectedIgId 
-          ? 'connected_instagram_account_present_but_not_instagram_business_account'
-          : 'page_exists_but_no_instagram_link';
+        let diagnostic: IgDiagnosticCode = 'unknown_probe_failure';
+        
+        if (connectedIgId) {
+          diagnostic = 'connected_instagram_account_present_but_instagram_business_account_missing';
+        } else if (usedPageTokenProbe) {
+          diagnostic = 'page_token_probe_failed';
+        }
 
         console.log(`[IG_CONNECT] page ${rawPage.id} (${rawPage.name}) missing instagram_business_account. Code: ${diagnostic}`);
         
@@ -188,9 +197,9 @@ export async function discoverInstagramCandidates(
 
       let diagnostic: IgDiagnosticCode = 'ok';
       if (!eligibleForMessaging) {
-        diagnostic = 'instagram_business_account_present_but_messaging_unavailable';
+        diagnostic = 'instagram_business_account_present';
       } else if (usedPageTokenProbe) {
-        diagnostic = 'page_token_probe_only_success'; // Not necessarily a failure, but noted
+        diagnostic = 'page_token_probe_success_only';
       }
 
       const c: IgCandidate = {
@@ -221,16 +230,17 @@ export async function discoverInstagramCandidates(
   if (candidates.length > 0) {
     topDiagnostic = 'ok';
   } else if (ineligible.length > 0) {
-    // Pick the "closest to success" error for the top banner
-    if (ineligible.some(c => c.diagnostic === 'instagram_business_account_present_but_messaging_unavailable')) {
-      topDiagnostic = 'instagram_business_account_present_but_messaging_unavailable';
-    } else if (ineligible.some(c => c.diagnostic === 'connected_instagram_account_present_but_not_instagram_business_account')) {
-      topDiagnostic = 'connected_instagram_account_present_but_not_instagram_business_account';
+    if (ineligible.some(c => c.diagnostic === 'instagram_business_account_present')) {
+      topDiagnostic = 'instagram_business_account_present';
+    } else if (ineligible.some(c => c.diagnostic === 'connected_instagram_account_present_but_instagram_business_account_missing')) {
+      topDiagnostic = 'connected_instagram_account_present_but_instagram_business_account_missing';
+    } else if (ineligible.some(c => c.diagnostic === 'page_token_probe_failed')) {
+      topDiagnostic = 'page_token_probe_failed';
     } else {
-      topDiagnostic = 'page_exists_but_no_instagram_link';
+      topDiagnostic = 'unknown_probe_failure';
     }
   } else if (rawPages.length > 0) {
-    topDiagnostic = 'page_exists_but_no_instagram_link';
+    topDiagnostic = 'unknown_probe_failure';
   } else {
     topDiagnostic = 'no_pages_found';
   }

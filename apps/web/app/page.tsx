@@ -8,7 +8,7 @@ import { BeneficiosSection } from "@/components/marketing/landing/BeneficiosSect
 import { MecanismoVisualSection } from "@/components/marketing/landing/MecanismoVisualSection";
 import { ObjecoesSection } from "@/components/marketing/landing/ObjecoesSection";
 import { TestimonialSection } from "@/components/marketing/landing/TestimonialSection";
-import { PricingTeaserSection } from "@/components/marketing/landing/PricingTeaserSection";
+
 import { FAQSection } from "@/components/marketing/landing/FAQSection";
 import { CTASection } from "@/components/marketing/landing/CTASection";
 import { Footer } from "@/components/marketing/landing/Footer";
@@ -57,13 +57,10 @@ export default function LandingPage() {
       {/* 8. Testemunho / Prova Social Humana */}
       <TestimonialSection />
 
-      {/* 9. Teaser de Planos */}
-      <PricingTeaserSection />
-
-      {/* 10. FAQ Curto */}
+      {/* 9. FAQ Curto */}
       <FAQSection />
 
-      {/* 11. CTA Final */}
+      {/* 10. CTA Final */}
       <CTASection />
 
       <Footer />

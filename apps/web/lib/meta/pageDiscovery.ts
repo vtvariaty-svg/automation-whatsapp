@@ -79,12 +79,12 @@ export async function discoverInstagramCandidates(
   pagesFound: number;
   pagesWithIg: number;
 }> {
-  console.log('[IG_CALLBACK_DEBUG] start');
+  console.error('[IG_CALLBACK_DEBUG] start');
   const accountsResult = await graphFetch(
     `${GRAPH_BASE}/me/accounts?fields=id,name,tasks,access_token,instagram_business_account,connected_instagram_account&access_token=${userToken}`,
   );
   
-  console.log(`[IG_CALLBACK_DEBUG] Probe 1 (/me/accounts): success=${accountsResult.ok}, error=${accountsResult.graphError?.message}`);
+  console.error(`[IG_CALLBACK_DEBUG] Probe 1 (/me/accounts): success=${accountsResult.ok}, error=${accountsResult.graphError?.message || 'none'}`);
 
   if (!accountsResult.ok) {
     const isPermErr =
@@ -108,10 +108,10 @@ export async function discoverInstagramCandidates(
   const rawPages: Array<{ id: string; name: string; tasks?: string[]; access_token?: string; instagram_business_account?: { id: string }; connected_instagram_account?: { id: string } }> =
     accountsResult.data?.data ?? [];
 
-  console.log(`[IG_CONNECT] /me/accounts returned ${rawPages.length} pages`);
+  console.error(`[IG_CALLBACK_DEBUG] /me/accounts returned ${rawPages.length} pages`);
   
   for (const rawPage of rawPages) {
-    console.log(`[IG_CALLBACK_DEBUG] B. /me/accounts probe using user token -> pageId=${rawPage.id}, pageName=${rawPage.name}, tasks=${(rawPage.tasks || []).join(',')}, hasPageToken=${!!rawPage.access_token}, meAccounts_igBusinessPresent=${!!rawPage.instagram_business_account?.id}, meAccounts_connectedIgPresent=${!!rawPage.connected_instagram_account?.id}`);
+    console.error(`[IG_CALLBACK_DEBUG] MeAccounts summary for page ${rawPage.id}: name=${rawPage.name}, tasks=${(rawPage.tasks || []).join(',')}, hasPageToken=${!!rawPage.access_token}, meAccounts_igBusinessPresent=${!!rawPage.instagram_business_account?.id}, meAccounts_connectedIgPresent=${!!rawPage.connected_instagram_account?.id}`);
   }
 
   if (rawPages.length === 0) {
@@ -143,7 +143,7 @@ export async function discoverInstagramCandidates(
       let connectedIgId: string | null = pageData.connected_instagram_account?.id ?? null;
       let usedPageTokenProbe = false;
 
-      console.log(`[IG_CALLBACK_DEBUG] C. Per-page probe using user token -> pageId=${rawPage.id}, pageName=${rawPage.name}, tasks=${tasks.join(',')}, hasPageToken=${!!pageToken}, userProbe_igBusinessPresent=${!!igAccountId}, userProbe_connectedIgPresent=${!!connectedIgId}, userProbe_errorCode=${pageResult.graphError?.code || 'none'}, userProbe_errorMessage=${pageResult.graphError?.message || 'none'}`);
+      console.error(`[IG_CALLBACK_DEBUG] C. Per-page probe using user token -> pageId=${rawPage.id}, pageName=${rawPage.name}, tasks=${tasks.join(',')}, hasPageToken=${!!pageToken}, userProbe_igBusinessPresent=${!!igAccountId}, userProbe_connectedIgPresent=${!!connectedIgId}, userProbe_errorCode=${pageResult.graphError?.code || 'none'}, userProbe_errorMessage=${pageResult.graphError?.message || 'none'}`);
 
       // Step 3 – fallback probe with page token if user-token probe missed the IG link
       if (!igAccountId && pageToken) {
@@ -154,7 +154,7 @@ export async function discoverInstagramCandidates(
         if (!connectedIgId) connectedIgId = fallback.data?.connected_instagram_account?.id ?? null;
         usedPageTokenProbe = true;
         
-        console.log(`[IG_CALLBACK_DEBUG] D. Per-page probe using page token -> pageId=${rawPage.id}, pageName=${rawPage.name}, pageProbe_igBusinessPresent=${!!igAccountId}, pageProbe_connectedIgPresent=${!!connectedIgId}, pageProbe_errorCode=${fallback.graphError?.code || 'none'}, pageProbe_errorMessage=${fallback.graphError?.message || 'none'}`);
+        console.error(`[IG_CALLBACK_DEBUG] D. Per-page probe using page token -> pageId=${rawPage.id}, pageName=${rawPage.name}, pageProbe_igBusinessPresent=${!!igAccountId}, pageProbe_connectedIgPresent=${!!connectedIgId}, pageProbe_errorCode=${fallback.graphError?.code || 'none'}, pageProbe_errorMessage=${fallback.graphError?.message || 'none'}`);
       }
 
       if (!igAccountId) {
@@ -166,7 +166,7 @@ export async function discoverInstagramCandidates(
           diagnostic = 'page_token_missing';
         }
 
-        console.log(`[IG_CONNECT] page ${rawPage.id} (${rawPage.name}) missing instagram_business_account. Code: ${diagnostic}`);
+        console.error(`[IG_CALLBACK_DEBUG] Page ${rawPage.id} (${rawPage.name}) ineligible. Diagnostic: ${diagnostic}`);
         
         ineligible.push({
           pageId: rawPage.id,
@@ -217,8 +217,8 @@ export async function discoverInstagramCandidates(
         diagnostic,
       };
 
-      console.log(
-        `[IG_CONNECT] page ${rawPage.id} (${rawPage.name}) → igAccount=${igAccountId} username=${username} tasks=${JSON.stringify(tasks)} eligible=${eligibleForMessaging} diag=${diagnostic}`,
+      console.error(
+        `[IG_CALLBACK_DEBUG] Page ${rawPage.id} (${rawPage.name}) processed -> igAccount=${igAccountId} username=${username} tasks=${JSON.stringify(tasks)} eligible=${eligibleForMessaging} diag=${diagnostic}`,
       );
 
       if (eligibleForMessaging) {
@@ -256,7 +256,7 @@ export async function discoverInstagramCandidates(
     topDiagnostic = 'no_pages_found';
   }
 
-  console.log(
+  console.error(
     `[IG_CALLBACK_DEBUG] E. FINAL CALLBACK CLASSIFICATION -> pagesFound=${rawPages.length}, pagesWithConnectedInstagram=${pagesWithConnectedIg}, pagesWithInstagramBusiness=${pagesWithIg}, pagesWithPageToken=${pagesWithPageToken}, eligibleCandidates=${candidates.length}, finalConclusion=${topDiagnostic}`
   );
 

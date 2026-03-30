@@ -33,9 +33,11 @@ export async function GET(req: Request) {
   const stateRaw = searchParams.get('state');
   const error = searchParams.get('error');
 
+  console.error(`[IG_CALLBACK_DEBUG] Callback entered. hasCode=${!!code}, hasState=${!!stateRaw}, hasError=${!!error}`);
+
   if (error || !code || !stateRaw) {
     const reason = error || 'missing_code';
-    console.log(`[IG_CONNECT] callback entry rejected: ${reason}`);
+    console.error(`[IG_CALLBACK_DEBUG] Rejecting callback: ${reason}`);
     return NextResponse.redirect(`${base}/dashboard/integrations?error=${reason}`);
   }
 
@@ -43,13 +45,14 @@ export async function GET(req: Request) {
   try {
     tenantId = JSON.parse(Buffer.from(stateRaw, 'base64').toString()).tenantId;
   } catch {
+    console.error(`[IG_CALLBACK_DEBUG] Invalid state payload.`);
     return NextResponse.redirect(`${base}/dashboard/integrations?error=invalid_state`);
   }
 
   const appId = process.env.NEXT_PUBLIC_FB_APP_ID;
   const appSecret = process.env.FB_APP_SECRET;
   if (!appId || !appSecret) {
-    console.error('[IG_CONNECT] missing FB_APP_ID or FB_APP_SECRET');
+    console.error('[IG_CALLBACK_DEBUG] Missing FB_APP_ID or FB_APP_SECRET');
     return NextResponse.redirect(`${base}/dashboard/integrations?error=missing_instagram_config`);
   }
 
@@ -76,7 +79,7 @@ export async function GET(req: Request) {
     );
     const userToken: string = llResult.data?.access_token || shortLivedToken;
 
-    console.log(`[IG_CALLBACK_DEBUG] A. TOKEN EXCHANGE RESULT: shortLivedTokenReceived=${!!shortLivedToken}, longLivedTokenReceived=${!!llResult.data?.access_token}`);
+    console.error(`[IG_CALLBACK_DEBUG] A. TOKEN EXCHANGE RESULT: shortLivedTokenReceived=${!!shortLivedToken}, longLivedTokenReceived=${!!llResult.data?.access_token}`);
 
     console.log(`[IG_CONNECT] tokens obtained for tenant=${tenantId}; starting page discovery`);
 
@@ -84,8 +87,8 @@ export async function GET(req: Request) {
     const { candidates, ineligible, topDiagnostic, pagesFound, pagesWithIg } =
       await discoverInstagramCandidates(userToken);
 
-    console.log(
-      `[IG_CONNECT] tenant=${tenantId} pagesFound=${pagesFound} pagesWithIg=${pagesWithIg} eligible=${candidates.length} ineligible=${ineligible.length} diagnostic=${topDiagnostic}`,
+    console.error(
+      `[IG_CALLBACK_DEBUG] Final discovery result summary: tenant=${tenantId} pagesFound=${pagesFound} pagesWithIg=${pagesWithIg} eligible=${candidates.length} ineligible=${ineligible.length} diagnostic=${topDiagnostic}`,
     );
 
     if (candidates.length === 0) {
@@ -103,6 +106,7 @@ export async function GET(req: Request) {
           })),
         }),
       );
+      console.error(`[IG_CALLBACK_DEBUG] No candidates found. Final Conclusion: ${topDiagnostic}`);
       return NextResponse.redirect(
         `${base}/dashboard/integrations?error=${topDiagnostic}&detail=${detail}`,
       );
@@ -120,6 +124,7 @@ export async function GET(req: Request) {
         igAccountId: c.igAccountId,
         username: c.username,
       });
+      console.error(`[IG_CALLBACK_DEBUG] Auto-connecting single candidate. Final Conclusion: ok`);
       return NextResponse.redirect(
         `${base}/dashboard/integrations?success=instagram&username=${encodeURIComponent(c.username || c.pageName || '')}`,
       );
@@ -153,7 +158,7 @@ export async function GET(req: Request) {
         })),
     ];
 
-    console.log(`[IG_CONNECT] tenant=${tenantId} storing ${allForSelector.length} selector entries (${candidates.length} eligible)`);
+    console.error(`[IG_CALLBACK_DEBUG] Multiple candidates found. tenant=${tenantId} storing ${allForSelector.length} selector entries. Final Conclusion: pending_selection`);
 
     await prisma.instagramConnection.upsert({
       where: { tenantId },

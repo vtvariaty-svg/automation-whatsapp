@@ -60,8 +60,8 @@ function igDiagnosticToLabel(diagnostic: string): { badge: string; guidance: str
       return { badge: "Mensagens desativadas", guidance: "Faltam permissões de mensagens (MESSAGING/MANAGE) nesta Página.", color: "amber" };
     case "page_token_probe_success_only":
       return { badge: "Acesso secundário", guidance: "Conta conectada, mas com falhas de permissão no token principal.", color: "blue" };
-    case "page_token_probe_failed":
-      return { badge: "Vínculo não detectado", guidance: "Nenhum Instagram Business exposto nas sondagens Graph API.", color: "amber" };
+    case "page_token_missing":
+      return { badge: "Vínculo não detectado", guidance: "Página não possui token isolado para concluir a validação profunda.", color: "amber" };
     case "unknown_probe_failure":
       return { badge: "Dados ocultados", guidance: "A Meta bloqueou o retorno dos dados da Página.", color: "red" };
     case "graph_permission_error":
@@ -77,7 +77,7 @@ const IG_ERROR_MESSAGES: Record<string, { title: string; guidance: string }> = {
   no_pages_found: { title: "Nenhuma Página do Facebook encontrada.", guidance: "Entre com uma conta Meta que administre ao menos uma Página do Facebook." },
   connected_instagram_account_present_but_instagram_business_account_missing: { title: "Sua conta foi autorizada. O vínculo foi detectado parcialmente, mas a API não retornou os dados completos para concluir a conexão.", guidance: "Acesse as configurações do Instagram e garanta que ele é uma Conta Profissional (Business)." },
   instagram_business_account_present: { title: "Sua conta foi autorizada, mas não foi possível confirmar a elegibilidade da Página para mensagens do Instagram.", guidance: "Acesse as configurações da sua Página no Facebook e ative as permissões avançadas de mensagens." },
-  page_token_probe_failed: { title: "Sua conta foi autorizada, mas a Meta não retornou o vínculo profissional esperado entre a Página e o Instagram.", guidance: "As sondagens não encontraram um Instagram na Página. Reconecte nas configurações do Facebook." },
+  page_token_missing: { title: "Sua conta foi autorizada, mas a Meta não retornou o vínculo profissional esperado entre a Página e o Instagram.", guidance: "Não foi possível validar as permissões profundas. Reconecte nas configurações do Facebook marcando todas as caixas." },
   unknown_probe_failure: { title: "Sua conta foi autorizada. O vínculo foi detectado parcialmente, mas a API não retornou os dados completos para concluir a conexão.", guidance: "A Meta não expôs os dados da Página. Tente reconectar marcando todas as permissões exibidas no popup da Meta." },
   graph_permission_error: { title: "Sua conta foi autorizada, mas a Meta não retornou permissões suficientes nesta tentativa.", guidance: "Tente novamente garantindo que aceitou todas as permissões solicitadas." },
   no_instagram_account: { title: "Nenhuma conta Instagram Business encontrada.", guidance: "Certifique-se de que sua Página do Facebook está vinculada a uma conta Instagram Business." },

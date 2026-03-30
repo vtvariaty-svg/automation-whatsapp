@@ -56,7 +56,7 @@ export async function GET(req: Request) {
   const redirectUri = `${base}/api/integrations/instagram/callback`;
 
   try {
-    // Step 1: Exchange authorization code → short-lived user access token
+    // Step 1: Exchange authorization code -> short-lived user access token
     const tokenResult = await graphFetch(
       `${GRAPH_BASE}/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&redirect_uri=${encodeURIComponent(redirectUri)}&code=${code}`,
     );
@@ -75,6 +75,8 @@ export async function GET(req: Request) {
       `${GRAPH_BASE}/oauth/access_token?grant_type=fb_exchange_token&client_id=${appId}&client_secret=${appSecret}&fb_exchange_token=${shortLivedToken}`,
     );
     const userToken: string = llResult.data?.access_token || shortLivedToken;
+
+    console.log(`[IG_CALLBACK_DEBUG] A. TOKEN EXCHANGE RESULT: shortLivedTokenReceived=${!!shortLivedToken}, longLivedTokenReceived=${!!llResult.data?.access_token}`);
 
     console.log(`[IG_CONNECT] tokens obtained for tenant=${tenantId}; starting page discovery`);
 

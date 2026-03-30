@@ -2,32 +2,27 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { encrypt } from '@/lib/utils/crypto';
 import { persistInstagramConnection } from '@/lib/instagram/persist';
+import { GRAPH_BASE, graphFetch, discoverInstagramCandidates } from '@/lib/meta/pageDiscovery';
 
 // Instagram API with Facebook Login callback.
 // Replaces the previous Instagram Login flow (api.instagram.com / graph.instagram.com).
 // Uses Graph API to resolve the Facebook Page → Instagram Business Account link.
 //
 // Flow:
-//   1 candidate  → auto-connect
-//   >1 candidates → store pending_selection, redirect to ?instagram_select=1
-//   0 candidates  → redirect with diagnostic error
+//   1 eligible candidate  → auto-connect
+//   >1 eligible candidates → store pending_selection, redirect to ?instagram_select=1
+//   0 eligible candidates  → redirect with precise diagnostic error code
 
-const GRAPH = 'https://graph.facebook.com/v22.0';
-
-// Probe a single Facebook Page for its linked Instagram Business Account.
-// The batch /me/accounts call sometimes omits instagram_business_account even when
-// the link exists — an individual probe is significantly more reliable.
-async function probeIgAccount(pageId: string, pageToken: string): Promise<string | null> {
-  try {
-    const res = await fetch(`${GRAPH}/${pageId}?fields=instagram_business_account&access_token=${pageToken}`);
-    const data = await res.json();
-    return data.instagram_business_account?.id || null;
-  } catch {
-    return null;
-  }
-}
-
-type Candidate = { pageId: string; pageName: string; igAccountId: string; username: string | null };
+// Public-safe candidate shape stored in DB (no pageToken).
+type StoredCandidate = {
+  pageId: string;
+  pageName: string;
+  igAccountId: string;
+  username: string | null;
+  tasks: string[];
+  eligibleForMessaging: boolean;
+  diagnostic: string;
+};
 
 export async function GET(req: Request) {
   let base = process.env.NEXT_PUBLIC_BASE_URL || 'https://automation-whatsapp.onrender.com';
@@ -39,7 +34,9 @@ export async function GET(req: Request) {
   const error = searchParams.get('error');
 
   if (error || !code || !stateRaw) {
-    return NextResponse.redirect(`${base}/dashboard/integrations?error=${error || 'missing_code'}`);
+    const reason = error || 'missing_code';
+    console.log(`[IG_CONNECT] callback entry rejected: ${reason}`);
+    return NextResponse.redirect(`${base}/dashboard/integrations?error=${reason}`);
   }
 
   let tenantId: string;
@@ -52,6 +49,7 @@ export async function GET(req: Request) {
   const appId = process.env.NEXT_PUBLIC_FB_APP_ID;
   const appSecret = process.env.FB_APP_SECRET;
   if (!appId || !appSecret) {
+    console.error('[IG_CONNECT] missing FB_APP_ID or FB_APP_SECRET');
     return NextResponse.redirect(`${base}/dashboard/integrations?error=missing_instagram_config`);
   }
 
@@ -59,87 +57,117 @@ export async function GET(req: Request) {
 
   try {
     // Step 1: Exchange authorization code → short-lived user access token
-    const tokenRes = await fetch(
-      `${GRAPH}/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&redirect_uri=${encodeURIComponent(redirectUri)}&code=${code}`
+    const tokenResult = await graphFetch(
+      `${GRAPH_BASE}/oauth/access_token?client_id=${appId}&client_secret=${appSecret}&redirect_uri=${encodeURIComponent(redirectUri)}&code=${code}`,
     );
-    const tokenData = await tokenRes.json();
-    if (!tokenData.access_token) {
-      console.error('[Instagram/FB callback] token exchange failed:', tokenData);
+    if (!tokenResult.ok || !tokenResult.data?.access_token) {
+      console.error('[IG_CONNECT] token exchange failed', {
+        code: tokenResult.graphError?.code,
+        type: tokenResult.graphError?.type,
+        message: tokenResult.graphError?.message,
+      });
       return NextResponse.redirect(`${base}/dashboard/integrations?error=token_exchange`);
     }
+    const shortLivedToken: string = tokenResult.data.access_token;
 
     // Step 2: Extend to long-lived user access token (~60 days)
-    const llRes = await fetch(
-      `${GRAPH}/oauth/access_token?grant_type=fb_exchange_token&client_id=${appId}&client_secret=${appSecret}&fb_exchange_token=${tokenData.access_token}`
+    const llResult = await graphFetch(
+      `${GRAPH_BASE}/oauth/access_token?grant_type=fb_exchange_token&client_id=${appId}&client_secret=${appSecret}&fb_exchange_token=${shortLivedToken}`,
     );
-    const llData = await llRes.json();
-    const userToken: string = llData.access_token || tokenData.access_token;
+    const userToken: string = llResult.data?.access_token || shortLivedToken;
 
-    // Step 3: List user's Facebook Pages
-    const pagesRes = await fetch(
-      `${GRAPH}/me/accounts?fields=id,name,access_token,instagram_business_account&access_token=${userToken}`
+    console.log(`[IG_CONNECT] tokens obtained for tenant=${tenantId}; starting page discovery`);
+
+    // Step 3–5: Discover Instagram candidates via shared helper
+    const { candidates, ineligible, topDiagnostic, pagesFound, pagesWithIg } =
+      await discoverInstagramCandidates(userToken);
+
+    console.log(
+      `[IG_CONNECT] tenant=${tenantId} pagesFound=${pagesFound} pagesWithIg=${pagesWithIg} eligible=${candidates.length} ineligible=${ineligible.length} diagnostic=${topDiagnostic}`,
     );
-    const pagesData = await pagesRes.json();
-    const pages: any[] = pagesData.data || [];
-
-    // Step 4: Build candidates list.
-    // The batch call may omit instagram_business_account even when a link exists.
-    // Probe each page without the field individually as a fallback (in parallel).
-    const candidatesMap = new Map<string, Candidate>();
-
-    await Promise.all(
-      pages.map(async (page) => {
-        let igAccountId: string | null = page.instagram_business_account?.id || null;
-        if (!igAccountId) igAccountId = await probeIgAccount(page.id, page.access_token);
-        if (!igAccountId) return;
-
-        let username: string | null = null;
-        try {
-          const igRes = await fetch(`${GRAPH}/${igAccountId}?fields=username&access_token=${page.access_token}`);
-          const igData = await igRes.json();
-          username = igData.username || null;
-        } catch {}
-
-        candidatesMap.set(page.id, { pageId: page.id, pageName: page.name, igAccountId, username });
-      })
-    );
-
-    const candidates = Array.from(candidatesMap.values());
 
     if (candidates.length === 0) {
-      const detail = pages.length > 0 ? `found_${pages.length}_pages_no_ig` : 'no_pages_found';
-      console.error('[Instagram/FB callback] no eligible pages. Total pages:', pages.length, JSON.stringify(pagesData));
-      return NextResponse.redirect(`${base}/dashboard/integrations?error=no_instagram_account&detail=${detail}`);
-    }
-
-    if (candidates.length === 1) {
-      // Single candidate — auto-connect (same behavior as before)
-      const { pageId, pageName, igAccountId, username } = candidates[0];
-      const pageToken: string = pages.find((p) => p.id === pageId)!.access_token;
-      await persistInstagramConnection({ tenantId, pageId, pageName, pageToken, igAccountId, username });
+      // Build a richer error payload for the UI
+      const detail = encodeURIComponent(
+        JSON.stringify({
+          pagesFound,
+          pagesWithIg,
+          ineligible: ineligible.map((c) => ({
+            pageId: c.pageId,
+            pageName: c.pageName,
+            igAccountId: c.igAccountId || null,
+            tasks: c.tasks,
+            diagnostic: c.diagnostic,
+          })),
+        }),
+      );
       return NextResponse.redirect(
-        `${base}/dashboard/integrations?success=instagram&username=${username || pageName || ''}`
+        `${base}/dashboard/integrations?error=${topDiagnostic}&detail=${detail}`,
       );
     }
 
-    // Multiple candidates — store pending selection so the user can choose.
-    // When status='pending_selection':
-    //   accessToken = encrypt(userToken)       — re-fetch page tokens on confirmation
-    //   pageId      = JSON.stringify(Candidate[]) — list of options WITHOUT page tokens
+    if (candidates.length === 1) {
+      // Single eligible candidate → auto-connect
+      const c = candidates[0];
+      console.log(`[IG_CONNECT] auto-connecting single candidate pageId=${c.pageId} igAccountId=${c.igAccountId}`);
+      await persistInstagramConnection({
+        tenantId,
+        pageId: c.pageId,
+        pageName: c.pageName,
+        pageToken: c.pageToken,
+        igAccountId: c.igAccountId,
+        username: c.username,
+      });
+      return NextResponse.redirect(
+        `${base}/dashboard/integrations?success=instagram&username=${encodeURIComponent(c.username || c.pageName || '')}`,
+      );
+    }
+
+    // Multiple eligible candidates → store pending selection.
+    // IMPORTANT: pageToken is NOT stored in the JSON payload (browser-accessible).
+    // It is re-fetched server-side in /select using the encrypted userToken.
+    const storedCandidates: StoredCandidate[] = candidates.map((c) => ({
+      pageId: c.pageId,
+      pageName: c.pageName,
+      igAccountId: c.igAccountId,
+      username: c.username,
+      tasks: c.tasks,
+      eligibleForMessaging: c.eligibleForMessaging,
+      diagnostic: c.diagnostic,
+    }));
+
+    // Include ineligible pages (no messaging task) so UI can show them as disabled
+    const allForSelector: StoredCandidate[] = [
+      ...storedCandidates,
+      ...ineligible
+        .filter((c) => !!c.igAccountId)  // only show pages that have IG linked
+        .map((c) => ({
+          pageId: c.pageId,
+          pageName: c.pageName,
+          igAccountId: c.igAccountId,
+          username: c.username,
+          tasks: c.tasks,
+          eligibleForMessaging: false,
+          diagnostic: c.diagnostic,
+        })),
+    ];
+
+    console.log(`[IG_CONNECT] tenant=${tenantId} storing ${allForSelector.length} selector entries (${candidates.length} eligible)`);
+
     await prisma.instagramConnection.upsert({
       where: { tenantId },
       create: {
         tenantId,
         status: 'pending_selection',
-        accessToken: encrypt(userToken),
-        pageId: JSON.stringify(candidates),
+        accessToken: encrypt(userToken),   // long-lived user token — server-side only
+        pageId: JSON.stringify(allForSelector),
         igAccountId: null,
         username: null,
       },
       update: {
         status: 'pending_selection',
         accessToken: encrypt(userToken),
-        pageId: JSON.stringify(candidates),
+        pageId: JSON.stringify(allForSelector),
         igAccountId: null,
         username: null,
       },
@@ -147,7 +175,7 @@ export async function GET(req: Request) {
 
     return NextResponse.redirect(`${base}/dashboard/integrations?instagram_select=1`);
   } catch (e: any) {
-    console.error('[Instagram/FB callback]', e.message);
+    console.error('[IG_CONNECT] unexpected error', e.message);
     return NextResponse.redirect(`${base}/dashboard/integrations?error=server_error`);
   }
 }

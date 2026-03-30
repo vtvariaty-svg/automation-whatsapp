@@ -9,6 +9,8 @@ import { useEntitlements } from "@/hooks/useEntitlements";
 
 export const dynamic = "force-dynamic";
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+
 interface WhatsAppStatus {
   connected: boolean;
   hasFullConfig: boolean;
@@ -30,16 +32,92 @@ interface FacebookStatus {
   pageName: string | null;
 }
 
+interface IgPageCandidate {
+  pageId: string;
+  pageName: string;
+  igAccountId: string;
+  username: string | null;
+  tasks: string[];
+  eligibleForMessaging: boolean;
+  diagnostic: string;
+}
+
+interface FbPageCandidate {
+  pageId: string;
+  pageName: string;
+  tasks: string[];
+  eligibleForMessaging: boolean;
+}
+
+// ─── Diagnostic messages ──────────────────────────────────────────────────────
+
+const IG_ERROR_MESSAGES: Record<string, string> = {
+  oauth_cancelled: "Autorização cancelada.",
+  no_token: "Token não recebido.",
+  no_tenant: "Sessão expirada.",
+  process_failed: "Falha na conexão.",
+  // Precise diagnostic codes from the new callback
+  no_pages_found:
+    "Nenhuma Página do Facebook encontrada. Certifique-se de que você administra ao menos uma Página do Facebook.",
+  pages_found_but_no_instagram_link:
+    "Suas Páginas do Facebook não estão vinculadas a uma conta Instagram Business. Acesse as Configurações da Página → Instagram → Conectar conta.",
+  instagram_link_found_but_missing_page_token:
+    "Instagram encontrado, mas não foi possível obter o token da Página. Verifique as permissões do aplicativo.",
+  instagram_link_found_but_missing_messaging_task:
+    "Conta Instagram encontrada, mas a Página não tem permissão de mensagens ativa. Verifique as configurações de mensagens da Página.",
+  graph_permission_error:
+    "Sem permissão para acessar as Páginas. Tente reconectar e aceite todas as permissões solicitadas.",
+  // Legacy fallback
+  no_instagram_account:
+    "Nenhuma conta Instagram Business encontrada. Certifique-se de que sua Página do Facebook está vinculada a uma conta Instagram Business.",
+  token_exchange: "Erro ao trocar o token. Tente novamente.",
+  missing_instagram_config: "Configuração do aplicativo incompleta. Contate o suporte.",
+  server_error: "Erro interno. Tente novamente.",
+};
+
+const FB_ERROR_MESSAGES: Record<string, string> = {
+  no_facebook_page:
+    "Nenhuma Página do Facebook encontrada. Certifique-se de que você administra ao menos uma Página.",
+  no_eligible_facebook_page:
+    "Páginas encontradas, mas nenhuma tem a permissão de mensagens ativa. Ative Mensagens nas configurações da Página.",
+  token_exchange: "Erro ao trocar o token. Tente novamente.",
+  server_error: "Erro interno. Tente novamente.",
+  plan_required: "", // filled dynamically
+};
+
+// ─── UI Sub-components ────────────────────────────────────────────────────────
+
 function StatusBadge({ connected }: { connected: boolean }) {
   return (
-    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-      connected ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"
-    }`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${connected ? "bg-emerald-500" : "bg-gray-400"}`}></span>
+    <span
+      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+        connected ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"
+      }`}
+    >
+      <span
+        className={`w-1.5 h-1.5 rounded-full ${connected ? "bg-emerald-500" : "bg-gray-400"}`}
+      />
       {connected ? "Conectado" : "Desconectado"}
     </span>
   );
 }
+
+function DiagnosticHint({ diagnostic }: { diagnostic: string }) {
+  const hints: Record<string, string> = {
+    pages_found_but_no_instagram_link: "Página sem conta Instagram Business vinculada",
+    instagram_link_found_but_missing_messaging_task: "Permissão de mensagens não ativa",
+    instagram_link_found_but_missing_page_token: "Token de página indisponível",
+  };
+  const text = hints[diagnostic];
+  if (!text) return null;
+  return (
+    <span className="inline-block text-[10px] text-amber-600 bg-amber-50 border border-amber-100 rounded px-1.5 py-0.5 mt-1">
+      ⚠ {text}
+    </span>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
 
 function IntegrationsContent() {
   const ent = useEntitlements();
@@ -56,9 +134,17 @@ function IntegrationsContent() {
   const [embeddedLoading, setEmbeddedLoading] = useState(false);
   const [sdkReady, setSdkReady] = useState(false);
   const [disconnecting, setDisconnecting] = useState<string | null>(null);
+
+  // Instagram page selector state
   const [igSelectPending, setIgSelectPending] = useState(false);
-  const [igPages, setIgPages] = useState<Array<{ pageId: string; pageName: string; igAccountId: string; username: string | null }>>([]);
+  const [igPages, setIgPages] = useState<IgPageCandidate[]>([]);
   const [igSelecting, setIgSelecting] = useState(false);
+
+  // Facebook page selector state
+  const [fbSelectPending, setFbSelectPending] = useState(false);
+  const [fbPages, setFbPages] = useState<FbPageCandidate[]>([]);
+  const [fbSelecting, setFbSelecting] = useState(false);
+
   const searchParams = useSearchParams();
   const appId = process.env.NEXT_PUBLIC_FB_APP_ID;
 
@@ -78,7 +164,8 @@ function IntegrationsContent() {
       if (waRes.ok) setWaStatus(await waRes.json());
       if (igRes.ok) setIgStatus(await igRes.json());
       if (fbRes.ok) setFbStatus(await fbRes.json());
-    } catch {} finally {
+    } catch {}
+    finally {
       setLoading(false);
     }
   }, []);
@@ -88,8 +175,13 @@ function IntegrationsContent() {
     const error = searchParams.get("error");
 
     if (success === "true" || success === "instagram" || success === "facebook") {
-      const channel = success === "true" ? "WhatsApp" : success === "instagram" ? "Instagram" : "Facebook";
-      const extra = searchParams.get("phone") || searchParams.get("username") || searchParams.get("page") || "";
+      const channel =
+        success === "true" ? "WhatsApp" : success === "instagram" ? "Instagram" : "Facebook";
+      const extra =
+        searchParams.get("phone") ||
+        searchParams.get("username") ||
+        searchParams.get("page") ||
+        "";
       setMessage(`✅ ${channel} conectado!${extra ? ` (${extra})` : ""}`);
       window.history.replaceState({}, "", "/dashboard/integrations");
     } else if (searchParams.get("instagram_select") === "1") {
@@ -99,18 +191,40 @@ function IntegrationsContent() {
         .then((r) => r.json())
         .then((data) => setIgPages(data.pages || []))
         .catch(() => {});
+    } else if (searchParams.get("facebook_select") === "1") {
+      window.history.replaceState({}, "", "/dashboard/integrations");
+      setFbSelectPending(true);
+      fetch("/api/integrations/facebook/pages", { headers: authHeaders() })
+        .then((r) => r.json())
+        .then((data) => setFbPages(data.pages || []))
+        .catch(() => {});
     } else if (error) {
-      const msgs: Record<string, string> = {
-        oauth_cancelled: "Autorização cancelada.",
-        no_token: "Token não recebido.",
-        no_tenant: "Sessão expirada.",
-        process_failed: "Falha na conexão.",
-        no_instagram_account: "Nenhuma conta Instagram Business encontrada. Certifique-se de que sua página do Facebook está vinculada a uma conta Instagram Business.",
-        no_facebook_page: "Nenhuma página do Facebook encontrada.",
-        token_exchange: "Erro ao trocar o token. Tente novamente.",
-        plan_required: searchParams.get("message") || "Recurso não disponível no seu plano atual.",
-      };
-      setMessage("❌ " + (msgs[error] || `Erro: ${error}`));
+      // Determine if this is an IG or FB error from URL context  
+      const detail = searchParams.get("detail");
+      const igErrors = new Set(Object.keys(IG_ERROR_MESSAGES));
+      const fbErrors = new Set(Object.keys(FB_ERROR_MESSAGES));
+
+      let msg: string;
+      if (igErrors.has(error)) {
+        msg = IG_ERROR_MESSAGES[error] || `Erro Instagram: ${error}`;
+        // Append extra detail from ineligible pages if available
+        if (detail && (error === "pages_found_but_no_instagram_link" || error === "instagram_link_found_but_missing_messaging_task")) {
+          try {
+            const parsed = JSON.parse(decodeURIComponent(detail));
+            if (parsed.pagesFound) {
+              msg += ` (${parsed.pagesFound} página(s) encontrada(s))`;
+            }
+          } catch {}
+        }
+      } else if (fbErrors.has(error)) {
+        msg = error === "plan_required"
+          ? searchParams.get("message") || "Recurso não disponível no seu plano atual."
+          : FB_ERROR_MESSAGES[error] || `Erro Facebook: ${error}`;
+      } else {
+        msg = `Erro: ${error}`;
+      }
+
+      setMessage("❌ " + msg);
       window.history.replaceState({}, "", "/dashboard/integrations");
     }
     fetchAll();
@@ -151,7 +265,6 @@ function IntegrationsContent() {
     setEmbeddedLoading(true);
     setMessage("");
 
-    // Capture WABA ID and Phone Number ID sent by Meta during Embedded Signup
     let capturedWabaId: string | undefined;
     let capturedPhoneId: string | undefined;
     let isCoexistenceSignup = false;
@@ -173,7 +286,6 @@ function IntegrationsContent() {
       } catch {}
     };
     window.addEventListener("message", messageHandler);
-
     const timeout = setTimeout(() => {
       setEmbeddedLoading(false);
       window.removeEventListener("message", messageHandler);
@@ -187,7 +299,6 @@ function IntegrationsContent() {
           const code = response.authResponse.code;
           const token = response.authResponse.accessToken;
           if (code) {
-            // Exchange code server-side via embedded-signup route
             fetch("/api/integrations/whatsapp/embedded-signup", {
               method: "POST",
               headers: { "Content-Type": "application/json", ...authHeaders() },
@@ -235,9 +346,14 @@ function IntegrationsContent() {
       } else {
         setMessage("❌ Erro ao desconectar.");
       }
-    } catch { setMessage("❌ Erro ao desconectar."); }
-    finally { setDisconnecting(null); }
+    } catch {
+      setMessage("❌ Erro ao desconectar.");
+    } finally {
+      setDisconnecting(null);
+    }
   };
+
+  // ── Instagram selection ─────────────────────────────────────────────────────
 
   const handleIgPageSelect = async (pageId: string) => {
     setIgSelecting(true);
@@ -254,7 +370,11 @@ function IntegrationsContent() {
         setIgPages([]);
         fetchAll();
       } else {
-        setMessage("❌ " + (data.error || "Erro ao conectar"));
+        const errMsg =
+          data.error === "page_not_eligible"
+            ? "Esta página não está elegível para mensagens. Escolha outra."
+            : data.error || "Erro ao conectar";
+        setMessage("❌ " + errMsg);
       }
     } catch (err: any) {
       setMessage("❌ " + err.message);
@@ -268,9 +388,44 @@ function IntegrationsContent() {
       const res = await fetch("/api/integrations/instagram/connect", { headers: authHeaders() });
       if (res.status === 401) { setMessage("❌ Sessão expirada. Faça login novamente."); return; }
       const data = await res.json();
-      if (data.url) { window.location.href = data.url; } else { setMessage("❌ " + (data.error || "Erro ao iniciar conexão")); }
-    } catch (err: any) { setMessage("❌ Erro: " + err.message); }
+      if (data.url) { window.location.href = data.url; }
+      else { setMessage("❌ " + (data.error || "Erro ao iniciar conexão")); }
+    } catch (err: any) {
+      setMessage("❌ Erro: " + err.message);
+    }
   };
+
+  // ── Facebook selection ──────────────────────────────────────────────────────
+
+  const handleFbPageSelect = async (pageId: string) => {
+    setFbSelecting(true);
+    try {
+      const res = await fetch("/api/integrations/facebook/select", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ pageId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMessage(`✅ Facebook conectado! (${data.pageName || ""})`);
+        setFbSelectPending(false);
+        setFbPages([]);
+        fetchAll();
+      } else {
+        const errMsg =
+          data.error === "page_not_eligible"
+            ? "Esta página não está elegível para mensagens. Escolha outra."
+            : data.error || "Erro ao conectar";
+        setMessage("❌ " + errMsg);
+      }
+    } catch (err: any) {
+      setMessage("❌ " + err.message);
+    } finally {
+      setFbSelecting(false);
+    }
+  };
+
+  // ── Manual WhatsApp ─────────────────────────────────────────────────────────
 
   const handleManualSave = async () => {
     if (!waStatus?.connected && !manualToken) { setMessage("❌ Token é obrigatório."); return; }
@@ -287,9 +442,14 @@ function IntegrationsContent() {
       const data = await res.json();
       if (res.ok && data.success) { setMessage("✅ Configuração salva!"); setShowManualForm(false); fetchAll(); }
       else setMessage("❌ " + (data.error || "Falha ao salvar"));
-    } catch (err: any) { setMessage("❌ " + err.message); }
-    finally { setSavingManual(false); }
+    } catch (err: any) {
+      setMessage("❌ " + err.message);
+    } finally {
+      setSavingManual(false);
+    }
   };
+
+  // ─── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -309,7 +469,7 @@ function IntegrationsContent() {
 
       {loading ? (
         <div className="flex justify-center py-16">
-          <div className="w-8 h-8 border-2 border-gray-200 border-t-[#4f46e5] rounded-full animate-spin"></div>
+          <div className="w-8 h-8 border-2 border-gray-200 border-t-[#4f46e5] rounded-full animate-spin" />
         </div>
       ) : (
         <>
@@ -403,7 +563,7 @@ function IntegrationsContent() {
                         <button onClick={handleEmbeddedSignup} disabled={embeddedLoading || !appId} className="inline-flex items-center gap-2 px-6 py-3 bg-[#25D366] text-white rounded-xl font-semibold text-sm hover:bg-[#1DA851] transition-all disabled:opacity-50">
                           {embeddedLoading ? (
                             <span className="flex items-center gap-2">
-                              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block"></span>
+                              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" />
                               <span>Conectando...</span>
                             </span>
                           ) : (
@@ -414,7 +574,7 @@ function IntegrationsContent() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4"><div className="flex-1 h-px bg-gray-200"></div><span className="text-xs text-gray-400">ou</span><div className="flex-1 h-px bg-gray-200"></div></div>
+                  <div className="flex items-center gap-4"><div className="flex-1 h-px bg-gray-200" /><span className="text-xs text-gray-400">ou</span><div className="flex-1 h-px bg-gray-200" /></div>
                   <div onClick={() => setShowManualForm(!showManualForm)} className="w-full flex items-center justify-between p-4 rounded-xl bg-gray-50 border border-gray-200 hover:bg-gray-100 transition-all cursor-pointer">
                     <div className="flex items-center gap-3">
                       <span>⚙️</span>
@@ -453,16 +613,13 @@ function IntegrationsContent() {
               )}
             </div>
           </div>
-
           </PlanGate>
 
           {/* ── Instagram Card — all plans ────────────────── */}
           <div className={`bg-white rounded-2xl border shadow-sm overflow-hidden ${igStatus?.connected ? "border-pink-200" : "border-gray-200/60"}`}>
             <div className={`px-6 py-5 border-b flex items-center justify-between ${igStatus?.connected ? "bg-gradient-to-r from-pink-50 to-purple-50 border-pink-100" : "bg-gray-50/50 border-gray-100"}`}>
               <div className="flex items-center gap-4">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl shadow-sm ${igStatus?.connected ? "bg-gradient-to-br from-[#f09433] via-[#e6683c] to-[#bc1888]" : "bg-white border border-gray-200"}`}>
-                  📸
-                </div>
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl shadow-sm ${igStatus?.connected ? "bg-gradient-to-br from-[#f09433] via-[#e6683c] to-[#bc1888]" : "bg-white border border-gray-200"}`}>📸</div>
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="font-bold text-gray-900 text-lg">Instagram</h3>
@@ -476,31 +633,54 @@ function IntegrationsContent() {
             </div>
             <div className="p-6">
               {igSelectPending ? (
+                /* ── Instagram page selector ── */
                 <div className="space-y-3">
-                  <p className="text-sm font-semibold text-gray-700">Escolha qual página/conta Instagram conectar:</p>
+                  <p className="text-sm font-semibold text-gray-700">
+                    Encontramos várias páginas. Escolha qual conta Instagram conectar:
+                  </p>
                   {igPages.length === 0 ? (
                     <div className="flex items-center gap-2 text-sm text-gray-500 py-2">
                       <div className="w-4 h-4 border-2 border-gray-300 border-t-pink-500 rounded-full animate-spin" />
                       Carregando páginas...
                     </div>
                   ) : (
-                    igPages.map((pg) => (
-                      <div key={pg.pageId} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
-                        <div>
-                          <p className="font-semibold text-gray-900 text-sm">{pg.pageName}</p>
-                          {pg.username && <p className="text-xs text-gray-500 mt-0.5">@{pg.username}</p>}
-                          <p className="text-[10px] text-gray-400 font-mono mt-0.5">{pg.igAccountId}</p>
-                        </div>
-                        <button
-                          onClick={() => handleIgPageSelect(pg.pageId)}
-                          disabled={igSelecting}
-                          className="ml-4 px-4 py-2 text-sm font-semibold text-white rounded-xl disabled:opacity-50 shrink-0"
-                          style={{ background: "linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)" }}
+                    <div className="space-y-2">
+                      {igPages.map((pg) => (
+                        <div
+                          key={pg.pageId}
+                          className={`flex items-center justify-between p-4 rounded-xl border ${
+                            pg.eligibleForMessaging
+                              ? "bg-gray-50 border-gray-100"
+                              : "bg-amber-50/40 border-amber-100 opacity-75"
+                          }`}
                         >
-                          {igSelecting ? "Conectando..." : "Conectar"}
-                        </button>
-                      </div>
-                    ))
+                          <div>
+                            <p className="font-semibold text-gray-900 text-sm">{pg.pageName}</p>
+                            {pg.username && (
+                              <p className="text-xs text-gray-500 mt-0.5">@{pg.username}</p>
+                            )}
+                            {pg.igAccountId && (
+                              <p className="text-[10px] text-gray-400 font-mono mt-0.5">ID: {pg.igAccountId}</p>
+                            )}
+                            <DiagnosticHint diagnostic={pg.diagnostic} />
+                          </div>
+                          {pg.eligibleForMessaging ? (
+                            <button
+                              onClick={() => handleIgPageSelect(pg.pageId)}
+                              disabled={igSelecting}
+                              className="ml-4 px-4 py-2 text-sm font-semibold text-white rounded-xl disabled:opacity-50 shrink-0"
+                              style={{ background: "linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)" }}
+                            >
+                              {igSelecting ? "Conectando..." : "Conectar"}
+                            </button>
+                          ) : (
+                            <span className="ml-4 px-3 py-1.5 text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg shrink-0">
+                              Não elegível
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   )}
                   <button onClick={() => { setIgSelectPending(false); setIgPages([]); }} className="text-xs text-gray-400 hover:text-gray-600 mt-1">
                     Cancelar
@@ -561,9 +741,7 @@ function IntegrationsContent() {
           <div className={`bg-white rounded-2xl border shadow-sm overflow-hidden ${fbStatus?.connected ? "border-blue-200" : "border-gray-200/60"}`}>
             <div className={`px-6 py-5 border-b flex items-center justify-between ${fbStatus?.connected ? "bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-100" : "bg-gray-50/50 border-gray-100"}`}>
               <div className="flex items-center gap-4">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl shadow-sm ${fbStatus?.connected ? "bg-[#1877F2]" : "bg-white border border-gray-200"}`}>
-                  💬
-                </div>
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl shadow-sm ${fbStatus?.connected ? "bg-[#1877F2]" : "bg-white border border-gray-200"}`}>💬</div>
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="font-bold text-gray-900 text-lg">Facebook Messenger</h3>
@@ -576,7 +754,59 @@ function IntegrationsContent() {
               </div>
             </div>
             <div className="p-6">
-              {fbStatus?.connected ? (
+              {fbSelectPending ? (
+                /* ── Facebook page selector ── */
+                <div className="space-y-3">
+                  <p className="text-sm font-semibold text-gray-700">
+                    Encontramos várias páginas. Escolha qual conectar ao Messenger:
+                  </p>
+                  {fbPages.length === 0 ? (
+                    <div className="flex items-center gap-2 text-sm text-gray-500 py-2">
+                      <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" />
+                      Carregando páginas...
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {fbPages.map((pg) => (
+                        <div
+                          key={pg.pageId}
+                          className={`flex items-center justify-between p-4 rounded-xl border ${
+                            pg.eligibleForMessaging
+                              ? "bg-gray-50 border-gray-100"
+                              : "bg-amber-50/40 border-amber-100 opacity-75"
+                          }`}
+                        >
+                          <div>
+                            <p className="font-semibold text-gray-900 text-sm">{pg.pageName}</p>
+                            <p className="text-[10px] text-gray-400 font-mono mt-0.5">ID: {pg.pageId}</p>
+                            {!pg.eligibleForMessaging && (
+                              <span className="inline-block text-[10px] text-amber-600 bg-amber-50 border border-amber-100 rounded px-1.5 py-0.5 mt-1">
+                                ⚠ Permissão de mensagens não ativa
+                              </span>
+                            )}
+                          </div>
+                          {pg.eligibleForMessaging ? (
+                            <button
+                              onClick={() => handleFbPageSelect(pg.pageId)}
+                              disabled={fbSelecting}
+                              className="ml-4 px-4 py-2 text-sm font-semibold text-white bg-[#1877F2] hover:bg-[#1565D8] rounded-xl disabled:opacity-50 shrink-0 transition-colors"
+                            >
+                              {fbSelecting ? "Conectando..." : "Conectar"}
+                            </button>
+                          ) : (
+                            <span className="ml-4 px-3 py-1.5 text-xs text-amber-600 bg-amber-50 border border-amber-100 rounded-lg shrink-0">
+                              Não elegível
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <button onClick={() => { setFbSelectPending(false); setFbPages([]); }} className="text-xs text-gray-400 hover:text-gray-600 mt-1">
+                    Cancelar
+                  </button>
+                </div>
+              ) : fbStatus?.connected ? (
                 <div className="space-y-4">
                   {fbStatus.pageName && (
                     <div className="bg-gray-50 rounded-xl px-4 py-3 border border-gray-100 inline-block">
@@ -624,7 +854,7 @@ function IntegrationsContent() {
 
 export default function IntegrationsPage() {
   return (
-    <Suspense fallback={<div className="max-w-3xl mx-auto flex items-center justify-center py-32"><div className="w-8 h-8 border-2 border-gray-200 border-t-[#4f46e5] rounded-full animate-spin"></div></div>}>
+    <Suspense fallback={<div className="max-w-3xl mx-auto flex items-center justify-center py-32"><div className="w-8 h-8 border-2 border-gray-200 border-t-[#4f46e5] rounded-full animate-spin" /></div>}>
       <IntegrationsContent />
     </Suspense>
   );

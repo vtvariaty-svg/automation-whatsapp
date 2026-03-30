@@ -25,19 +25,23 @@ export async function GET(request: Request) {
   const state = Buffer.from(JSON.stringify({ tenantId: auth.tenantId })).toString('base64');
   const redirectUri = `${base}/api/integrations/instagram/callback`;
 
-  // Instagram API with Facebook Login uses facebook.com/dialog/oauth, NOT instagram.com/oauth/authorize
+  // Instagram API with Facebook Login uses facebook.com/dialog/oauth, NOT instagram.com/oauth/authorize.
+  // pages_read_engagement is required to reliably read instagram_business_account from page tokens.
   const url = new URL('https://www.facebook.com/v22.0/dialog/oauth');
   url.searchParams.set('client_id', fbAppId);
   url.searchParams.set('redirect_uri', redirectUri);
   url.searchParams.set('scope', [
     'pages_show_list',
     'pages_manage_metadata',
+    'pages_read_engagement',      // Required: needed to see instagram_business_account via page token
     'instagram_basic',
     'instagram_manage_messages',
     'instagram_manage_comments',
   ].join(','));
   url.searchParams.set('response_type', 'code');
   url.searchParams.set('state', state);
+
+  console.log(`[IG_CONNECT] OAuth URL generated for tenant=${auth.tenantId}`);
 
   return NextResponse.json({ url: url.toString() });
 }

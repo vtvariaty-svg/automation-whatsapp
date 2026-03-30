@@ -2,15 +2,15 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthTenant } from '@/lib/getAuthTenant';
 
-// Returns the list of candidate pages stored during a pending Instagram selection.
-// Only relevant when instagramConnection.status === 'pending_selection'.
-// pageToken is NEVER returned — it remains server-side only.
+// Returns candidate Facebook pages stored during a pending_selection.
+// Only relevant when facebookConnection.status === 'pending_selection'.
+// pageToken is NEVER returned to the browser.
 
 export async function GET(request: Request) {
   const auth = await getAuthTenant(request);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const conn = await prisma.instagramConnection.findUnique({ where: { tenantId: auth.tenantId } });
+  const conn = await prisma.facebookConnection.findUnique({ where: { tenantId: auth.tenantId } });
   if (!conn || conn.status !== 'pending_selection' || !conn.pageId) {
     return NextResponse.json({ pages: [] });
   }
@@ -19,22 +19,16 @@ export async function GET(request: Request) {
     const rawPages = JSON.parse(conn.pageId) as Array<{
       pageId: string;
       pageName: string;
-      igAccountId: string;
-      username: string | null;
       tasks: string[];
       eligibleForMessaging: boolean;
-      diagnostic: string;
     }>;
 
-    // Strip pageToken if somehow it ended up in the stored JSON (safety net)
-    const safePages = rawPages.map(({ pageId, pageName, igAccountId, username, tasks, eligibleForMessaging, diagnostic }) => ({
+    // Explicit strip of any accidentally stored tokens (safety net)
+    const safePages = rawPages.map(({ pageId, pageName, tasks, eligibleForMessaging }) => ({
       pageId,
       pageName,
-      igAccountId,
-      username,
       tasks,
       eligibleForMessaging,
-      diagnostic,
     }));
 
     return NextResponse.json({ pages: safePages });

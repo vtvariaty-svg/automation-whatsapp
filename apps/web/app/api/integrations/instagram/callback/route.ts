@@ -140,7 +140,6 @@ export async function GET(req: Request) {
     const allForSelector: StoredCandidate[] = [
       ...storedCandidates,
       ...ineligible
-        .filter((c) => !!c.igAccountId)  // only show pages that have IG linked
         .map((c) => ({
           pageId: c.pageId,
           pageName: c.pageName,

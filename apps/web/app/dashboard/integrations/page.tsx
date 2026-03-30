@@ -52,26 +52,18 @@ interface FbPageCandidate {
 // ─── UX helpers ───────────────────────────────────────────────────────────────
 
 /** Maps internal diagnostic codes → human-friendly user message + guidance */
-function igDiagnosticToLabel(diagnostic: string): { badge: string; guidance: string; color: "amber" | "red" } {
+function igDiagnosticToLabel(diagnostic: string): { badge: string; guidance: string; color: "amber" | "red" | "blue" | "green" } {
   switch (diagnostic) {
-    case "pages_found_but_no_instagram_link":
-      return {
-        badge: "Sem Instagram vinculado",
-        guidance: "Vincule uma conta Instagram Business a esta Página nas configurações do Facebook.",
-        color: "amber",
-      };
-    case "instagram_link_found_but_missing_messaging_task":
-      return {
-        badge: "Mensagens indisponíveis",
-        guidance: "Ative as permissões de mensagens desta Página e tente novamente.",
-        color: "amber",
-      };
-    case "instagram_link_found_but_missing_page_token":
-      return {
-        badge: "Permissão insuficiente",
-        guidance: "Reconecte aceitando todas as permissões solicitadas.",
-        color: "red",
-      };
+    case "page_exists_but_no_instagram_link":
+      return { badge: "Sem Instagram vinculado", guidance: "Vincule uma conta Instagram Business a esta Página nas configurações do Facebook.", color: "amber" };
+    case "connected_instagram_account_present_but_not_instagram_business_account":
+      return { badge: "Instagram Pessoal", guidance: "Converta seu Instagram para Conta Profissional (Business) e tente novamente.", color: "amber" };
+    case "instagram_business_account_present_but_messaging_unavailable":
+      return { badge: "Mensagens indisponíveis", guidance: "Ative as permissões de mensagens desta Página e tente novamente.", color: "amber" };
+    case "page_token_probe_only_success":
+      return { badge: "Permissão restrita", guidance: "Conta conectada, mas via token secundário.", color: "blue" };
+    case "graph_permission_error":
+      return { badge: "Permissão insuficiente", guidance: "Reconecte aceitando todas as permissões.", color: "red" };
     default:
       return { badge: "Não elegível", guidance: "Esta página não pode ser conectada.", color: "amber" };
   }
@@ -79,38 +71,14 @@ function igDiagnosticToLabel(diagnostic: string): { badge: string; guidance: str
 
 /** Maps error codes from URL → user-friendly explanation */
 const IG_ERROR_MESSAGES: Record<string, { title: string; guidance: string }> = {
-  oauth_cancelled: {
-    title: "Autorização cancelada.",
-    guidance: "Tente novamente e conclua o processo de autorização.",
-  },
-  no_pages_found: {
-    title: "Nenhuma Página do Facebook encontrada.",
-    guidance: "Entre com uma conta Meta que administre ao menos uma Página do Facebook.",
-  },
-  pages_found_but_no_instagram_link: {
-    title: "Suas Páginas não têm Instagram Business vinculado.",
-    guidance: "Acesse as configurações da sua Página no Facebook → Instagram → Conectar conta.",
-  },
-  instagram_link_found_but_missing_page_token: {
-    title: "Não foi possível obter permissão da Página.",
-    guidance: "Reconecte e aceite todas as permissões solicitadas pela Meta.",
-  },
-  instagram_link_found_but_missing_messaging_task: {
-    title: "Instagram encontrado, mas mensagens estão desativadas.",
-    guidance: "Ative as permissões de mensagens na sua Página do Facebook e tente novamente.",
-  },
-  graph_permission_error: {
-    title: "Permissões insuficientes.",
-    guidance: "Reconecte e aceite todas as permissões solicitadas pela Meta.",
-  },
-  no_instagram_account: {
-    title: "Nenhuma conta Instagram Business encontrada.",
-    guidance: "Certifique-se de que sua Página do Facebook está vinculada a uma conta Instagram Business.",
-  },
-  token_exchange: {
-    title: "Erro ao autenticar com a Meta.",
-    guidance: "Tente novamente. Se o problema persistir, contate o suporte.",
-  },
+  oauth_cancelled: { title: "Autorização cancelada.", guidance: "Tente novamente e conclua o processo de autorização." },
+  no_pages_found: { title: "Nenhuma Página do Facebook encontrada.", guidance: "Entre com uma conta Meta que administre ao menos uma Página do Facebook." },
+  page_exists_but_no_instagram_link: { title: "Sua conta foi autorizada, mas a Página selecionada não possui Instagram Business vinculado.", guidance: "Acesse as configurações da sua Página no Facebook e conecte o Instagram." },
+  connected_instagram_account_present_but_not_instagram_business_account: { title: "A conta do Instagram não é Business.", guidance: "Sua página possui um Instagram pessoal vinculado. Mude para 'Conta Profissional (Business)' no app do Instagram e tente de novo." },
+  instagram_business_account_present_but_messaging_unavailable: { title: "Sua conta foi autorizada, mas a Página não está pronta para mensagens do Instagram.", guidance: "Ative as permissões de mensagens na sua Página do Facebook e tente novamente." },
+  graph_permission_error: { title: "A Meta não retornou permissões suficientes.", guidance: "Tente novamente e aceite todas as permissões solicitadas." },
+  no_instagram_account: { title: "Nenhuma conta Instagram Business encontrada.", guidance: "Certifique-se de que sua Página do Facebook está vinculada a uma conta Instagram Business." },
+  token_exchange: { title: "Erro ao autenticar com a Meta.", guidance: "Tente novamente. Se o problema persistir, contate o suporte." },
   server_error: { title: "Erro interno.", guidance: "Tente novamente em alguns instantes." },
   missing_instagram_config: { title: "Configuração incompleta.", guidance: "Contate o suporte." },
 };
@@ -230,10 +198,6 @@ function IntegrationsContent() {
   const [igPages, setIgPages] = useState<IgPageCandidate[]>([]);
   const [igSelecting, setIgSelecting] = useState(false);
   const [igError, setIgError] = useState<{ title: string; guidance: string } | null>(null);
-
-  // Temp Instagram debug
-  const [igDebugging, setIgDebugging] = useState(false);
-  const [igDebugData, setIgDebugData] = useState<any>(null);
 
   // Facebook selector
   const [fbSelectPending, setFbSelectPending] = useState(false);
@@ -412,16 +376,6 @@ function IntegrationsContent() {
       if (data.url) window.location.href = data.url;
       else setMessage("❌ " + (data.error || "Erro ao iniciar conexão"));
     } catch (err: any) { setMessage("❌ Erro: " + err.message); }
-  };
-
-  const handleRunIgDebug = async () => {
-    setIgDebugging(true); setIgDebugData(null);
-    try {
-      const res = await fetch("/api/integrations/instagram/debug", { method: "POST", headers: authHeaders() });
-      const data = await res.json();
-      setIgDebugData(data);
-    } catch (err: any) { setIgDebugData({ error: "fetch_error", message: err.message }); }
-    finally { setIgDebugging(false); }
   };
 
   const handleIgPageSelect = async (pageId: string) => {
@@ -695,30 +649,13 @@ function IntegrationsContent() {
                         <h4 className="font-bold text-gray-900 mb-1">Conectar Instagram Business</h4>
                         <p className="text-sm text-gray-500 mb-1">Responda DMs, automatize comentários e crie sequências de conversão.</p>
                         <p className="text-xs text-gray-400 mb-4">Requer conta Instagram Business vinculada a uma Página do Facebook.</p>
-                        <div className="flex items-center gap-3">
-                          <button onClick={handleConnectInstagram} className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm text-white transition-all hover:shadow-lg hover:-translate-y-0.5" style={{ background: "linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)" }}>
-                            Autorizar com Meta →
-                          </button>
-                          <button onClick={handleRunIgDebug} disabled={igDebugging} className="px-4 py-2.5 bg-gray-900 text-white rounded-xl text-xs font-mono disabled:opacity-50">
-                            {igDebugging ? "Rodando..." : "Executar diagnóstico Meta"}
-                          </button>
-                        </div>
+                        <button onClick={handleConnectInstagram} className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm text-white transition-all hover:shadow-lg hover:-translate-y-0.5" style={{ background: "linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)" }}>
+                          Autorizar com Meta →
+                        </button>
                       </div>
                     </div>
                   </div>
                   {igError && <ErrorBanner title={igError.title} guidance={igError.guidance} onRetry={handleConnectInstagram} />}
-                  
-                  {igDebugData && (
-                    <div className="mt-4 p-4 rounded-xl bg-gray-900 overflow-x-auto text-xs font-mono border border-gray-700">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-red-400 font-bold uppercase tracking-wider">Temporário: Diagnóstico Meta</span>
-                        <button onClick={() => setIgDebugData(null)} className="text-gray-400 hover:text-white">Fechar</button>
-                      </div>
-                      <pre className="text-green-400">
-                        {JSON.stringify(igDebugData, null, 2)}
-                      </pre>
-                    </div>
-                  )}
                 </div>
               )}
             </div>

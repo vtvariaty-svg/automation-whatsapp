@@ -38,10 +38,12 @@ export async function graphFetch(url: string): Promise<{ ok: boolean; data: any;
 
 export type IgDiagnosticCode =
   | 'no_pages_found'
-  | 'pages_found_but_no_instagram_link'
-  | 'instagram_link_found_but_missing_page_token'
-  | 'instagram_link_found_but_missing_messaging_task'
   | 'graph_permission_error'
+  | 'page_exists_but_no_instagram_link'
+  | 'connected_instagram_account_present_but_not_instagram_business_account'
+  | 'instagram_business_account_present_but_messaging_unavailable'
+  | 'page_token_probe_only_success'
+  | 'unknown_probe_failure'
   | 'ok';
 
 export interface IgCandidate {
@@ -122,81 +124,79 @@ export async function discoverInstagramCandidates(
 
   await Promise.all(
     rawPages.map(async (rawPage) => {
-      // Step 2 – full page probe with user token (more fields, more reliable)
+      // Step 2 – full page probe with user token
       const pageResult = await graphFetch(
-        `${GRAPH_BASE}/${rawPage.id}?fields=name,access_token,tasks,instagram_business_account&access_token=${userToken}`,
+        `${GRAPH_BASE}/${rawPage.id}?fields=name,access_token,tasks,instagram_business_account,connected_instagram_account&access_token=${userToken}`,
       );
 
       const pageData = pageResult.data ?? {};
       const tasks: string[] = pageData.tasks ?? rawPage.tasks ?? [];
       const pageToken: string | undefined = pageData.access_token;
+      
       let igAccountId: string | null = pageData.instagram_business_account?.id ?? null;
+      let connectedIgId: string | null = pageData.connected_instagram_account?.id ?? null;
+      let usedPageTokenProbe = false;
 
       // Step 3 – fallback probe with page token if user-token probe missed the IG link
       if (!igAccountId && pageToken) {
         const fallback = await graphFetch(
-          `${GRAPH_BASE}/${rawPage.id}?fields=instagram_business_account&access_token=${pageToken}`,
+          `${GRAPH_BASE}/${rawPage.id}?fields=instagram_business_account,connected_instagram_account&access_token=${pageToken}`,
         );
         igAccountId = fallback.data?.instagram_business_account?.id ?? null;
+        if (!connectedIgId) connectedIgId = fallback.data?.connected_instagram_account?.id ?? null;
+        if (igAccountId) usedPageTokenProbe = true;
       }
 
       if (!igAccountId) {
-        // Page found, but no IG link
-        console.log(`[IG_CONNECT] page ${rawPage.id} (${rawPage.name}) has no instagram_business_account`);
-        if (pageToken) {
-          ineligible.push({
-            pageId: rawPage.id,
-            pageName: rawPage.name,
-            pageToken,
-            igAccountId: '',
-            username: null,
-            tasks,
-            eligibleForMessaging: false,
-            diagnostic: 'pages_found_but_no_instagram_link',
-          });
-        }
+        // Did we at least find a connected IG that isn't business?
+        const diagnostic: IgDiagnosticCode = connectedIgId 
+          ? 'connected_instagram_account_present_but_not_instagram_business_account'
+          : 'page_exists_but_no_instagram_link';
+
+        console.log(`[IG_CONNECT] page ${rawPage.id} (${rawPage.name}) missing instagram_business_account. Code: ${diagnostic}`);
+        
+        ineligible.push({
+          pageId: rawPage.id,
+          pageName: rawPage.name,
+          pageToken: pageToken ?? '',
+          igAccountId: '',
+          username: null,
+          tasks,
+          eligibleForMessaging: false,
+          diagnostic,
+        });
         return;
       }
 
       pagesWithIg += 1;
 
-      if (!pageToken) {
-        console.log(`[IG_CONNECT] page ${rawPage.id} has IG but no page token`);
-        ineligible.push({
-          pageId: rawPage.id,
-          pageName: rawPage.name,
-          pageToken: '',
-          igAccountId,
-          username: null,
-          tasks,
-          eligibleForMessaging: false,
-          diagnostic: 'instagram_link_found_but_missing_page_token',
-        });
-        return;
-      }
-
       // Step 4 – resolve username (best-effort)
       let username: string | null = null;
-      try {
-        const igRes = await graphFetch(
-          `${GRAPH_BASE}/${igAccountId}?fields=username&access_token=${pageToken}`,
-        );
-        username = igRes.data?.username ?? null;
-      } catch {}
+      if (pageToken) {
+        try {
+          const igRes = await graphFetch(
+            `${GRAPH_BASE}/${igAccountId}?fields=username&access_token=${pageToken}`,
+          );
+          username = igRes.data?.username ?? null;
+        } catch {}
+      }
 
       // Step 5 – messaging eligibility
       const upperTasks = tasks.map((t) => t.toUpperCase());
       const eligibleForMessaging =
         upperTasks.includes('MESSAGING') || upperTasks.includes('MANAGE');
 
-      const diagnostic: IgDiagnosticCode = eligibleForMessaging
-        ? 'ok'
-        : 'instagram_link_found_but_missing_messaging_task';
+      let diagnostic: IgDiagnosticCode = 'ok';
+      if (!eligibleForMessaging) {
+        diagnostic = 'instagram_business_account_present_but_messaging_unavailable';
+      } else if (usedPageTokenProbe) {
+        diagnostic = 'page_token_probe_only_success'; // Not necessarily a failure, but noted
+      }
 
       const c: IgCandidate = {
         pageId: rawPage.id,
         pageName: rawPage.name,
-        pageToken,
+        pageToken: pageToken ?? '',
         igAccountId,
         username,
         tasks,
@@ -205,7 +205,7 @@ export async function discoverInstagramCandidates(
       };
 
       console.log(
-        `[IG_CONNECT] page ${rawPage.id} (${rawPage.name}) → igAccount=${igAccountId} username=${username} tasks=${JSON.stringify(tasks)} eligible=${eligibleForMessaging}`,
+        `[IG_CONNECT] page ${rawPage.id} (${rawPage.name}) → igAccount=${igAccountId} username=${username} tasks=${JSON.stringify(tasks)} eligible=${eligibleForMessaging} diag=${diagnostic}`,
       );
 
       if (eligibleForMessaging) {
@@ -220,10 +220,17 @@ export async function discoverInstagramCandidates(
   let topDiagnostic: IgDiagnosticCode;
   if (candidates.length > 0) {
     topDiagnostic = 'ok';
-  } else if (pagesWithIg > 0) {
-    topDiagnostic = 'instagram_link_found_but_missing_messaging_task';
+  } else if (ineligible.length > 0) {
+    // Pick the "closest to success" error for the top banner
+    if (ineligible.some(c => c.diagnostic === 'instagram_business_account_present_but_messaging_unavailable')) {
+      topDiagnostic = 'instagram_business_account_present_but_messaging_unavailable';
+    } else if (ineligible.some(c => c.diagnostic === 'connected_instagram_account_present_but_not_instagram_business_account')) {
+      topDiagnostic = 'connected_instagram_account_present_but_not_instagram_business_account';
+    } else {
+      topDiagnostic = 'page_exists_but_no_instagram_link';
+    }
   } else if (rawPages.length > 0) {
-    topDiagnostic = 'pages_found_but_no_instagram_link';
+    topDiagnostic = 'page_exists_but_no_instagram_link';
   } else {
     topDiagnostic = 'no_pages_found';
   }

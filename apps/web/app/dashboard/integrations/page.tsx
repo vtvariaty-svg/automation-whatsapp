@@ -231,6 +231,10 @@ function IntegrationsContent() {
   const [igSelecting, setIgSelecting] = useState(false);
   const [igError, setIgError] = useState<{ title: string; guidance: string } | null>(null);
 
+  // Temp Instagram debug
+  const [igDebugging, setIgDebugging] = useState(false);
+  const [igDebugData, setIgDebugData] = useState<any>(null);
+
   // Facebook selector
   const [fbSelectPending, setFbSelectPending] = useState(false);
   const [fbPages, setFbPages] = useState<FbPageCandidate[]>([]);
@@ -408,6 +412,16 @@ function IntegrationsContent() {
       if (data.url) window.location.href = data.url;
       else setMessage("❌ " + (data.error || "Erro ao iniciar conexão"));
     } catch (err: any) { setMessage("❌ Erro: " + err.message); }
+  };
+
+  const handleRunIgDebug = async () => {
+    setIgDebugging(true); setIgDebugData(null);
+    try {
+      const res = await fetch("/api/integrations/instagram/debug", { method: "POST", headers: authHeaders() });
+      const data = await res.json();
+      setIgDebugData(data);
+    } catch (err: any) { setIgDebugData({ error: "fetch_error", message: err.message }); }
+    finally { setIgDebugging(false); }
   };
 
   const handleIgPageSelect = async (pageId: string) => {
@@ -681,13 +695,30 @@ function IntegrationsContent() {
                         <h4 className="font-bold text-gray-900 mb-1">Conectar Instagram Business</h4>
                         <p className="text-sm text-gray-500 mb-1">Responda DMs, automatize comentários e crie sequências de conversão.</p>
                         <p className="text-xs text-gray-400 mb-4">Requer conta Instagram Business vinculada a uma Página do Facebook.</p>
-                        <button onClick={handleConnectInstagram} className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm text-white transition-all hover:shadow-lg hover:-translate-y-0.5" style={{ background: "linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)" }}>
-                          Autorizar com Meta →
-                        </button>
+                        <div className="flex items-center gap-3">
+                          <button onClick={handleConnectInstagram} className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm text-white transition-all hover:shadow-lg hover:-translate-y-0.5" style={{ background: "linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)" }}>
+                            Autorizar com Meta →
+                          </button>
+                          <button onClick={handleRunIgDebug} disabled={igDebugging} className="px-4 py-2.5 bg-gray-900 text-white rounded-xl text-xs font-mono disabled:opacity-50">
+                            {igDebugging ? "Rodando..." : "Executar diagnóstico Meta"}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
                   {igError && <ErrorBanner title={igError.title} guidance={igError.guidance} onRetry={handleConnectInstagram} />}
+                  
+                  {igDebugData && (
+                    <div className="mt-4 p-4 rounded-xl bg-gray-900 overflow-x-auto text-xs font-mono border border-gray-700">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-red-400 font-bold uppercase tracking-wider">Temporário: Diagnóstico Meta</span>
+                        <button onClick={() => setIgDebugData(null)} className="text-gray-400 hover:text-white">Fechar</button>
+                      </div>
+                      <pre className="text-green-400">
+                        {JSON.stringify(igDebugData, null, 2)}
+                      </pre>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

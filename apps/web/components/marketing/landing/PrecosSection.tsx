@@ -1,187 +1,295 @@
 import Link from "next/link";
 import { WHATSAPP_BUSINESS_URL } from "@/lib/config/plans";
 
+const WA_DEMO = "https://wa.me/5519995993220?text=Ol%C3%A1%2C%20quero%20ver%20uma%20demonstra%C3%A7%C3%A3o%20da%20Variaty.";
+
 export function PrecosSection() {
   const planos = [
     {
       nome: "Gratuito",
-      slug: "free",
+      tag: "Comece sem riscos",
       preco: null,
-      descricao: "Para explorar a interface sem compromisso",
-      nota: "1 usuário · Canais limitados",
+      nota: "Sem cartão de crédito",
+      desc: "Teste a plataforma e sinta a IA em ação. Sem compromisso.",
       features: [
-        "Caixa de entrada: Apenas Instagram DM",
+        "1 canal conectado (Instagram DM)",
+        "Até 200 conversas/mês",
+        "500 mensagens de IA/mês",
         "Até 1.000 contatos no CRM",
-        "500 mensagens de IA por mês",
-        "Até 200 conversas por mês",
-        "Até 5 automações dinâmicas",
-        "Suporte da comunidade e documentação",
+        "Até 5 automações",
+        "Suporte via documentação",
       ],
-      ausentes: [
-        "WhatsApp Oficial API",
-        "Analytics Avançado e Copilot",
-        "Prospecção Inteligente Ativa",
-      ],
-      botaoTexto: "Explorar sem compromisso",
-      botaoEstilo: "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50",
-      popular: false,
+      ausentes: ["WhatsApp Oficial API", "Analytics Avançado", "Prospecção Ativa"],
+      cta: "Criar conta grátis",
       href: "/register?plan=free",
+      highlight: false,
+      ctaClass: "bg-slate-100 text-[#0f172a] hover:bg-slate-200 border border-slate-200 font-bold",
     },
     {
       nome: "Pro",
-      slug: "pro",
+      tag: "Mais popular",
+      promo: true,
       preco: "49,90",
       precoAntigo: "139,00",
-      descricao: "A inteligência de vendas para crescer rápido",
       nota: "Sem contrato · Cancele quando quiser",
+      desc: "O plano completo para quem quer crescer sem travar no volume.",
       features: [
-        "WhatsApp Oficial, Instagram e Facebook",
-        "10.000 mensagens de IA por mês",
-        "Até 20.000 contatos no seu CRM IA",
-        "Respostas em comentários do Instagram",
-        "Criação de Segmentos e Sequências (Drips)",
+        "WhatsApp Oficial + Instagram + Facebook",
+        "10.000 mensagens de IA/mês",
+        "Até 20.000 contatos no CRM",
+        "Agendamentos automáticos",
+        "Respostas em comentários Instagram",
         "Analytics Avançado e AI Copilot",
         "Até 5 agentes na mesma operação",
       ],
-      ausentes: [
-        "Prospecção Inteligente Ativa",
-        "Painel White-label de agência",
-      ],
-      botaoTexto: "Assinar agora",
-      botaoEstilo: "bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-500/25",
-      popular: true,
+      ausentes: ["Prospecção Ativa", "White-label"],
+      cta: "Assinar agora",
       href: "/register?plan=pro",
+      highlight: true,
+      ctaClass: "bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-500/30 font-extrabold",
     },
     {
       nome: "Business",
-      slug: "business",
-      preco: "Custom",
-      descricao: "Arquitetura sob medida e revenda",
-      nota: "Desenho da infraestrutura em consultoria",
+      tag: "Consultivo",
+      preco: "Sob consulta",
+      nota: "Infraestrutura sob medida",
+      desc: "Alto volume, white-label ou configuração especial? A gente desenha junto.",
       features: [
-        "Tudo do plano Pro operando sem limites",
+        "Tudo do Pro sem limites",
         "Mensagens e contatos ilimitados",
-        "Prospecção Ativa (Listas frias no painel)",
-        "White-label: Plataforma completa na sua marca",
-        "Gestão de múltiplas contas (Agency/Franquias)",
-        "Onboarding Enterprise e Suporte SLA de 1 hora",
-        "Personalização exclusiva das IAs",
+        "Prospecção Ativa (listas frias)",
+        "White-label completo na sua marca",
+        "Multi-contas (agências e franquias)",
+        "Onboarding dedicado + SLA 1h",
+        "IA personalizada exclusiva",
       ],
       ausentes: [],
-      botaoTexto: "Falar com consultor",
-      botaoEstilo: "bg-gray-900 text-white hover:bg-gray-800",
-      popular: false,
+      cta: "Falar com consultor",
       href: WHATSAPP_BUSINESS_URL,
+      isExternal: true,
+      highlight: false,
+      ctaClass: "bg-[#0f172a] text-white hover:bg-slate-800 font-bold",
+    },
+  ];
+
+  const faqs = [
+    {
+      q: "Posso mudar de plano a qualquer momento?",
+      a: "Sim. Você faz upgrade ou downgrade quando quiser, sem burocracia.",
+    },
+    {
+      q: "O plano Pro tem contrato de fidelidade?",
+      a: "Não. É mensal, sem contrato. Cancele a qualquer momento.",
+    },
+    {
+      q: "O que inclui o suporte do plano Business?",
+      a: "Onboarding dedicado com nossa equipe e SLA de resposta de 1 hora.",
+    },
+    {
+      q: "O plano Free tem limite de tempo?",
+      a: "Não. Você pode usar gratuitamente pelo tempo que quiser.",
     },
   ];
 
   return (
-    <section className="py-24 bg-gray-50 border-y border-gray-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
-          <span className="inline-block text-blue-600 font-bold tracking-wide text-sm uppercase bg-blue-100 px-3 py-1 rounded-full mb-4">
-            Planos V3
-          </span>
-          <h2 className="text-3xl md:text-5xl font-extrabold text-gray-900 mb-4">
-            Uma arquitetura feita para escalar o seu MRR.
-          </h2>
-          <p className="text-lg text-gray-600 max-w-xl mx-auto font-medium">
-            Sem contratos longos. Sem surpresas ou engessamentos estruturais. Escolha seu estágio.
+    <div className="bg-white">
+      {/* Hero da página */}
+      <section className="bg-[#080d19] pt-32 pb-20 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_60%_at_50%_-10%,rgba(79,70,229,0.2),transparent)] pointer-events-none" />
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-600/15 rounded-full blur-[120px] mix-blend-screen pointer-events-none" />
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
+          <div className="inline-flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/20 rounded-full px-4 py-1.5 mb-8">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500" />
+            </span>
+            <span className="text-xs font-bold text-indigo-300 uppercase tracking-widest">Pro com 64% de desconto</span>
+          </div>
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white tracking-tight leading-[1.06] mb-5">
+            Comece grátis.{" "}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">
+              Escale quando precisar.
+            </span>
+          </h1>
+          <p className="text-lg md:text-xl text-slate-400 font-medium max-w-xl mx-auto mb-8">
+            Três planos desenhados para onde você está agora — e para onde vai crescer.
+          </p>
+          <p className="text-sm text-slate-500 font-semibold">
+            Sem cartão de crédito · Sem contrato · Cancele quando quiser
           </p>
         </div>
+        {/* Wave */}
+        <div className="absolute bottom-0 left-0 right-0 overflow-hidden pointer-events-none">
+          <img src="/landing-v4/backgrounds/wave-top.svg" alt="" className="w-full min-w-[1440px] h-[60px] md:h-[100px] object-cover object-bottom" />
+        </div>
+      </section>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start max-w-6xl mx-auto">
-          {planos.map((plano, i) => (
-            <div
-              key={i}
-              className={`bg-white rounded-3xl p-8 flex flex-col relative transition-all duration-300 ${
-                plano.popular
-                  ? "border-2 border-blue-600 shadow-2xl shadow-blue-900/10 lg:-mt-3 lg:-mb-3 z-10"
-                  : "border border-gray-200 shadow-sm"
-              }`}
-            >
-              {plano.popular && (
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-red-600 to-rose-500 text-white text-[10px] sm:text-xs font-bold uppercase tracking-wider py-1.5 px-5 rounded-full whitespace-nowrap shadow-lg shadow-rose-500/40 ring-2 ring-white">
-                  PREÇO PROMOCIONAL POR TEMPO LIMITADO
-                </div>
-              )}
-
-              <div className="mb-6">
-                <h3 className="text-xl font-bold text-gray-900 mb-1">{plano.nome}</h3>
-                <p className={`text-sm leading-snug ${plano.popular ? "text-blue-700 font-semibold" : "text-gray-500"}`}>
-                  {plano.descricao}
-                </p>
-              </div>
-
-              <div className="mb-8 min-h-[48px] flex items-end">
-                {plano.preco === null ? (
-                  <div>
-                    <span className="text-4xl font-extrabold text-gray-900">Grátis</span>
-                  </div>
-                ) : plano.preco === 'Custom' ? (
-                  <div>
-                    <span className="text-4xl font-extrabold text-gray-900">Custom</span>
-                  </div>
-                ) : (
-                  <div className="flex flex-col">
-                    {plano.precoAntigo && (
-                      <div className="flex flex-col mb-1.5">
-                        <span className="text-sm font-bold text-gray-400 line-through decoration-red-500/70">
-                          de R$ {plano.precoAntigo}
-                        </span>
-                      </div>
-                    )}
-                    <div className="flex items-baseline gap-1">
-                      {plano.precoAntigo && <span className="text-lg font-bold text-gray-500 mr-1">por</span>}
-                      <span className="text-xl font-bold text-gray-400">R$</span>
-                      <span className="text-5xl font-extrabold text-gray-900 tracking-tight">{plano.preco}</span>
-                      <span className="text-gray-500 font-semibold text-base">/mês</span>
-                    </div>
-                    {plano.precoAntigo && (
-                      <p className="text-emerald-600 text-[11px] font-bold uppercase tracking-wider mt-2 bg-emerald-50 border border-emerald-100 inline-block px-2.5 py-1 rounded-md">
-                        Garanta o valor promocional agora
-                      </p>
-                    )}
+      {/* Cards de Planos */}
+      <section className="py-20 lg:py-28 bg-[#f8fafc] relative">
+        <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-indigo-200/60 to-transparent" />
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+            {planos.map((plano, i) => (
+              <div
+                key={i}
+                className={`relative flex flex-col rounded-2xl p-8 transition-all duration-300 ${
+                  plano.highlight
+                    ? "bg-[#0f172a] border border-indigo-600/50 shadow-[0_20px_60px_rgba(79,70,229,0.2)] ring-1 ring-indigo-500/30 lg:-mt-4 lg:-mb-4 z-10"
+                    : "bg-white border border-slate-200/60 shadow-[0_4px_20px_rgb(0,0,0,0.04)]"
+                }`}
+              >
+                {plano.promo && (
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-orange-500 to-rose-500 text-white text-[10px] font-extrabold uppercase tracking-widest px-5 py-1.5 rounded-full shadow-lg whitespace-nowrap ring-2 ring-white">
+                    🔥 Preço promocional por tempo limitado
                   </div>
                 )}
-              </div>
 
-              <div className="flex-1">
-                <ul className="space-y-3 mb-8">
-                  {plano.features.map((feature, j) => (
-                    <li key={j} className="flex items-start gap-2.5">
-                      <svg className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                      </svg>
-                      <span className="text-gray-700 font-semibold text-sm leading-snug">{feature}</span>
+                {/* Header */}
+                <div className="mb-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className={`text-xs font-extrabold uppercase tracking-widest ${plano.highlight ? "text-indigo-400" : "text-slate-400"}`}>
+                      {plano.tag}
+                    </span>
+                  </div>
+                  <h2 className={`text-2xl font-extrabold ${plano.highlight ? "text-white" : "text-[#0f172a]"}`}>{plano.nome}</h2>
+                  <p className={`text-sm mt-1.5 font-medium leading-snug ${plano.highlight ? "text-slate-400" : "text-slate-500"}`}>{plano.desc}</p>
+                </div>
+
+                {/* Price */}
+                <div className="mb-7">
+                  {plano.preco === null ? (
+                    <div>
+                      <span className={`text-5xl font-black tracking-tight ${plano.highlight ? "text-white" : "text-[#0f172a]"}`}>Grátis</span>
+                    </div>
+                  ) : plano.preco === "Sob consulta" ? (
+                    <div>
+                      <span className={`text-3xl font-extrabold ${plano.highlight ? "text-white" : "text-[#0f172a]"}`}>Sob consulta</span>
+                    </div>
+                  ) : (
+                    <div>
+                      {plano.precoAntigo && (
+                        <p className="text-sm text-slate-400 line-through mb-1">de R$ {plano.precoAntigo}/mês</p>
+                      )}
+                      <div className="flex items-end gap-1">
+                        <span className={`text-lg font-bold ${plano.highlight ? "text-slate-400" : "text-slate-500"}`}>R$</span>
+                        <span className={`text-5xl font-black tracking-tight ${plano.highlight ? "text-white" : "text-[#0f172a]"}`}>{plano.preco}</span>
+                        <span className={`text-sm font-medium mb-1 ${plano.highlight ? "text-slate-400" : "text-slate-500"}`}>/mês</span>
+                      </div>
+                      {plano.precoAntigo && (
+                        <p className="inline-block text-[11px] font-extrabold text-emerald-600 uppercase tracking-wide bg-emerald-50 border border-emerald-100 px-2.5 py-1 rounded-md mt-2">
+                          Garanta agora — desconto por tempo limitado
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  <p className={`text-xs font-semibold mt-2 ${plano.highlight ? "text-slate-500" : "text-slate-400"}`}>{plano.nota}</p>
+                </div>
+
+                {/* Features */}
+                <ul className="space-y-2.5 mb-8 flex-1">
+                  {plano.features.map((f, fi) => (
+                    <li key={fi} className={`flex items-start gap-2.5 text-sm font-medium ${plano.highlight ? "text-slate-300" : "text-slate-600"}`}>
+                      <svg className={`w-4 h-4 mt-0.5 shrink-0 ${plano.highlight ? "text-indigo-400" : "text-indigo-500"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                      {f}
                     </li>
                   ))}
-                  {plano.ausentes.map((feature, j) => (
-                    <li key={`a-${j}`} className="flex items-start gap-2.5 opacity-40">
-                      <svg className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
-                      </svg>
-                      <span className="text-gray-500 font-semibold text-sm leading-snug line-through">{feature}</span>
+                  {plano.ausentes.map((f, fi) => (
+                    <li key={`a-${fi}`} className={`flex items-start gap-2.5 text-sm font-medium opacity-35 ${plano.highlight ? "text-slate-400" : "text-slate-500"}`}>
+                      <svg className="w-4 h-4 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" /></svg>
+                      <span className="line-through">{f}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                {/* CTA */}
+                {plano.isExternal ? (
+                  <a href={plano.href} target="_blank" rel="noopener noreferrer" className={`block text-center w-full py-3.5 rounded-xl text-sm transition-all ${plano.ctaClass}`}>
+                    {plano.cta}
+                  </a>
+                ) : (
+                  <Link href={plano.href} className={`block text-center w-full py-3.5 rounded-xl text-sm transition-all ${plano.ctaClass}`}>
+                    {plano.cta}
+                  </Link>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Para quem é cada plano */}
+      <section className="py-16 lg:py-20 bg-white">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-2xl md:text-3xl font-extrabold text-[#0f172a] mb-3">Para quem é cada plano?</h2>
+            <p className="text-base text-slate-500 font-medium">Escolha pelo seu momento, não pela complexidade da descrição.</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[
+              {
+                nome: "Gratuito",
+                cor: "border-slate-200 bg-slate-50",
+                icone: "🚀",
+                perfeito: ["Autônomos que querem testar antes de investir", "Quem ainda está validando o modelo de atendimento", "Negócios no início com volume baixo"],
+              },
+              {
+                nome: "Pro",
+                cor: "border-indigo-200 bg-indigo-50",
+                icone: "⚡",
+                perfeito: ["Negócios com atendimento ativo no WhatsApp", "Equipes de 1 a 5 pessoas respondendo diariamente", "Quem quer IA + agendamento + controle humano"],
+              },
+              {
+                nome: "Business",
+                cor: "border-slate-200 bg-slate-50",
+                icone: "🏢",
+                perfeito: ["Agências que gerenciam múltiplos clientes", "Franquias e redes com alto volume", "Empresas que precisam de marca própria (white-label)"],
+              },
+            ].map((p, i) => (
+              <div key={i} className={`rounded-2xl border p-6 ${p.cor}`}>
+                <div className="text-2xl mb-3">{p.icone}</div>
+                <h3 className="font-extrabold text-[#0f172a] mb-4">{p.nome} é perfeito para:</h3>
+                <ul className="space-y-2.5">
+                  {p.perfeito.map((item, ii) => (
+                    <li key={ii} className="flex items-start gap-2 text-sm text-slate-600 font-medium">
+                      <svg className="w-4 h-4 text-indigo-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                      {item}
                     </li>
                   ))}
                 </ul>
               </div>
-
-              <Link
-                href={plano.href}
-                className={`w-full text-center py-3.5 rounded-xl font-bold text-sm transition-all ${plano.botaoEstilo}`}
-              >
-                {plano.botaoTexto}
-              </Link>
-              {plano.nota && (
-                <p className={`text-center text-xs font-semibold mt-4 ${plano.popular ? "text-blue-700" : "text-gray-400"}`}>
-                  {plano.nota}
-                </p>
-              )}
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
+
+      {/* FAQ de planos */}
+      <section className="py-16 lg:py-20 bg-[#f8fafc] border-t border-slate-100">
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <h2 className="text-2xl md:text-3xl font-extrabold text-[#0f172a] mb-2">Dúvidas sobre os planos?</h2>
+            <p className="text-base text-slate-500 font-medium">Respostas rápidas antes de decidir.</p>
+          </div>
+          <div className="space-y-3">
+            {faqs.map((faq, i) => (
+              <details key={i} className="group bg-white rounded-xl border border-slate-200/60 overflow-hidden [&_summary::-webkit-details-marker]:hidden hover:border-indigo-200 transition-colors">
+                <summary className="flex items-center justify-between px-6 py-4 cursor-pointer font-bold text-sm text-[#0f172a] group-open:text-indigo-600 transition-colors">
+                  {faq.q}
+                  <span className="text-slate-300 group-open:rotate-45 transition-transform text-xl flex-shrink-0 ml-4 font-light">+</span>
+                </summary>
+                <div className="px-6 pb-4 text-slate-500 text-sm leading-relaxed font-medium -mt-1">{faq.a}</div>
+              </details>
+            ))}
+          </div>
+          <div className="mt-8 text-center">
+            <p className="text-sm text-slate-500 font-medium">
+              Ainda tem dúvida?{" "}
+              <a href={WA_DEMO} target="_blank" rel="noopener noreferrer" className="text-indigo-600 font-bold hover:underline">
+                Fala com a gente no WhatsApp
+              </a>
+            </p>
+          </div>
+        </div>
+      </section>
+    </div>
   );
 }

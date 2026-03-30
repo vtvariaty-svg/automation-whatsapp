@@ -9,13 +9,13 @@ export function Footer() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
-          <div className="md:col-span-2">
+          <div className="md:col-span-1">
             <Link href="/" className="inline-block mb-6 relative group">
               <div className="absolute inset-0 bg-white/5 blur-xl group-hover:bg-white/10 transition-colors rounded-full" />
               <img src="/logo.webp" alt="Variaty" className="h-[52px] w-auto grayscale mix-blend-screen opacity-70 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-500 relative z-10" />
             </Link>
             <p className="text-slate-500/80 leading-relaxed max-w-sm text-sm font-medium">
-              Plataforma de atendimento com IA para WhatsApp, Instagram e Facebook. Conectada à API Oficial da Meta. Desenvolvida para operações reais de vendas.
+              Plataforma de atendimento com IA para WhatsApp, Instagram e Facebook. Conectada à API Oficial da Meta.
             </p>
           </div>
 
@@ -30,6 +30,14 @@ export function Footer() {
           </div>
 
           <div>
+            <h4 className="text-slate-200 font-bold mb-6 tracking-wide">Canais</h4>
+            <ul className="space-y-4 text-sm font-medium">
+              <li><Link href="/whatsapp" className="text-slate-500 hover:text-[#25D366] transition-colors">WhatsApp</Link></li>
+              <li><Link href="/instagram" className="text-slate-500 hover:text-pink-400 transition-colors">Instagram</Link></li>
+            </ul>
+          </div>
+
+          <div>
             <h4 className="text-slate-200 font-bold mb-6 tracking-wide">Empresa</h4>
             <ul className="space-y-4 text-sm font-medium">
               <li><Link href="/contato" className="text-slate-500 hover:text-blue-400 transition-colors">Falar com a equipe</Link></li>
@@ -38,6 +46,7 @@ export function Footer() {
             </ul>
           </div>
         </div>
+
 
         <div className="border-t border-white/[0.03] pt-8 flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex flex-col gap-1.5 text-center md:text-left">

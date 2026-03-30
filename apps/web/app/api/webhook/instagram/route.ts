@@ -30,12 +30,11 @@ async function verifyHmac(raw: string, header: string | null): Promise<boolean> 
   try { return timingSafeEqual(Buffer.from(received, 'hex'), Buffer.from(expected, 'hex')); } catch { return false; }
 }
 
-// Resolves tenant primarily by instagramAccountId (IG professional account ID),
-// which is entry[0].id when the app is subscribed via /{igAccountId}/subscribed_apps.
-// Falls back to instagramPageId for backward compatibility with old subscriptions.
-async function getTenantByIgAccountId(id: string) {
-  const byAccount = await prisma.tenant.findFirst({ where: { instagramAccountId: id } });
-  if (byAccount) return byAccount;
+// Resolves tenant by IG user ID (instagramAccountId = IG user ID in Instagram Login architecture).
+// Falls back to instagramPageId for tenants who connected before the Instagram Login migration.
+async function getTenantByIgUserId(id: string) {
+  const byUserId = await prisma.tenant.findFirst({ where: { instagramAccountId: id } });
+  if (byUserId) return byUserId;
   return prisma.tenant.findFirst({ where: { instagramPageId: id } });
 }
 
@@ -122,31 +121,32 @@ async function handleDM(body: any, entryId: string) {
     `[IG_WEBHOOK] normalized=true hasText=true accountId=${mask(event.accountId)} senderId=${mask(event.from)} mid=${event.messageId}`,
   );
 
-  // Resolve tenant primarily by IG account ID (entry[0].id = igAccountId after subscription fix).
-  // Falls back to instagramPageId for backward compat with old subscriptions.
+  // entry[0].id = IG user ID when subscribed via graph.instagram.com/{igUserId}/subscribed_apps.
+  // Falls back to instagramPageId for tenants on the old Facebook Login architecture.
   const resolveId = event.accountId || entryId;
-  console.log(`[IG_WEBHOOK] tenant lookup accountId=${mask(resolveId)}`);
-  const tenant = await getTenantByIgAccountId(resolveId);
+  console.log(`[IG_WEBHOOK] tenant lookup igUserId=${mask(resolveId)}`);
+  const tenant = await getTenantByIgUserId(resolveId);
 
   if (!tenant) {
-    console.log(`[IG_WEBHOOK] tenant found=false accountId=${mask(resolveId)}`);
+    console.log(`[IG_WEBHOOK] tenant found=false igUserId=${mask(resolveId)}`);
     return;
   }
-  console.log(`[IG_WEBHOOK] tenant found=true tenantId=${tenant.id} accountId=${mask(resolveId)}`);
+  console.log(`[IG_WEBHOOK] tenant found=true tenantId=${tenant.id} igUserId=${mask(resolveId)}`);
 
   if (!isChannelEnabled(tenant, 'instagram')) {
     console.log(`[IG_WEBHOOK] channel disabled tenantId=${tenant.id} — skipping`);
     return;
   }
 
-  const pageToken = tenant.instagramToken ? decrypt(tenant.instagramToken) : null;
-  if (!pageToken) {
-    console.error(`[IG_WEBHOOK] no pageToken tenantId=${tenant.id} — cannot send`);
+  // instagramToken now stores the IG user access token (Instagram Login architecture)
+  const igToken = tenant.instagramToken ? decrypt(tenant.instagramToken) : null;
+  if (!igToken) {
+    console.error(`[IG_WEBHOOK] no igToken tenantId=${tenant.id} — cannot send`);
     return;
   }
 
-  // Runtime send target: Instagram professional account ID
-  const igAccountId = tenant.instagramAccountId!;
+  // instagramAccountId = IG user ID (runtime source of truth)
+  const igUserId = tenant.instagramAccountId!;
 
   const { from, text: textBody, messageId } = event;
 
@@ -168,7 +168,7 @@ async function handleDM(body: any, entryId: string) {
     const history = await getConversationHistory(from, tenant.id);
     if (history.length === 0 && tenant.welcomeMessage) {
       console.log(`[IG_WEBHOOK] reply attempt started (welcome) tenantId=${tenant.id} senderId=${mask(from)}`);
-      await sendInstagramMessage(from, tenant.welcomeMessage, igAccountId, pageToken);
+      await sendInstagramMessage(from, tenant.welcomeMessage, igUserId, igToken);
       await saveAIMessage(from, tenant.welcomeMessage, tenant.id, 'open', true, 'instagram');
     }
   } catch {}
@@ -187,7 +187,7 @@ async function handleDM(body: any, entryId: string) {
     await saveAIMessage(from, automation.responseText, tenant.id, status, false, 'instagram');
     try {
       console.log(`[IG_WEBHOOK] reply attempt started (automation) tenantId=${tenant.id} senderId=${mask(from)}`);
-      await sendInstagramMessage(from, automation.responseText, igAccountId, pageToken);
+      await sendInstagramMessage(from, automation.responseText, igUserId, igToken);
     } catch (e: any) {
       channelLog.error({ channel: 'instagram', tenantId: tenant.id }, `Automation send failed: ${e?.message}`);
     }
@@ -200,7 +200,7 @@ async function handleDM(body: any, entryId: string) {
   if (!canUseAI) {
     const msg = 'Seu limite de respostas da IA foi atingido neste mês.';
     console.log(`[IG_WEBHOOK] AI used=false (limit reached) tenantId=${tenant.id}`);
-    await sendInstagramMessage(from, msg, igAccountId, pageToken);
+    await sendInstagramMessage(from, msg, igUserId, igToken);
     await saveAIMessage(from, msg, tenant.id, status, false, 'instagram');
     return;
   }
@@ -217,7 +217,7 @@ async function handleDM(body: any, entryId: string) {
 
   try {
     console.log(`[IG_WEBHOOK] reply attempt started (AI) tenantId=${tenant.id} senderId=${mask(from)}`);
-    await sendInstagramMessage(from, aiResponse, igAccountId, pageToken);
+    await sendInstagramMessage(from, aiResponse, igUserId, igToken);
     channelLog.info({ channel: 'instagram', tenantId: tenant.id, from: mask(from) }, 'DM sent');
   } catch (e: any) {
     channelLog.error({ channel: 'instagram', tenantId: tenant.id }, `Send failed: ${e?.message}`);
@@ -229,11 +229,11 @@ async function handleComment(body: any, entryId: string) {
   if (!change) return;
 
   console.log(`[IG_WEBHOOK] comment received entryId=${mask(entryId)}`);
-  console.log(`[IG_WEBHOOK] tenant lookup accountId=${mask(entryId)}`);
+  console.log(`[IG_WEBHOOK] tenant lookup igUserId=${mask(entryId)}`);
 
-  const tenant = await getTenantByIgAccountId(entryId);
+  const tenant = await getTenantByIgUserId(entryId);
   if (!tenant) {
-    console.log(`[IG_WEBHOOK] tenant found=false accountId=${mask(entryId)}`);
+    console.log(`[IG_WEBHOOK] tenant found=false igUserId=${mask(entryId)}`);
     return;
   }
   if (!isChannelEnabled(tenant, 'instagram')) return;

@@ -1,44 +1,13 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
 import { getAuthTenant } from '@/lib/getAuthTenant';
 
-// Returns the list of candidate pages stored during a pending Instagram selection.
-// Only relevant when instagramConnection.status === 'pending_selection'.
-// pageToken is NEVER returned — it remains server-side only.
+// This endpoint is no longer applicable in the Instagram Login architecture.
+// Instagram Login provides a 1:1 user token — there is no page selection step.
+// The callback connects directly without a selector. This endpoint returns an empty
+// list to prevent errors from any stale client-side references.
 
 export async function GET(request: Request) {
   const auth = await getAuthTenant(request);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-  const conn = await prisma.instagramConnection.findUnique({ where: { tenantId: auth.tenantId } });
-  if (!conn || conn.status !== 'pending_selection' || !conn.pageId) {
-    return NextResponse.json({ pages: [] });
-  }
-
-  try {
-    const rawPages = JSON.parse(conn.pageId) as Array<{
-      pageId: string;
-      pageName: string;
-      igAccountId: string;
-      username: string | null;
-      tasks: string[];
-      eligibleForMessaging: boolean;
-      diagnostic: string;
-    }>;
-
-    // Strip pageToken if somehow it ended up in the stored JSON (safety net)
-    const safePages = rawPages.map(({ pageId, pageName, igAccountId, username, tasks, eligibleForMessaging, diagnostic }) => ({
-      pageId,
-      pageName,
-      igAccountId,
-      username,
-      tasks,
-      eligibleForMessaging,
-      diagnostic,
-    }));
-
-    return NextResponse.json({ pages: safePages });
-  } catch {
-    return NextResponse.json({ pages: [] });
-  }
+  return NextResponse.json({ pages: [] });
 }

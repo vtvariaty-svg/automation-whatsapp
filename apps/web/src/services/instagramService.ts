@@ -1,6 +1,10 @@
 import axios from 'axios';
 
-const GRAPH = 'https://graph.facebook.com/v22.0';
+// Instagram Login architecture.
+// All Instagram messaging and comment operations use graph.instagram.com.
+// Auth is performed with the IG user access token (not a Facebook page access token).
+
+const IG_GRAPH = 'https://graph.instagram.com/v22.0';
 
 function mask(id: string) {
   return id?.length > 4 ? `****${id.slice(-4)}` : '****';
@@ -9,24 +13,24 @@ function mask(id: string) {
 export async function sendInstagramMessage(
   recipientId: string,
   text: string,
-  igAccountId: string,
-  pageToken: string,
+  igUserId: string,
+  igToken: string,
 ): Promise<void> {
-  console.log(`[IG_SEND] attempt igAccountId=${mask(igAccountId)} recipientId=${mask(recipientId)}`);
+  console.log(`[IG_SEND] attempt igUserId=${mask(igUserId)} recipientId=${mask(recipientId)}`);
   try {
     const res = await axios.post(
-      `${GRAPH}/${igAccountId}/messages`,
+      `${IG_GRAPH}/${igUserId}/messages`,
       { recipient: { id: recipientId }, message: { text }, messaging_type: 'RESPONSE' },
-      { headers: { Authorization: `Bearer ${pageToken}`, 'Content-Type': 'application/json' } },
+      { headers: { Authorization: `Bearer ${igToken}`, 'Content-Type': 'application/json' } },
     );
     console.log(
-      `[IG_SEND] success igAccountId=${mask(igAccountId)} recipientId=${mask(recipientId)} status=${res.status}`,
+      `[IG_SEND] success igUserId=${mask(igUserId)} recipientId=${mask(recipientId)} status=${res.status}`,
     );
   } catch (e: any) {
     const status = e?.response?.status;
     const meta = e?.response?.data?.error;
     console.error(
-      `[IG_SEND] failed igAccountId=${mask(igAccountId)} recipientId=${mask(recipientId)} httpStatus=${status} errCode=${meta?.code} errSubCode=${meta?.error_subcode} errMsg=${meta?.message}`,
+      `[IG_SEND] failed igUserId=${mask(igUserId)} recipientId=${mask(recipientId)} httpStatus=${status} errCode=${meta?.code} errSubCode=${meta?.error_subcode} errMsg=${meta?.message}`,
     );
     throw e;
   }
@@ -35,23 +39,23 @@ export async function sendInstagramMessage(
 export async function replyToInstagramComment(
   commentId: string,
   text: string,
-  pageToken: string,
+  igToken: string,
 ): Promise<void> {
   await axios.post(
-    `${GRAPH}/${commentId}/replies`,
+    `${IG_GRAPH}/${commentId}/replies`,
     { message: text },
-    { headers: { Authorization: `Bearer ${pageToken}`, 'Content-Type': 'application/json' } },
+    { headers: { Authorization: `Bearer ${igToken}`, 'Content-Type': 'application/json' } },
   );
 }
 
 export async function hideInstagramComment(
   commentId: string,
   hide: boolean,
-  pageToken: string,
+  igToken: string,
 ): Promise<void> {
   await axios.post(
-    `${GRAPH}/${commentId}`,
+    `${IG_GRAPH}/${commentId}`,
     { is_hidden: hide },
-    { headers: { Authorization: `Bearer ${pageToken}`, 'Content-Type': 'application/json' } },
+    { headers: { Authorization: `Bearer ${igToken}`, 'Content-Type': 'application/json' } },
   );
 }

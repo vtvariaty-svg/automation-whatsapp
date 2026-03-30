@@ -3,62 +3,62 @@ import { encrypt } from '@/lib/utils/crypto';
 import { addChannel } from '@/lib/channels/featureFlags';
 import { audit } from '@/lib/audit';
 
-const GRAPH = 'https://graph.facebook.com/v22.0';
+// Instagram Login architecture.
+// Runtime host for subscriptions and messaging: graph.instagram.com
+// Runtime identity: IG user ID (stored in instagramAccountId / igAccountId)
+// Runtime token: IG user access token (stored in instagramToken / accessToken)
+
+const IG_GRAPH = 'https://graph.instagram.com';
 const SUBSCRIBED_FIELDS = 'messages,comments';
 
 export async function persistInstagramConnection({
   tenantId,
-  pageId,
-  pageName,
-  pageToken,
-  igAccountId,
+  igUserId,
   username,
+  accessToken,
+  tokenExpiresAt,
 }: {
   tenantId: string;
-  pageId: string;
-  pageName: string;
-  pageToken: string;
-  igAccountId: string;
+  igUserId: string;
   username: string | null;
-}) {
-  // Subscribe the Instagram professional account to webhook events (best-effort).
-  // Using igAccountId (not pageId) so that entry[0].id in incoming webhooks equals the
-  // IG account ID, which is the runtime source of truth for Direct messaging.
-  // The result is persisted in InstagramConnection.status so the UI does not present
-  // the account as "ready to receive messages" when subscription actually failed.
+  accessToken: string;
+  tokenExpiresAt: Date | null;
+}): Promise<{ subscriptionOk: boolean }> {
+  // Subscribe the IG user to webhook events via graph.instagram.com.
+  // The result is returned so callers can propagate readiness state to the UI.
   console.log(
-    `[IG_SUBSCRIBE] attempting igAccountId=${igAccountId} tenantId=${tenantId} fields=${SUBSCRIBED_FIELDS}`,
+    `[IG_SUBSCRIBE] attempting igUserId=${igUserId} tenantId=${tenantId} fields=${SUBSCRIBED_FIELDS}`,
   );
 
-  let webhookSubscribed = false;
+  let subscriptionOk = false;
 
   try {
     const subRes = await fetch(
-      `${GRAPH}/${igAccountId}/subscribed_apps?subscribed_fields=${SUBSCRIBED_FIELDS}`,
-      { method: 'POST', headers: { Authorization: `Bearer ${pageToken}` } },
+      `${IG_GRAPH}/v22.0/${igUserId}/subscribed_apps?subscribed_fields=${SUBSCRIBED_FIELDS}`,
+      { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` } },
     );
     const subJson: any = await subRes.json().catch(() => ({}));
     if (subRes.ok && subJson.success) {
-      webhookSubscribed = true;
+      subscriptionOk = true;
       console.log(
-        `[IG_SUBSCRIBE] success igAccountId=${igAccountId} tenantId=${tenantId} fields=${SUBSCRIBED_FIELDS}`,
+        `[IG_SUBSCRIBE] success igUserId=${igUserId} tenantId=${tenantId} fields=${SUBSCRIBED_FIELDS}`,
       );
     } else {
       console.error(
-        `[IG_SUBSCRIBE] failed igAccountId=${igAccountId} tenantId=${tenantId} fields=${SUBSCRIBED_FIELDS} httpStatus=${subRes.status} errCode=${subJson?.error?.code} errSubCode=${subJson?.error?.error_subcode} errMsg=${subJson?.error?.message}`,
+        `[IG_SUBSCRIBE] failed igUserId=${igUserId} tenantId=${tenantId} fields=${SUBSCRIBED_FIELDS} httpStatus=${subRes.status} errCode=${subJson?.error?.code} errSubCode=${subJson?.error?.error_subcode} errMsg=${subJson?.error?.message}`,
       );
     }
   } catch (e: any) {
     console.error(
-      `[IG_SUBSCRIBE] error igAccountId=${igAccountId} tenantId=${tenantId} fields=${SUBSCRIBED_FIELDS} err=${e?.message}`,
+      `[IG_SUBSCRIBE] error igUserId=${igUserId} tenantId=${tenantId} fields=${SUBSCRIBED_FIELDS} err=${e?.message}`,
     );
   }
 
-  // 'connected'            → subscription succeeded; webhooks will arrive
-  // 'subscription_failed'  → subscription call failed; DMs will not arrive until re-connected
-  const connectionStatus = webhookSubscribed ? 'connected' : 'subscription_failed';
+  // 'connected'           → subscription succeeded; webhooks will arrive; DMs are operational
+  // 'subscription_failed' → token stored but subscription call failed; DMs will not arrive
+  const connectionStatus = subscriptionOk ? 'connected' : 'subscription_failed';
   console.log(
-    `[IG_SUBSCRIBE] connectionStatus=${connectionStatus} igAccountId=${igAccountId} tenantId=${tenantId}`,
+    `[IG_SUBSCRIBE] finalState=${connectionStatus} igUserId=${igUserId} tenantId=${tenantId}`,
   );
 
   const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
@@ -67,12 +67,9 @@ export async function persistInstagramConnection({
   await prisma.tenant.update({
     where: { id: tenantId },
     data: {
-      // Page access token — used to send Instagram DMs and reply to comments
-      instagramToken: encrypt(pageToken),
-      // Runtime source of truth for Instagram Direct
-      instagramAccountId: igAccountId,
-      // Kept for backward compatibility; not used for runtime DM routing
-      instagramPageId: pageId,
+      instagramToken: encrypt(accessToken),   // IG user access token
+      instagramAccountId: igUserId,           // IG user ID (runtime source of truth)
+      instagramPageId: null,                  // deprecated: not used in Instagram Login
       enabledChannels: addChannel(tenant.enabledChannels, 'instagram'),
     },
   });
@@ -81,20 +78,24 @@ export async function persistInstagramConnection({
     where: { tenantId },
     create: {
       tenantId,
-      pageId,
-      accessToken: encrypt(pageToken),
-      igAccountId,
+      pageId: null,                          // deprecated
+      accessToken: encrypt(accessToken),
+      igAccountId: igUserId,                 // IG user ID
       username,
       status: connectionStatus,
+      tokenExpiresAt,
     },
     update: {
-      pageId,
-      accessToken: encrypt(pageToken),
-      igAccountId,
+      pageId: null,
+      accessToken: encrypt(accessToken),
+      igAccountId: igUserId,
       username,
       status: connectionStatus,
+      tokenExpiresAt,
     },
   });
 
-  audit(tenantId, 'instagram.connect', { igAccountId, pageId, pageName, username, webhookSubscribed });
+  audit(tenantId, 'instagram.connect', { igUserId, username, subscriptionOk });
+
+  return { subscriptionOk };
 }

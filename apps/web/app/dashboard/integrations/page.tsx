@@ -21,8 +21,11 @@ interface WhatsAppStatus {
 
 interface InstagramStatus {
   connected: boolean;
-  pageId: string | null;
-  igAccountId: string | null;
+  readyForMessages: boolean;
+  subscriptionOk: boolean;
+  tokenPresent: boolean;
+  tokenExpiresAt: string | null;
+  igUserId: string | null;
   username: string | null;
 }
 
@@ -173,7 +176,7 @@ function ErrorBanner({ title, guidance, onRetry }: { title: string; guidance: st
   );
 }
 
-const STEPS_INSTAGRAM = ["Autorizar Meta", "Escolher página", "Concluir"];
+const STEPS_INSTAGRAM = ["Autorizar Instagram", "Concluir"];
 const STEPS_FACEBOOK  = ["Autorizar Meta", "Escolher página", "Concluir"];
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -238,9 +241,16 @@ function IntegrationsContent() {
     if (success === "true" || success === "instagram" || success === "facebook") {
       const extra = searchParams.get("phone") || searchParams.get("username") || searchParams.get("page") || "";
       if (success === "instagram") {
-        setMessage(extra
-          ? `✅ Instagram conectado com sucesso! (@${extra}) — sua página está pronta para receber mensagens.`
-          : "✅ Instagram conectado com sucesso! Sua página está pronta para receber mensagens.");
+        const subFailed = searchParams.get("sub") === "failed";
+        if (subFailed) {
+          setMessage(extra
+            ? `⚠️ Instagram (@${extra}) conectado, mas o webhook não foi ativado. O Direct ainda não está operacional.`
+            : "⚠️ Instagram conectado, mas o webhook não foi ativado. O Direct ainda não está operacional.");
+        } else {
+          setMessage(extra
+            ? `✅ Instagram conectado com sucesso! (@${extra}) — sua página está pronta para receber mensagens.`
+            : "✅ Instagram conectado com sucesso! Sua página está pronta para receber mensagens.");
+        }
       } else if (success === "facebook") {
         setMessage(extra
           ? `✅ Facebook Messenger conectado! (${extra}) — sua página agora recebe mensagens no sistema.`
@@ -390,9 +400,15 @@ function IntegrationsContent() {
       });
       const data = await res.json();
       if (data.success) {
-        setMessage(data.username
-          ? `✅ Instagram conectado com sucesso! (@${data.username}) — sua página está pronta para receber mensagens.`
-          : `✅ Instagram conectado com sucesso! (${data.pageName || ""})`);
+        if (data.subscriptionOk === false) {
+          setMessage(data.username
+            ? `⚠️ Instagram (@${data.username}) conectado, mas o webhook não foi ativado. O Direct ainda não está operacional.`
+            : "⚠️ Instagram conectado, mas o webhook não foi ativado. O Direct ainda não está operacional.");
+        } else {
+          setMessage(data.username
+            ? `✅ Instagram conectado com sucesso! (@${data.username}) — sua página está pronta para receber mensagens.`
+            : `✅ Instagram conectado com sucesso! (${data.pageName || ""})`);
+        }
         setIgSelectPending(false); setIgPages([]); fetchAll();
       } else {
         setIgError({ title: "Não foi possível conectar.", guidance: data.error === "page_not_eligible" ? "Esta página não está pronta para mensagens. Escolha outra ou corrija as permissões." : data.error || "Tente novamente." });
@@ -433,7 +449,9 @@ function IntegrationsContent() {
 
       {message && (
         <div className={`p-4 rounded-xl text-sm font-medium border ${
-          message.includes("❌") ? "bg-red-50 text-red-700 border-red-100" : "bg-emerald-50 text-emerald-700 border-emerald-100"
+          message.includes("❌") ? "bg-red-50 text-red-700 border-red-100" :
+          message.includes("⚠️") ? "bg-amber-50 text-amber-700 border-amber-200" :
+          "bg-emerald-50 text-emerald-700 border-emerald-100"
         }`}>{message}</div>
       )}
 
@@ -542,7 +560,7 @@ function IntegrationsContent() {
                     <StatusBadge connected={!!igStatus?.connected} />
                   </div>
                   <p className="text-sm text-gray-500 mt-0.5">
-                    {igStatus?.connected ? `@${igStatus.username || igStatus.igAccountId}` : "DMs, comentários e automações"}
+                    {igStatus?.connected ? `@${igStatus.username || igStatus.igUserId}` : "DMs, comentários e automações"}
                   </p>
                 </div>
               </div>
@@ -617,11 +635,21 @@ function IntegrationsContent() {
               ) : igStatus?.connected ? (
                 /* ── Connected state ── */
                 <div className="space-y-4">
-                  {/* Success info */}
-                  <div className="flex items-center gap-2 p-3 bg-emerald-50 rounded-xl border border-emerald-100">
-                    <span className="text-emerald-500 text-base">✅</span>
-                    <p className="text-xs font-semibold text-emerald-700">Conta conectada e pronta para receber mensagens</p>
-                  </div>
+                  {/* Readiness banner — green when webhook is active, amber when subscription failed */}
+                  {igStatus.readyForMessages ? (
+                    <div className="flex items-center gap-2 p-3 bg-emerald-50 rounded-xl border border-emerald-100">
+                      <span className="text-emerald-500 text-base">✅</span>
+                      <p className="text-xs font-semibold text-emerald-700">Conta conectada e pronta para receber mensagens</p>
+                    </div>
+                  ) : (
+                    <div className="flex items-start gap-2 p-3 bg-amber-50 rounded-xl border border-amber-200">
+                      <span className="text-amber-500 text-base mt-0.5">⚠️</span>
+                      <div>
+                        <p className="text-xs font-semibold text-amber-800">Conta conectada, mas o webhook do Instagram não foi ativado.</p>
+                        <p className="text-xs text-amber-700 mt-0.5">O Direct ainda não está operacional. Reconecte para tentar ativar o webhook novamente.</p>
+                      </div>
+                    </div>
+                  )}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {igStatus.username && (
                       <div className="bg-gray-50 rounded-xl px-4 py-3 border border-gray-100">
@@ -629,10 +657,10 @@ function IntegrationsContent() {
                         <p className="text-sm font-mono text-gray-800">@{igStatus.username}</p>
                       </div>
                     )}
-                    {igStatus.pageId && (
+                    {igStatus.igUserId && (
                       <div className="bg-gray-50 rounded-xl px-4 py-3 border border-gray-100">
-                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Page ID</p>
-                        <p className="text-sm font-mono text-gray-800">{igStatus.pageId}</p>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Instagram User ID</p>
+                        <p className="text-sm font-mono text-gray-800">{igStatus.igUserId}</p>
                       </div>
                     )}
                   </div>
@@ -651,9 +679,9 @@ function IntegrationsContent() {
                       <div>
                         <h4 className="font-bold text-gray-900 mb-1">Conectar Instagram Business</h4>
                         <p className="text-sm text-gray-500 mb-1">Responda DMs, automatize comentários e crie sequências de conversão.</p>
-                        <p className="text-xs text-gray-400 mb-4">Requer conta Instagram Business vinculada a uma Página do Facebook.</p>
+                        <p className="text-xs text-gray-400 mb-4">Requer conta Instagram Business ou Creator.</p>
                         <button onClick={handleConnectInstagram} className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm text-white transition-all hover:shadow-lg hover:-translate-y-0.5" style={{ background: "linear-gradient(135deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888)" }}>
-                          Autorizar com Meta →
+                          Autorizar com Instagram →
                         </button>
                       </div>
                     </div>

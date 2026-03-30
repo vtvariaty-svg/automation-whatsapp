@@ -39,10 +39,10 @@ model Tenant {
   agencyId                  String?
   agencyBranding            Boolean                   @default(false)
   agency                    Agency?                   @relation(fields: [agencyId], references: [id])
-  // M1 – Instagram
-  instagramPageId           String?
-  instagramToken            String?
-  instagramAccountId        String?
+  // M1 – Instagram (Instagram Login architecture)
+  instagramPageId           String?   // deprecated: kept for backward compat only
+  instagramToken            String?   // encrypted IG user access token
+  instagramAccountId        String?   // IG user ID (runtime source of truth)
   // M4 – Facebook
   facebookPageId            String?
   facebookToken             String?
@@ -816,14 +816,15 @@ model SalesOpportunity {
 // ─── M1 Instagram ─────────────────────────────────────────────────────────────
 
 model InstagramConnection {
-  id          String   @id @default(uuid())
-  tenantId    String   @unique
-  pageId      String?
-  accessToken String?
-  igAccountId String?
-  username    String?
-  status      String   @default("connected")
-  createdAt   DateTime @default(now())
+  id             String    @id @default(uuid())
+  tenantId       String    @unique
+  pageId         String?   // deprecated: not used in Instagram Login architecture
+  accessToken    String?   // encrypted IG user access token
+  igAccountId    String?   // IG user ID (runtime source of truth)
+  username       String?
+  status         String    @default("connected")
+  tokenExpiresAt DateTime? // long-lived token expiry (~60 days from issue)
+  createdAt      DateTime  @default(now())
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 

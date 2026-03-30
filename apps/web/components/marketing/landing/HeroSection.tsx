@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 const WHATSAPP_DEMO_URL =
-  "https://wa.me/5519995993220?text=Ol%C3%A1%2C%20quero%20testar%20a%20IA%20da%20Variaty.";
+  "https://wa.me/5519995993220?text=Ol%C3%A1%2C%20quero%20ver%20uma%20demonstra%C3%A7%C3%A3o%20da%20Variaty.";
 
 export function HeroSection() {
   return (
@@ -13,29 +13,30 @@ export function HeroSection() {
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 z-10">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-12 items-center">
-          
-          {/* Left Column - Copy & CTAs */}
+
+          {/* Left Column — Transformation Copy */}
           <div className="text-center lg:text-left pt-8 md:pt-0">
-            {/* Tech Badge */}
+
+            {/* Live Badge */}
             <div className="inline-flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/20 rounded-full px-4 py-1.5 mb-8 shadow-[0_0_15px_rgba(79,70,229,0.1)]">
               <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500" />
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
               </span>
               <span className="text-xs sm:text-sm font-bold text-indigo-300 uppercase tracking-widest">
-                Automação Inteligente de Vendas
+                API Oficial Meta · Ativo 24/7
               </span>
             </div>
 
-            <h1 className="text-5xl lg:text-6xl xl:text-7xl font-extrabold text-white tracking-tight leading-[1.05] mb-6 drop-shadow-sm">
-              Sua equipe de vendas <br className="hidden md:block" />
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-extrabold text-white tracking-tight leading-[1.06] mb-6 drop-shadow-sm">
+              Transforme seu WhatsApp em uma{" "}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400">
-                nunca dorme
+                operação que vende 24h
               </span>
             </h1>
 
-            <p className="text-lg md:text-xl text-slate-300 leading-relaxed mb-10 max-w-2xl mx-auto lg:mx-0 font-medium">
-              A plataforma corporativa que transforma seu WhatsApp em uma máquina de qualificação e agendamentos. Conectada à API Oficial da Meta para escalar sua operação com segurança.
+            <p className="text-lg md:text-xl text-slate-300 leading-relaxed mb-10 max-w-xl mx-auto lg:mx-0 font-medium">
+              A Variaty conecta <strong className="text-white font-bold">IA, automação e controle humano</strong> para responder mais rápido, qualificar leads e escalar sua operação — sem aumentar o time.
             </p>
 
             {/* CTAs */}
@@ -44,7 +45,7 @@ export function HeroSection() {
                 href="/register"
                 className="w-full sm:w-auto flex items-center justify-center gap-2 text-base font-extrabold bg-blue-600 text-white px-8 py-4 rounded-xl shadow-[0_0_30px_rgba(37,99,235,0.4)] hover:bg-blue-500 transition-all hover:-translate-y-1 ring-2 ring-blue-500/30"
               >
-                Criar conta grátis
+                Teste grátis
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                 </svg>
@@ -62,84 +63,85 @@ export function HeroSection() {
               </a>
             </div>
 
-            {/* Micro Commitments / Social Proof */}
+            {/* Micro Trust */}
             <div className="flex flex-wrap items-center justify-center lg:justify-start gap-x-6 gap-y-3 text-sm text-slate-400 font-semibold">
               <span className="flex items-center gap-1.5 border-r border-slate-700/50 pr-6">
                 <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
                 Sem cartão de crédito
               </span>
+              <span className="flex items-center gap-1.5 border-r border-slate-700/50 pr-6">
+                <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                Setup em minutos
+              </span>
               <span className="flex items-center gap-1.5">
                 <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
-                Setup em rápidos minutos
+                +5.000 empresas ativas
               </span>
             </div>
           </div>
 
-          {/* Right Column - Premium Product Composition */}
+          {/* Right Column — Product Composition */}
           <div className="relative w-full aspect-square md:aspect-[4/3] lg:aspect-square flex items-center justify-center -mt-4 lg:mt-0 lg:scale-[1.03]">
-             
-             {/* Base Dashboard Mockup (Deep hierarchy, highest width) */}
-             <div className="absolute top-4 right-0 lg:-right-6 w-[92%] rounded-xl shadow-[0_25px_60px_rgba(0,0,0,0.5)] border border-slate-700/50 overflow-hidden bg-[#0f172a] z-10">
-               {/* Browser/Window Header */}
-               <div className="flex items-center gap-2 px-4 py-3 bg-[#1e293b] border-b border-slate-700/50">
-                  <div className="w-3 h-3 rounded-full bg-slate-600/50" />
-                  <div className="w-3 h-3 rounded-full bg-slate-600/50" />
-                  <div className="w-3 h-3 rounded-full bg-slate-600/50" />
-               </div>
-               <div className="relative w-full aspect-[16/10] bg-[#0f172a]">
-                  <img src="/landing-v4/hero/hero-dashboard-main.webp" alt="Interface Dashboard" className="absolute inset-0 w-full h-full object-cover object-top opacity-90" />
-               </div>
-             </div>
 
-             {/* Phone Mockup Left - Support */}
-             <div className="absolute bottom-12 left-0 lg:-left-4 w-[32%] lg:w-[30%] rounded-[2rem] shadow-[0_30px_60px_rgba(0,0,0,0.6)] border-[6px] border-[#1e293b] bg-white z-20 overflow-hidden group">
-                <div className="relative w-full aspect-[9/19] bg-white">
-                  <div className="absolute top-0 inset-x-0 h-4 bg-[#1e293b] rounded-b-xl w-[45%] mx-auto z-10" />
-                  <img src="/landing-v4/hero/hero-phone-left.webp" alt="Interface WhatsApp" className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-                </div>
-             </div>
+            {/* Base Dashboard */}
+            <div className="absolute top-4 right-0 lg:-right-6 w-[92%] rounded-xl shadow-[0_25px_60px_rgba(0,0,0,0.5)] border border-slate-700/50 overflow-hidden bg-[#0f172a] z-10">
+              <div className="flex items-center gap-2 px-4 py-3 bg-[#1e293b] border-b border-slate-700/50">
+                <div className="w-3 h-3 rounded-full bg-slate-600/50" />
+                <div className="w-3 h-3 rounded-full bg-slate-600/50" />
+                <div className="w-3 h-3 rounded-full bg-slate-600/50" />
+              </div>
+              <div className="relative w-full aspect-[16/10] bg-[#0f172a]">
+                <img src="/landing-v4/hero/hero-dashboard-main.webp" alt="Dashboard Variaty" className="absolute inset-0 w-full h-full object-cover object-top opacity-90" />
+              </div>
+            </div>
 
-             {/* Phone Mockup Right - Lead Interaction */}
-             <div className="hidden sm:block absolute -bottom-4 right-8 lg:right-4 w-[28%] lg:w-[26%] rounded-[1.8rem] shadow-[0_40px_70px_rgba(0,0,0,0.5)] border-4 border-slate-800 bg-white z-30 overflow-hidden transform hover:-translate-y-3 transition-transform duration-500">
-                <div className="relative w-full aspect-[9/19] bg-white">
-                   <img src="/landing-v4/hero/hero-phone-right.webp" alt="Conversa de Vendas" className="absolute inset-0 w-full h-full object-cover" />
-                </div>
-             </div>
+            {/* Phone Left */}
+            <div className="absolute bottom-12 left-0 lg:-left-4 w-[32%] lg:w-[30%] rounded-[2rem] shadow-[0_30px_60px_rgba(0,0,0,0.6)] border-[6px] border-[#1e293b] bg-white z-20 overflow-hidden group">
+              <div className="relative w-full aspect-[9/19] bg-white">
+                <div className="absolute top-0 inset-x-0 h-4 bg-[#1e293b] rounded-b-xl w-[45%] mx-auto z-10" />
+                <img src="/landing-v4/hero/hero-phone-left.webp" alt="WhatsApp com IA" className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+              </div>
+            </div>
 
-             {/* Floating Premium Card 1 (CSS + SVG) */}
-             <div className="absolute top-16 -left-4 lg:-left-12 bg-white/95 backdrop-blur-xl shadow-2xl shadow-indigo-500/10 border border-white/20 p-4 rounded-2xl flex items-center gap-4 z-40 animate-[bounce_4s_infinite]">
-                <div className="shrink-0 bg-gradient-to-br from-green-400 to-emerald-600 p-2.5 rounded-xl shadow-inner text-white">
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-                </div>
-                <div>
-                  <p className="font-extrabold text-sm text-gray-900 tracking-tight">Reunião Agendada</p>
-                  <p className="text-[11px] text-gray-500 font-bold uppercase tracking-widest mt-0.5">Automático via IA</p>
-                </div>
-             </div>
+            {/* Phone Right */}
+            <div className="hidden sm:block absolute -bottom-4 right-8 lg:right-4 w-[28%] lg:w-[26%] rounded-[1.8rem] shadow-[0_40px_70px_rgba(0,0,0,0.5)] border-4 border-slate-800 bg-white z-30 overflow-hidden transform hover:-translate-y-3 transition-transform duration-500">
+              <div className="relative w-full aspect-[9/19] bg-white">
+                <img src="/landing-v4/hero/hero-phone-right.webp" alt="Conversa de vendas" className="absolute inset-0 w-full h-full object-cover" />
+              </div>
+            </div>
 
-             {/* Floating Proof Card 2 (Image Based) */}
-             <div className="absolute top-1/2 -right-6 lg:-right-12 z-40 animate-[bounce_5s_infinite_1s]">
-               <img src="/landing-v4/hero/hero-floating-card-1.webp" alt="Card de Notificação" className="h-[72px] w-auto drop-shadow-2xl" />
-             </div>
-             
-             {/* Floating Proof Card 3 (Image Based) */}
-             <div className="hidden lg:block absolute bottom-1/4 -right-10 z-40 animate-[bounce_6s_infinite_2s]">
-               <img src="/landing-v4/hero/hero-floating-card-2.webp" alt="Métrica de Conversão" className="h-16 w-auto drop-shadow-2xl opacity-90" />
-             </div>
+            {/* Floating Card 1 */}
+            <div className="absolute top-16 -left-4 lg:-left-12 bg-white/95 backdrop-blur-xl shadow-2xl shadow-indigo-500/10 border border-white/20 p-4 rounded-2xl flex items-center gap-4 z-40 animate-[bounce_4s_infinite]">
+              <div className="shrink-0 bg-gradient-to-br from-green-400 to-emerald-600 p-2.5 rounded-xl shadow-inner text-white">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+              </div>
+              <div>
+                <p className="font-extrabold text-sm text-gray-900 tracking-tight">Reunião Agendada</p>
+                <p className="text-[11px] text-gray-500 font-bold uppercase tracking-widest mt-0.5">Automático via IA</p>
+              </div>
+            </div>
 
+            {/* Floating Card 2 */}
+            <div className="absolute top-1/2 -right-6 lg:-right-12 z-40 animate-[bounce_5s_infinite_1s]">
+              <img src="/landing-v4/hero/hero-floating-card-1.webp" alt="Notificação automática" className="h-[72px] w-auto drop-shadow-2xl" />
+            </div>
+
+            {/* Floating Card 3 */}
+            <div className="hidden lg:block absolute bottom-1/4 -right-10 z-40 animate-[bounce_6s_infinite_2s]">
+              <img src="/landing-v4/hero/hero-floating-card-2.webp" alt="Métrica de conversão" className="h-16 w-auto drop-shadow-2xl opacity-90" />
+            </div>
           </div>
         </div>
       </div>
 
-      {/* White Wave SVG Transition to blend to the next Light Section */}
+      {/* Wave Transition → next light section */}
       <div className="absolute bottom-0 left-0 right-0 w-full z-0 overflow-hidden pointer-events-none">
-        <img 
-          src="/landing-v4/backgrounds/wave-top.svg" 
-          alt="" 
-          className="w-full min-w-[1440px] h-[60px] md:h-[120px] object-cover object-bottom" 
+        <img
+          src="/landing-v4/backgrounds/wave-top.svg"
+          alt=""
+          className="w-full min-w-[1440px] h-[60px] md:h-[120px] object-cover object-bottom"
         />
       </div>
-
     </section>
   );
 }

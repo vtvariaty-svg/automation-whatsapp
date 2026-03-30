@@ -24,9 +24,14 @@ export async function persistInstagramConnection({
   // Subscribe the Instagram professional account to webhook events (best-effort).
   // Using igAccountId (not pageId) so that entry[0].id in incoming webhooks equals the
   // IG account ID, which is the runtime source of truth for Direct messaging.
+  // The result is persisted in InstagramConnection.status so the UI does not present
+  // the account as "ready to receive messages" when subscription actually failed.
   console.log(
     `[IG_SUBSCRIBE] attempting igAccountId=${igAccountId} tenantId=${tenantId} fields=${SUBSCRIBED_FIELDS}`,
   );
+
+  let webhookSubscribed = false;
+
   try {
     const subRes = await fetch(
       `${GRAPH}/${igAccountId}/subscribed_apps?subscribed_fields=${SUBSCRIBED_FIELDS}`,
@@ -34,6 +39,7 @@ export async function persistInstagramConnection({
     );
     const subJson: any = await subRes.json().catch(() => ({}));
     if (subRes.ok && subJson.success) {
+      webhookSubscribed = true;
       console.log(
         `[IG_SUBSCRIBE] success igAccountId=${igAccountId} tenantId=${tenantId} fields=${SUBSCRIBED_FIELDS}`,
       );
@@ -47,6 +53,13 @@ export async function persistInstagramConnection({
       `[IG_SUBSCRIBE] error igAccountId=${igAccountId} tenantId=${tenantId} fields=${SUBSCRIBED_FIELDS} err=${e?.message}`,
     );
   }
+
+  // 'connected'            → subscription succeeded; webhooks will arrive
+  // 'subscription_failed'  → subscription call failed; DMs will not arrive until re-connected
+  const connectionStatus = webhookSubscribed ? 'connected' : 'subscription_failed';
+  console.log(
+    `[IG_SUBSCRIBE] connectionStatus=${connectionStatus} igAccountId=${igAccountId} tenantId=${tenantId}`,
+  );
 
   const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
   if (!tenant) throw new Error('tenant_not_found');
@@ -72,16 +85,16 @@ export async function persistInstagramConnection({
       accessToken: encrypt(pageToken),
       igAccountId,
       username,
-      status: 'connected',
+      status: connectionStatus,
     },
     update: {
       pageId,
       accessToken: encrypt(pageToken),
       igAccountId,
       username,
-      status: 'connected',
+      status: connectionStatus,
     },
   });
 
-  audit(tenantId, 'instagram.connect', { igAccountId, pageId, pageName, username });
+  audit(tenantId, 'instagram.connect', { igAccountId, pageId, pageName, username, webhookSubscribed });
 }

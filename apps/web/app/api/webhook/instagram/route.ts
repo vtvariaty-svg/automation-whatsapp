@@ -62,7 +62,6 @@ export async function POST(req: Request) {
 
   try {
     const body = JSON.parse(rawBody);
-    if (body.object !== 'instagram') return new Response('OK', { status: 200 });
 
     const entryCount: number = body.entry?.length ?? 0;
     const hasMessaging: boolean = !!(body.entry?.[0]?.messaging);
@@ -74,12 +73,17 @@ export async function POST(req: Request) {
       `[IG_WEBHOOK] hmac=valid received object=${body.object} entryCount=${entryCount} hasMessaging=${hasMessaging} hasChanges=${hasChanges} entryId=${mask(entryId)} field=${field ?? 'none'}`,
     );
 
+    if (body.object !== 'instagram') {
+      console.log(`[IG_WEBHOOK] object="${body.object}" is not instagram — ignoring`);
+      return new Response('OK', { status: 200 });
+    }
+
     if (hasMessaging || field === 'messages') {
       await handleDM(body, entryId);
     } else if (field === 'comments') {
       await handleComment(body, entryId);
     } else {
-      console.log(`[IG_WEBHOOK] unhandled field=${field ?? 'none'} — no action taken`);
+      console.log(`[IG_WEBHOOK] unhandled field=${field ?? 'none'} entryId=${mask(entryId)} — no action taken`);
     }
   } catch (e) {
     channelLog.error({ channel: 'instagram' }, `Webhook error: ${e}`);
@@ -89,15 +93,27 @@ export async function POST(req: Request) {
 }
 
 async function handleDM(body: any, entryId: string) {
+  // Inspect raw shape before normalization for precise failure logging
+  const entry = body.entry?.[0];
+  const messagingArr = entry?.messaging;
+  const messaging = Array.isArray(messagingArr) ? messagingArr[0] : undefined;
+  const hasMessagingArr: boolean = Array.isArray(messagingArr) && messagingArr.length > 0;
+  const hasMessageObj: boolean = !!(messaging?.message);
+  const hasTextInMsg: boolean = !!(messaging?.message?.text);
+
   const event = normalizeInstagramDMInbound(body);
 
   if (!event) {
-    console.log(`[IG_WEBHOOK] normalized=false reason=no_messaging_or_message entryId=${mask(entryId)}`);
+    console.log(
+      `[IG_WEBHOOK] normalized=false entryId=${mask(entryId)} hasMessaging=${hasMessagingArr} hasMessage=${hasMessageObj} hasText=${hasTextInMsg} — skipping`,
+    );
     return;
   }
   if (!event.text) {
+    // Only text messages are processed. Media, stickers, reactions, and other
+    // non-text types are received and logged but not handled at this time.
     console.log(
-      `[IG_WEBHOOK] normalized=true hasText=false accountId=${mask(event.accountId)} senderId=${mask(event.from)} mid=${event.messageId} — skipping`,
+      `[IG_WEBHOOK] normalized=true hasText=false accountId=${mask(event.accountId)} senderId=${mask(event.from)} mid=${event.messageId} — text-only supported; non-text message type skipped`,
     );
     return;
   }

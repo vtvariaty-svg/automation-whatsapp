@@ -107,6 +107,13 @@ export function Navbar() {
 
             <Link href="/como-funciona" className="hover:text-blue-600 transition-colors">Como Funciona</Link>
             <Link href="/precos" className="hover:text-blue-600 transition-colors">Planos</Link>
+            <Link
+              href="/business"
+              className="flex items-center gap-1.5 text-indigo-600 font-extrabold hover:text-indigo-800 transition-colors"
+            >
+              Business
+              <span className="text-[9px] font-extrabold bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded-full uppercase tracking-wide leading-none">Consultivo</span>
+            </Link>
             <Link href="/demo" className="hover:text-blue-600 transition-colors">Demo</Link>
             <Link href="/contato" className="hover:text-blue-600 transition-colors">Contato</Link>
           </div>
@@ -185,6 +192,14 @@ export function Navbar() {
 
             <Link href="/como-funciona" onClick={() => setIsMenuOpen(false)} className="hover:text-blue-400 transition-colors">Como Funciona</Link>
             <Link href="/precos" onClick={() => setIsMenuOpen(false)} className="hover:text-blue-400 transition-colors">Planos</Link>
+            <Link
+              href="/business"
+              onClick={() => setIsMenuOpen(false)}
+              className="flex items-center gap-2 text-indigo-300 hover:text-indigo-200 transition-colors"
+            >
+              Business
+              <span className="text-[9px] font-extrabold bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 px-1.5 py-0.5 rounded-full uppercase tracking-wide">Consultivo</span>
+            </Link>
             <Link href="/demo" onClick={() => setIsMenuOpen(false)} className="hover:text-blue-400 transition-colors">Demo</Link>
             <Link href="/contato" onClick={() => setIsMenuOpen(false)} className="hover:text-blue-400 transition-colors">Contato</Link>
           </div>

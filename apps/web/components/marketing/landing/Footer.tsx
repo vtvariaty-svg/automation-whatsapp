@@ -24,6 +24,7 @@ export function Footer() {
             <ul className="space-y-4 text-sm font-medium">
               <li><Link href="/como-funciona" className="text-slate-500 hover:text-blue-400 transition-colors">Como Funciona</Link></li>
               <li><Link href="/precos" className="text-slate-500 hover:text-blue-400 transition-colors">Planos e Preços</Link></li>
+              <li><Link href="/business" className="text-slate-500 hover:text-indigo-400 transition-colors">Business</Link></li>
               <li><Link href="/demo" className="text-slate-500 hover:text-blue-400 transition-colors">Ver Demo</Link></li>
               <li><Link href="/login" className="text-slate-500 hover:text-blue-400 transition-colors">Entrar no Painel</Link></li>
             </ul>

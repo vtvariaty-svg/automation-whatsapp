@@ -130,25 +130,35 @@ export async function discoverInstagramCandidates(
 
   await Promise.all(
     rawPages.map(async (rawPage) => {
-      // Step 2 – full page probe with user token
-      const pageResult = await graphFetch(
-        `${GRAPH_BASE}/${rawPage.id}?fields=id,name,tasks,access_token,instagram_business_account,connected_instagram_account&access_token=${userToken}`,
-      );
-
-      const pageData = pageResult.data ?? {};
-      const tasks: string[] = pageData.tasks ?? rawPage.tasks ?? [];
-      const pageToken: string | undefined = pageData.access_token;
-      
-      let igAccountId: string | null = pageData.instagram_business_account?.id ?? null;
-      let connectedIgId: string | null = pageData.connected_instagram_account?.id ?? null;
+      // Step 2 – baseline and enrichment
+      let tasks: string[] = rawPage.tasks ?? [];
+      let pageToken: string | undefined = rawPage.access_token;
+      let igAccountId: string | null = rawPage.instagram_business_account?.id ?? null;
+      let connectedIgId: string | null = rawPage.connected_instagram_account?.id ?? null;
       let usedPageTokenProbe = false;
 
-      console.error(`[IG_CALLBACK_DEBUG] C. Per-page probe using user token -> pageId=${rawPage.id}, pageName=${rawPage.name}, tasks=${tasks.join(',')}, hasPageToken=${!!pageToken}, userProbe_igBusinessPresent=${!!igAccountId}, userProbe_connectedIgPresent=${!!connectedIgId}, userProbe_errorCode=${pageResult.graphError?.code || 'none'}, userProbe_errorMessage=${pageResult.graphError?.message || 'none'}`);
+      let baselineValid = !!(pageToken && igAccountId);
+
+      if (!baselineValid) {
+        // Enrichment probe with user token (removed 'tasks' which causes field expansion errors)
+        const pageResult = await graphFetch(
+          `${GRAPH_BASE}/${rawPage.id}?fields=id,name,access_token,instagram_business_account,connected_instagram_account&access_token=${userToken}`,
+        );
+
+        const pageData = pageResult.data ?? {};
+        pageToken = pageToken || pageData.access_token;
+        igAccountId = igAccountId || pageData.instagram_business_account?.id || null;
+        connectedIgId = connectedIgId || pageData.connected_instagram_account?.id || null;
+
+        console.error(`[IG_CALLBACK_DEBUG] C. Per-page probe using user token -> pageId=${rawPage.id}, pageName=${rawPage.name}, hasPageToken=${!!pageToken}, userProbe_igBusinessPresent=${!!igAccountId}, userProbe_connectedIgPresent=${!!connectedIgId}, userProbe_errorCode=${pageResult.graphError?.code || 'none'}, userProbe_errorMessage=${pageResult.graphError?.message || 'none'}`);
+      } else {
+        console.error(`[IG_CALLBACK_DEBUG] C. Skipping user token probe. Baseline from /me/accounts is valid for pageId=${rawPage.id}`);
+      }
 
       // Step 3 – fallback probe with page token if user-token probe missed the IG link
       if (!igAccountId && pageToken) {
         const fallback = await graphFetch(
-          `${GRAPH_BASE}/${rawPage.id}?fields=id,name,tasks,instagram_business_account,connected_instagram_account&access_token=${pageToken}`,
+          `${GRAPH_BASE}/${rawPage.id}?fields=id,name,instagram_business_account,connected_instagram_account&access_token=${pageToken}`,
         );
         igAccountId = fallback.data?.instagram_business_account?.id ?? null;
         if (!connectedIgId) connectedIgId = fallback.data?.connected_instagram_account?.id ?? null;

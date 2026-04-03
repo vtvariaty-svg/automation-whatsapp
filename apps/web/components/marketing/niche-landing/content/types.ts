@@ -2,9 +2,23 @@ export type NicheTheme = 'clinicas' | 'beleza'
 
 export interface NicheContent {
   theme: NicheTheme
+  /** URL slug used to build niche-aware hrefs, e.g. 'clinicas-consultorios' */
+  slug: string
+  /** Pre-filled WhatsApp specialist message, niche-specific */
+  specialistWAText: string
+  /** Cross-niche rescue link shown at the bottom of the LP */
+  crossNiche: {
+    text: string
+    href: string
+    ctaLabel: string
+    targetNiche: string
+  }
   hero: {
     badge: string
     headline: string
+    /** Word index at which the gradient span ends (0-based exclusive).
+     *  First `headlineBreak` words get the gradient treatment. */
+    headlineBreak: number
     subheadline: string
     primaryCTA: string
     secondaryCTA: string
@@ -60,12 +74,12 @@ export interface ThemeColors {
   sectionBadgeRing: string
   accentText: string
   bulletDot: string
-  // Problem section
+  // Problem / icon colors
   problemIconBg: string
   problemIconText: string
-  // Step connector
+  // Step connector line
   stepConnector: string
-  // Benefit card hover
+  // Benefit card hover border
   benefitHoverBorder: string
 }
 

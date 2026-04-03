@@ -2,10 +2,20 @@ import type { NicheContent } from './types'
 
 export const clinicasContent: NicheContent = {
   theme: 'clinicas',
+  slug: 'clinicas-consultorios',
+  specialistWAText:
+    'Olá, quero entender a automação da Variaty para clínicas e consultórios.',
+  crossNiche: {
+    text: 'Seu negócio é da área de beleza? Veja a versão feita para salão, barbearia e estética.',
+    href: '/whatsapp/servicos-de-beleza',
+    ctaLabel: 'Ver para serviços de beleza',
+    targetNiche: 'beleza',
+  },
 
   hero: {
     badge: 'Clínicas · Consultórios · Saúde',
     headline: 'Sua clínica pode atender melhor no WhatsApp sem sobrecarregar a recepção',
+    headlineBreak: 5,
     subheadline:
       'Automatize confirmações, lembretes, respostas iniciais e organização do contato com pacientes para reduzir faltas, ganhar tempo e passar mais profissionalismo no atendimento.',
     primaryCTA: 'Agendar demonstração',

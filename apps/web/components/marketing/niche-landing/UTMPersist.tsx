@@ -1,12 +1,23 @@
 'use client'
 
 import { useEffect } from 'react'
-import { persistUTMFromURL } from '@/lib/marketing/utm'
+import { persistAttribution } from '@/lib/marketing/utm'
 
-export function UTMPersist() {
+interface UTMPersistProps {
+  niche?: string
+  lpSlug?: string
+}
+
+/** Persists UTM params + niche context to localStorage on mount.
+ *  Renders nothing. Should be placed early in the component tree. */
+export function UTMPersist({ niche, lpSlug }: UTMPersistProps = {}) {
   useEffect(() => {
-    persistUTMFromURL()
-  }, [])
+    persistAttribution({
+      ...(niche ? { niche } : {}),
+      ...(lpSlug ? { lp_slug: lpSlug } : {}),
+      origin_path: window.location.pathname,
+    })
+  }, [niche, lpSlug])
 
   return null
 }

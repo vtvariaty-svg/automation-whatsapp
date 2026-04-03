@@ -2,10 +2,20 @@ import type { NicheContent } from './types'
 
 export const belezaContent: NicheContent = {
   theme: 'beleza',
+  slug: 'servicos-de-beleza',
+  specialistWAText:
+    'Olá, quero entender a automação da Variaty para salão, barbearia ou estética.',
+  crossNiche: {
+    text: 'Seu negócio é clínica ou consultório? Veja a versão feita para atendimento em saúde.',
+    href: '/whatsapp/clinicas-consultorios',
+    ctaLabel: 'Ver para clínicas e consultórios',
+    targetNiche: 'clinicas',
+  },
 
   hero: {
     badge: 'Salão · Barbearia · Estética · Manicure',
     headline: 'Pare de perder clientes no WhatsApp e mantenha sua agenda mais cheia',
+    headlineBreak: 6,
     subheadline:
       'Automatize respostas, confirmações, retornos e reengajamento para atender com mais velocidade, recuperar clientes parados e aumentar a recorrência do seu negócio de beleza.',
     primaryCTA: 'Quero ver a demonstração',

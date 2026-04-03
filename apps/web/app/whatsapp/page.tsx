@@ -226,6 +226,70 @@ export default function WhatsAppPage() {
         </div>
       </section>
 
+      {/* SEGMENTOS ESPECÍFICOS — bridge para niche LPs */}
+      <section className="py-14 lg:py-20 bg-[#f8fafc] border-t border-slate-100">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <span className="inline-block text-xs font-extrabold uppercase tracking-widest px-3 py-1.5 rounded-md mb-5 bg-indigo-50 text-indigo-700 ring-1 ring-indigo-100">
+              Versões por segmento
+            </span>
+            <h2 className="text-2xl md:text-3xl font-extrabold text-[#0f172a] tracking-tight mb-3">
+              Seu setor tem uma versão adaptada
+            </h2>
+            <p className="text-base text-slate-500 font-medium max-w-lg mx-auto">
+              A Variaty tem experiências pensadas especificamente para cada tipo de negócio. Escolha a que melhor descreve a sua operação.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            {/* Clinicas */}
+            <Link
+              href="/whatsapp/clinicas-consultorios"
+              className="group flex flex-col gap-4 bg-white rounded-2xl p-6 border border-slate-200/70 shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300 hover:border-teal-200"
+            >
+              <div className="flex items-center gap-3">
+                <span className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center shrink-0 text-xl">
+                  🏥
+                </span>
+                <div>
+                  <p className="font-extrabold text-[#0f172a] text-base leading-tight">Clínicas e Consultórios</p>
+                  <p className="text-xs text-teal-600 font-semibold mt-0.5">Saúde · Atendimento</p>
+                </div>
+              </div>
+              <p className="text-sm text-slate-500 font-medium leading-relaxed">
+                Confirmações automáticas, redução de faltas, menos carga manual na recepção e mais organização no atendimento ao paciente.
+              </p>
+              <span className="inline-flex items-center gap-1.5 text-sm font-bold text-teal-600 group-hover:gap-2.5 transition-all">
+                Ver versão para clínicas
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+              </span>
+            </Link>
+
+            {/* Beleza */}
+            <Link
+              href="/whatsapp/servicos-de-beleza"
+              className="group flex flex-col gap-4 bg-white rounded-2xl p-6 border border-slate-200/70 shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300 hover:border-rose-200"
+            >
+              <div className="flex items-center gap-3">
+                <span className="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center shrink-0 text-xl">
+                  💅
+                </span>
+                <div>
+                  <p className="font-extrabold text-[#0f172a] text-base leading-tight">Serviços de Beleza</p>
+                  <p className="text-xs text-rose-500 font-semibold mt-0.5">Salão · Barbearia · Estética</p>
+                </div>
+              </div>
+              <p className="text-sm text-slate-500 font-medium leading-relaxed">
+                Agenda mais cheia, mais velocidade no atendimento, retorno de clientes parados e menos tempo preso respondendo o WhatsApp.
+              </p>
+              <span className="inline-flex items-center gap-1.5 text-sm font-bold text-rose-500 group-hover:gap-2.5 transition-all">
+                Ver versão para beleza
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+              </span>
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* CTA FINAL */}
       <section className="relative bg-[#080d19] py-24 overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_60%_at_50%_50%,rgba(37,211,102,0.06),transparent)] pointer-events-none" />

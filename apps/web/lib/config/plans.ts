@@ -89,7 +89,8 @@ export type FeatureKey =
   | 'whiteLabel'        // White-label / custom branding
   | 'agencyReseller'    // Agency panel + reseller features
   | 'advancedAnalytics' // Attribution, funnels, sales metrics
-  | 'leadProspectingIntel'; // Prospecção IA — Business only
+  | 'leadProspectingIntel' // Prospecção IA — Business only
+  | 'beautyWorkspace';  // Beauty Workspace vertical (salão, barbearia, estética, manicure)
 
 export type LimitKey = 'messages' | 'agents' | 'automations' | 'contacts' | 'conversations';
 
@@ -120,6 +121,7 @@ export const PLAN_ENTITLEMENTS: Record<string, PlanEntitlements> = {
       agencyReseller: false,
       advancedAnalytics: false,
       leadProspectingIntel: false,
+      beautyWorkspace: false,
     },
     limits: { messages: 500, agents: 1, automations: 5, contacts: 1000, conversations: 200 },
   },
@@ -142,6 +144,7 @@ export const PLAN_ENTITLEMENTS: Record<string, PlanEntitlements> = {
       agencyReseller: false,
       advancedAnalytics: true,
       leadProspectingIntel: false,
+      beautyWorkspace: true,
     },
     limits: { messages: 10000, agents: 5, automations: UNLIMITED, contacts: 20000, conversations: UNLIMITED },
   },
@@ -164,6 +167,7 @@ export const PLAN_ENTITLEMENTS: Record<string, PlanEntitlements> = {
       agencyReseller: true,
       advancedAnalytics: true,
       leadProspectingIntel: true,
+      beautyWorkspace: true,
     },
     limits: {
       messages: UNLIMITED,
@@ -192,6 +196,7 @@ export const PLAN_ENTITLEMENTS: Record<string, PlanEntitlements> = {
       agencyReseller: false,
       advancedAnalytics: false,
       leadProspectingIntel: false,
+      beautyWorkspace: false,
     },
     limits: { messages: 3000, agents: 2, automations: 15, contacts: 5000, conversations: 5000 },
   },
@@ -214,6 +219,7 @@ export const PLAN_ENTITLEMENTS: Record<string, PlanEntitlements> = {
       agencyReseller: false,
       advancedAnalytics: false,
       leadProspectingIntel: false,
+      beautyWorkspace: false,
     },
     limits: { messages: 1000, agents: 1, automations: 5, contacts: 1000, conversations: 500 },
   },
@@ -236,6 +242,7 @@ export const PLAN_ENTITLEMENTS: Record<string, PlanEntitlements> = {
       agencyReseller: true,
       advancedAnalytics: true,
       leadProspectingIntel: true,
+      beautyWorkspace: true,
     },
     limits: {
       messages: UNLIMITED,
@@ -264,6 +271,7 @@ export const FEATURE_UPGRADE_MESSAGES: Record<FeatureKey, string> = {
   agencyReseller: 'Painel de revenda é exclusivo do plano Business (Consultivo).',
   advancedAnalytics: 'Analytics avançado está disponível a partir do plano Pro.',
   leadProspectingIntel: 'Prospecção IA requer o plano Business (Consultivo).',
+  beautyWorkspace: 'Beauty Workspace está disponível a partir do plano Pro. Faça upgrade para acessar a gestão completa para salão, barbearia e estética.',
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────

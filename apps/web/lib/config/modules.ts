@@ -67,7 +67,7 @@ export interface SidebarSection {
 
 export const SIDEBAR_SECTIONS: SidebarSection[] = [
   { id: 'principal',      label: 'Principal',     moduleIds: ['dashboard', 'analytics'] },
-  { id: 'atendimento',    label: 'Atendimento',   moduleIds: ['conversations', 'contacts', 'sales', 'appointments', 'orders', 'payments', 'catalog', 'services', 'professionals', 'handoff'] },
+  { id: 'atendimento',    label: 'Atendimento',   moduleIds: ['conversations', 'contacts', 'sales', 'appointments', 'orders', 'payments', 'catalog', 'services', 'professionals', 'handoff', 'beauty_workspace'] },
   { id: 'canais',         label: 'Canais & IA',   moduleIds: ['channels', 'instagram_comments', 'atendimento_ia', 'bots', 'templates', 'broadcasts', 'insights'] },
   { id: 'crescimento',    label: 'Crescimento',   moduleIds: ['setup', 'metrics', 'attribution', 'referral', 'go_live', 'lead_intelligence'] },
   { id: 'fiscal',         label: 'Fiscal',        moduleIds: ['fiscal', 'fiscal_new', 'fiscal_history', 'fiscal_whatsapp'] },
@@ -510,6 +510,29 @@ export const MODULE_CATALOG: AppModule[] = [
     pinnedByDefaultFor: ['free', 'standard', 'pro', 'business'],
     sidebarOrder: 62,
   },
+
+  // ── Beauty Workspace ────────────────────────────────────────────────────
+  {
+    id: 'beauty_workspace',
+    label: 'Beauty Workspace',
+    icon: '💅',
+    href: '/dashboard/beauty',
+    category: 'atendimento',
+    description: 'Workspace completo para salão, barbearia, estética e manicure: agenda, pacotes, retenção e campanhas.',
+    minPlan: 'pro',
+    requiredFeature: 'beautyWorkspace',
+    pinnedByDefaultFor: ['pro', 'business'],
+    recommendedFor: ['salão', 'barbearia', 'estética', 'manicure', 'beleza'],
+    sidebarOrder: 25,
+    onboarding: {
+      plans: ['pro', 'business'],
+      businessTypes: ['salão', 'barbearia', 'estética', 'manicure'],
+      required: false,
+      order: 45,
+      label: 'Ativar Beauty Workspace',
+      description: 'Configure o workspace especializado para seu negócio de beleza.',
+    },
+  },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -548,8 +571,9 @@ export function getDefaultPinnedIdsForBusinessType(
   if (!businessType || plan === 'free') return base;
 
   const bType = businessType.toLowerCase();
-  const AGENDA_TYPES = new Set(['clínica', 'salão', 'estética', 'serviços locais']);
-  const SALES_TYPES  = new Set(['ecommerce', 'restaurante', 'infoproduto']);
+  const AGENDA_TYPES   = new Set(['clínica', 'salão', 'estética', 'serviços locais']);
+  const BEAUTY_TYPES   = new Set(['salão', 'barbearia', 'estética', 'manicure', 'beleza']);
+  const SALES_TYPES    = new Set(['ecommerce', 'restaurante', 'infoproduto']);
 
   // Módulos irrelevantes por businessType: remover do padrão
   const toRemove = new Set<string>();
@@ -563,7 +587,12 @@ export function getDefaultPinnedIdsForBusinessType(
     toRemove.add('professionals');
   }
 
-  return base.filter(id => !toRemove.has(id));
+  // Beauty types: pin beauty_workspace automatically if not already present
+  const result = base.filter(id => !toRemove.has(id));
+  if (BEAUTY_TYPES.has(bType) && !result.includes('beauty_workspace')) {
+    result.push('beauty_workspace');
+  }
+  return result;
 }
 
 /** Nomes de todas as categorias com label legível. */

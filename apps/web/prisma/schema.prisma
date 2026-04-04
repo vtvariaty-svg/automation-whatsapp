@@ -119,6 +119,15 @@ model Tenant {
   leadFollowUpLogs        LeadFollowUpLog[]
   leadOperationalAlerts           LeadOperationalAlert[]
   leadCompanyRegistrySnapshots    LeadCompanyRegistrySnapshot[]
+  // BW1 — Beauty Workspace
+  beautyWorkspaceConfig           BeautyWorkspaceConfig?
+  beautyServiceProfiles           BeautyServiceProfile[]
+  beautyCustomerProfiles          BeautyCustomerProfile[]
+  beautyProfessionalProfiles      BeautyProfessionalProfile[]
+  beautyPackages                  BeautyPackage[]
+  beautyWaitlistEntries           BeautyWaitlistEntry[]
+  beautyCampaignRules             BeautyCampaignRule[]
+  appointmentLocks                AppointmentLock[]
 }
 
 // ─── Contacts Module (Phase 1) ────────────────────────────────────────────────
@@ -166,6 +175,8 @@ model Contact {
   events           ContactEvent[]
   mergesAsSurvivor ContactMerge[]  @relation("MergeSurvivor")
   mergesAsMerged   ContactMerge[]  @relation("MergeMerged")
+  // BW1 — Beauty Workspace customer enrichment
+  beautyProfile    BeautyCustomerProfile?
 
   @@unique([tenantId, normalizedPhone])
   @@index([tenantId, status])
@@ -547,6 +558,14 @@ model Appointment {
   // PAY1 — payment state (separate from operational status)
   paymentId              String?   @unique
   paymentStatus          String?                   // null | payment_pending | payment_confirmed | payment_failed
+  // BW1 — Beauty Workspace extensions
+  serviceId              String?                   // FK → Service (structured ref)
+  checkInAt              DateTime?                 // when customer physically arrived
+  completedAt            DateTime?                 // when service was finished
+  attendanceStatus       String?                   // null | present | late | no_show
+  originFlow             String?                   // whatsapp_bot | manual | online_booking | reengagement
+  depositRequired        Boolean                   @default(false)
+  depositAmount          Float?
   tenant                 Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   professional           Professional?             @relation(fields: [professionalId], references: [id], onDelete: SetNull)
   contact                Contact?                  @relation(fields: [contactId], references: [id], onDelete: SetNull)
@@ -638,6 +657,8 @@ model Service {
   professionals ProfessionalService[]
   // COMM1 — products linked to this service (1 service → N commercial products)
   products      Product[]
+  // BW1 — Beauty Workspace enrichment
+  beautyProfile BeautyServiceProfile?
 
   @@index([tenantId])
 }
@@ -657,6 +678,8 @@ model Professional {
   tenant       Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   services     ProfessionalService[]
   appointments Appointment[]
+  // BW1 — Beauty Workspace professional enrichment
+  beautyProfile BeautyProfessionalProfile?
 
   @@index([tenantId])
   @@map("professionals")
@@ -1891,4 +1914,245 @@ model LeadCompanyRegistrySnapshot {
 
   @@index([tenantId, leadCandidateId, createdAt])
   @@map("lead_company_registry_snapshots")
+}
+
+// ─── BW1 — Beauty Workspace ───────────────────────────────────────────────────
+
+// BW-CONFIG — per-tenant workspace activation + settings
+model BeautyWorkspaceConfig {
+  id                    String   @id @default(uuid())
+  tenantId              String   @unique
+  status                String   @default("setup") // setup | active | paused
+  businessSubtype       String?  // salon | barbershop | aesthetics | nail | lash | massage | other
+  defaultDepositPercent Float?   // e.g. 30.0 = 30%
+  depositRequired       Boolean  @default(false)
+  reengagementDays      Int      @default(30) // days of inactivity before reengagement campaign fires
+  confirmationLeadHours Int      @default(24) // hours before appointment to send confirmation
+  reminderLeadHours     Int      @default(2)  // hours before appointment to send reminder
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("beauty_workspace_configs")
+}
+
+// BW-SVC — per-service beauty enrichment (extends Service)
+model BeautyServiceProfile {
+  id                  String   @id @default(uuid())
+  tenantId            String
+  serviceId           String   @unique
+  category            String?  // corte | coloracao | tratamento | estetica | unhas | sobrancelha | outros
+  priceFrom           Float?
+  priceTo             Float?
+  requiresDeposit     Boolean  @default(false)
+  depositAmount       Float?
+  popularityScore     Int      @default(0) // incremented on each booking
+  photoUrl            String?
+  description         String?  @db.Text
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  service Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, category])
+  @@map("beauty_service_profiles")
+}
+
+// BW-CUST — per-customer beauty enrichment (extends Contact)
+model BeautyCustomerProfile {
+  id                   String    @id @default(uuid())
+  tenantId             String
+  contactId            String    @unique
+  preferredProfessional String?  // professionalId snapshot preference
+  preferredServices    String[]  @default([]) // serviceId list
+  notes                String?   @db.Text
+  lastServiceAt        DateTime?
+  totalVisits          Int       @default(0)
+  totalSpend           Float     @default(0)
+  birthdayDate         String?   // MM-DD for birthday campaigns (no year)
+  loyaltyPoints        Int       @default(0)
+  vipStatus            Boolean   @default(false)
+  reengagementSentAt   DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  packageUsages CustomerBeautyPackage[]
+
+  @@index([tenantId, lastServiceAt])
+  @@index([tenantId, vipStatus])
+  @@map("beauty_customer_profiles")
+}
+
+// BW-PROF — per-professional beauty enrichment (extends Professional)
+model BeautyProfessionalProfile {
+  id              String   @id @default(uuid())
+  tenantId        String
+  professionalId  String   @unique
+  specialties     String[] @default([]) // e.g. ["coloracao", "corte_feminino"]
+  commissionPct   Float?   // percentage of service price
+  photoUrl        String?
+  bio             String?  @db.Text
+  instagramHandle String?
+  rating          Float?   // 0-5 average
+  totalReviews    Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  professional Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("beauty_professional_profiles")
+}
+
+// BW-PKG — service packages (e.g. 10-session bundle)
+model BeautyPackage {
+  id            String   @id @default(uuid())
+  tenantId      String
+  name          String
+  description   String?  @db.Text
+  totalSessions Int
+  priceTotal    Float
+  validityDays  Int      @default(90) // days from activation
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant        Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  items         BeautyPackageItem[]
+  customerPkgs  CustomerBeautyPackage[]
+
+  @@index([tenantId, active])
+  @@map("beauty_packages")
+}
+
+// BW-PKG-ITEM — which services are included in a package
+model BeautyPackageItem {
+  id        String @id @default(uuid())
+  packageId String
+  serviceId String
+  quantity  Int    @default(1)
+
+  package BeautyPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+
+  @@unique([packageId, serviceId])
+  @@map("beauty_package_items")
+}
+
+// BW-CUST-PKG — customer-owned package instance
+model CustomerBeautyPackage {
+  id              String    @id @default(uuid())
+  tenantId        String
+  contactId       String
+  packageId       String
+  beautyProfileId String
+  sessionsTotal   Int
+  sessionsUsed    Int       @default(0)
+  activatedAt     DateTime  @default(now())
+  expiresAt       DateTime?
+  status          String    @default("active") // active | exhausted | expired | cancelled
+
+  beautyProfile BeautyCustomerProfile @relation(fields: [beautyProfileId], references: [id], onDelete: Cascade)
+  package       BeautyPackage         @relation(fields: [packageId], references: [id], onDelete: Restrict)
+  usages        BeautyPackageUsage[]
+
+  @@index([beautyProfileId, status])
+  @@map("customer_beauty_packages")
+}
+
+// BW-PKG-USE — individual session usage record
+model BeautyPackageUsage {
+  id              String   @id @default(uuid())
+  customerPkgId  String
+  appointmentId  String?
+  usedAt         DateTime @default(now())
+  notes          String?
+
+  customerPackage CustomerBeautyPackage @relation(fields: [customerPkgId], references: [id], onDelete: Cascade)
+
+  @@index([customerPkgId])
+  @@map("beauty_package_usages")
+}
+
+// BW-LOCK — optimistic slot lock during booking flow (prevents double-booking race)
+model AppointmentLock {
+  id             String   @id @default(uuid())
+  tenantId       String
+  professionalId String?
+  date           String   // YYYY-MM-DD
+  time           String   // HH:MM
+  durationMinutes Int
+  sessionId      String   // client session or WA conversation id holding lock
+  expiresAt      DateTime // typically now() + 5 minutes
+  createdAt      DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, date, time])
+  @@index([expiresAt]) // for cleanup job
+  @@map("appointment_locks")
+}
+
+// BW-WAIT — waitlist entries when no slots are available
+model BeautyWaitlistEntry {
+  id             String    @id @default(uuid())
+  tenantId       String
+  contactId      String?
+  serviceId      String?
+  professionalId String?
+  preferredDate  String?   // YYYY-MM-DD
+  preferredTime  String?   // HH:MM
+  status         String    @default("waiting") // waiting | notified | booked | cancelled
+  notifiedAt     DateTime?
+  bookedAt       DateTime?
+  createdAt      DateTime  @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, status])
+  @@index([tenantId, preferredDate])
+  @@map("beauty_waitlist_entries")
+}
+
+// BW-CAMP — reengagement / retention campaign rules
+model BeautyCampaignRule {
+  id               String   @id @default(uuid())
+  tenantId         String
+  name             String
+  triggerType      String   // inactivity | birthday | post_visit | package_expiring | loyalty_milestone
+  inactivityDays   Int?     // for triggerType = inactivity
+  messageTemplate  String   @db.Text
+  channel          String   @default("whatsapp") // whatsapp | instagram
+  active           Boolean  @default(true)
+  cooldownDays     Int      @default(7) // min days between sends to same customer
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  tenant Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  runs   BeautyCampaignRun[]
+
+  @@index([tenantId, active])
+  @@map("beauty_campaign_rules")
+}
+
+// BW-CAMP-RUN — execution log per customer per campaign
+model BeautyCampaignRun {
+  id         String   @id @default(uuid())
+  tenantId   String
+  ruleId     String
+  contactId  String?
+  status     String   @default("sent") // sent | failed | replied | converted
+  sentAt     DateTime @default(now())
+  repliedAt  DateTime?
+  notes      String?
+
+  rule BeautyCampaignRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@index([ruleId, sentAt])
+  @@index([tenantId, sentAt])
+  @@map("beauty_campaign_runs")
 }

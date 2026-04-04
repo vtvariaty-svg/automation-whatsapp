@@ -1,4 +1,52 @@
-import type { NicheContent } from './types'
+import type { NicheContent, ContentVariants, VariantKey } from './types'
+
+// ─── A/B Variant Config ───────────────────────────────────────────────────────
+// Change ACTIVE_VARIANT to 'B' or 'C' to activate an alternative.
+// 'A' = control (default live version).
+export const ACTIVE_BELEZA_VARIANT: VariantKey = 'A'
+
+export const belezaVariants: ContentVariants = {
+  hero: {
+    headline: {
+      // A — aspirational, agenda-focused (control)
+      A: 'Sua agenda mais cheia começando pelo WhatsApp',
+      // B — speed/return-oriented
+      B: 'Responda primeiro. Agende mais. Trabalhe menos no celular.',
+      // C — revenue/recurrence-focused
+      C: 'Agenda cheia, clientes voltando, WhatsApp trabalhando por você',
+    },
+    subheadline: {
+      // A — mechanism-clear with outcome balance (control)
+      A: 'A Variaty responde clientes imediatamente, confirma agendamentos, envia lembretes e reengaja quem sumiu — para você focar em atender, não em ficar no celular.',
+      // B — speed + mechanics first
+      B: 'A Variaty responde em segundos, confirma agendamentos, lembra clientes antes do horário e reengaja quem parou de agendar — enquanto você atende.',
+      // C — outcome-first framing
+      C: 'Com a Variaty, seu negócio de beleza responde em segundos, mantém clientes engajados e preenche buracos na agenda — automaticamente, sem você parar de atender.',
+    },
+    primaryCTA: {
+      A: 'Quero ver funcionando',
+      B: 'Ver a demonstração',
+      C: 'Começar agora',
+    },
+  },
+  finalCTA: {
+    headline: {
+      // A — urgency, loss-aware (appropriate for beauty, commercially direct)
+      A: 'Cada cliente que não recebeu resposta rápida foi embora. Quantos já foram?',
+      // B — opportunity-framing, speed-oriented
+      B: 'Cada mensagem sem resposta rápida é uma oportunidade que vai embora',
+      // C — aspirational, growth-oriented
+      C: 'Sua agenda pode ser mais consistente. Seus clientes podem voltar com mais frequência.',
+    },
+    subheadline: {
+      A: 'Comece a responder em segundos, manter clientes e encher a agenda — sem parar de atender para ficar no celular.',
+      B: 'Automatize respostas, confirmações e reengajamento. Sua agenda mais cheia — com menos tempo preso no celular.',
+      C: 'Automação prática para negócios de beleza: mais agendamentos, mais recorrência, menos tempo operacional no WhatsApp.',
+    },
+  },
+}
+
+// ─── Content ──────────────────────────────────────────────────────────────────
 
 export const belezaContent: NicheContent = {
   theme: 'beleza',
@@ -20,11 +68,10 @@ export const belezaContent: NicheContent = {
 
   hero: {
     badge: 'Salão · Barbearia · Estética · Manicure',
-    headline: 'Sua agenda mais cheia começando pelo WhatsApp',
+    headline: belezaVariants.hero.headline[ACTIVE_BELEZA_VARIANT],
     headlineBreak: 5,
-    subheadline:
-      'A Variaty responde clientes imediatamente, confirma agendamentos, envia lembretes e reengaja quem sumiu — para você focar em atender, não em ficar no celular.',
-    primaryCTA: 'Quero ver funcionando',
+    subheadline: belezaVariants.hero.subheadline[ACTIVE_BELEZA_VARIANT],
+    primaryCTA: belezaVariants.hero.primaryCTA[ACTIVE_BELEZA_VARIANT],
     secondaryCTA: 'Como funciona',
     microcopy:
       'Para salão, barbearia, estética, manicure e qualquer negócio de beleza. Sem complicação.',
@@ -208,10 +255,9 @@ export const belezaContent: NicheContent = {
   },
 
   finalCTA: {
-    headline: 'Cada cliente que não recebeu resposta rápida foi embora. Quantos já foram?',
-    subheadline:
-      'Comece a responder em segundos, manter clientes e encher a agenda — sem parar de atender para ficar no celular.',
-    primaryCTA: 'Quero ver funcionando',
+    headline: belezaVariants.finalCTA.headline[ACTIVE_BELEZA_VARIANT],
+    subheadline: belezaVariants.finalCTA.subheadline[ACTIVE_BELEZA_VARIANT],
+    primaryCTA: belezaVariants.hero.primaryCTA[ACTIVE_BELEZA_VARIANT],
     secondaryCTA: 'Falar com especialista',
   },
 

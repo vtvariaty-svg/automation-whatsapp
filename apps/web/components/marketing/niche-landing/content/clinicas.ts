@@ -1,4 +1,52 @@
-import type { NicheContent } from './types'
+import type { NicheContent, ContentVariants, VariantKey } from './types'
+
+// ─── A/B Variant Config ───────────────────────────────────────────────────────
+// Change ACTIVE_VARIANT to 'B' or 'C' to activate an alternative.
+// 'A' = control (default live version).
+export const ACTIVE_CLINICAS_VARIANT: VariantKey = 'A'
+
+export const clinicasVariants: ContentVariants = {
+  hero: {
+    headline: {
+      // A — operational clarity, no fear framing
+      A: 'Atendimento automático 24h — sem sobrecarregar sua equipe',
+      // B — trust-heavy, more professional tone
+      B: 'O WhatsApp da sua clínica organizado, sem aumentar a equipe',
+      // C — efficiency/outcome-first
+      C: 'Menos faltas, menos carga manual — mais tempo para o que importa',
+    },
+    subheadline: {
+      // A — mechanism-clear, feature-outcome balanced
+      A: 'A Variaty confirma consultas, envia lembretes e responde dúvidas frequentes no WhatsApp da sua clínica — para que sua equipe cuide de pacientes, não de mensagens repetitivas.',
+      // B — trust-first, consistency-focused
+      B: 'Confirmações automáticas, lembretes de consulta e respostas a dúvidas frequentes — tudo funcionando com consistência, sem depender de esforço manual da equipe.',
+      // C — efficiency-focused, reception-relief angle
+      C: 'Automatize confirmações de consulta, lembretes e respostas iniciais no WhatsApp. Sua recepção ganha foco. Seus pacientes, mais consistência no atendimento.',
+    },
+    primaryCTA: {
+      A: 'Ver demonstração gratuita',
+      B: 'Ver como funciona',
+      C: 'Agendar demonstração',
+    },
+  },
+  finalCTA: {
+    headline: {
+      // A — opportunity framing, not loss certainty
+      A: 'Seu WhatsApp pode trabalhar por você — antes, durante e depois do horário da clínica.',
+      // B — professional, trust-heavy
+      B: 'Uma recepção mais organizada começa pelo WhatsApp',
+      // C — efficiency/ROI angle
+      C: 'Sua recepção pode operar com mais eficiência — e seus pacientes percebem a diferença',
+    },
+    subheadline: {
+      A: 'Organize confirmações, reduza faltas e melhore a experiência do paciente com um fluxo de atendimento mais eficiente no WhatsApp.',
+      B: 'Automatize o que é repetitivo. Libere sua equipe para o que realmente exige atenção. Sem complicar a operação.',
+      C: 'Confirmações automáticas, lembretes ativos e respostas rápidas para reduzir faltas e organizar o fluxo do WhatsApp da sua clínica.',
+    },
+  },
+}
+
+// ─── Content ──────────────────────────────────────────────────────────────────
 
 export const clinicasContent: NicheContent = {
   theme: 'clinicas',
@@ -20,16 +68,15 @@ export const clinicasContent: NicheContent = {
 
   hero: {
     badge: 'Clínicas · Consultórios · Saúde',
-    headline: 'Atendimento automático 24h — sem sobrecarregar sua equipe',
+    headline: clinicasVariants.hero.headline[ACTIVE_CLINICAS_VARIANT],
     headlineBreak: 3,
-    subheadline:
-      'A Variaty confirma consultas, envia lembretes e responde dúvidas frequentes no WhatsApp da sua clínica — para que sua equipe cuide de pacientes, não de mensagens repetitivas.',
-    primaryCTA: 'Ver demonstração gratuita',
+    subheadline: clinicasVariants.hero.subheadline[ACTIVE_CLINICAS_VARIANT],
+    primaryCTA: clinicasVariants.hero.primaryCTA[ACTIVE_CLINICAS_VARIANT],
     secondaryCTA: 'Como funciona',
     microcopy: 'Sem cartão de crédito. Implantação orientada. Funciona com seu WhatsApp atual.',
     trustBullets: [
       'Ativo 24h — inclusive fora do horário',
-      'Faltas caem sem esforço manual',
+      'Menos faltas, agenda mais previsível',
       'Sem mudar o WhatsApp da clínica',
     ],
   },
@@ -37,11 +84,11 @@ export const clinicasContent: NicheContent = {
   problem: {
     title: 'O WhatsApp da clínica consome tempo que deveria estar com o paciente',
     bullets: [
-      'Paciente manda mensagem às 20h — e espera resposta até amanhã',
+      'Paciente envia mensagem após o horário — e espera resposta até o dia seguinte',
       'Recepção gasta horas confirmando consultas uma a uma no WhatsApp',
-      'Falta virou rotina porque o lembrete depende de alguém lembrar de enviar',
+      'Faltas aumentam quando o lembrete depende de alguém lembrar de enviar',
       'Toda troca de recepcionista quebra o padrão do atendimento',
-      'A clínica parece menos organizada do que é, só pelo jeito que responde',
+      'A clínica transmite menos organização do que realmente tem',
     ],
   },
 
@@ -125,12 +172,12 @@ export const clinicasContent: NicheContent = {
       {
         title: 'Recepção focada, não sobrecarregada',
         description:
-          'As mensagens repetitivas deixam de exigir atenção. Sua equipe só entra quando importa.',
+          'As mensagens repetitivas deixam de exigir atenção. Sua equipe entra quando a situação realmente precisa disso.',
       },
       {
         title: 'Atendimento 24h sem contratação extra',
         description:
-          'Paciente novo que chegou às 22h recebe resposta imediata — e não vai para o concorrente.',
+          'Paciente que entra em contato após o horário recebe resposta imediata — mesmo quando a clínica está fechada.',
       },
       {
         title: 'Padrão consistente, independente da equipe',
@@ -149,8 +196,8 @@ export const clinicasContent: NicheContent = {
     title: 'A Variaty é ideal para clínicas que querem crescer sem crescer o time',
     focusPoints: [
       'Clínica com 1 a 3 profissionais onde cada hora da recepção conta',
-      'Consultório que já perdeu paciente por demorar para responder',
-      'Gestão que quer previsibilidade de agenda sem depender de sorte',
+      'Consultório que quer responder mais rápido sem aumentar a carga da equipe',
+      'Gestão que quer previsibilidade de agenda sem depender de processo manual',
       'Clínica que quer profissionalizar o atendimento sem complicar a operação',
     ],
   },
@@ -168,7 +215,7 @@ export const clinicasContent: NicheContent = {
       },
       {
         q: 'E se o paciente perceber que é automático?',
-        a: 'Confirmação de consulta por WhatsApp é natural e esperada. O que o paciente não tolera é esperar horas por uma resposta simples. A automação entrega o que o paciente quer: rapidez e clareza.',
+        a: 'Confirmação de consulta por WhatsApp é natural e esperada por pacientes. O que gera atrito é esperar horas por uma resposta simples. A automação entrega o que o paciente precisa: rapidez, clareza e próximo passo definido.',
       },
       {
         q: 'Já usamos WhatsApp — como isso é diferente?',
@@ -207,11 +254,9 @@ export const clinicasContent: NicheContent = {
   },
 
   finalCTA: {
-    headline:
-      'Se um paciente mandou mensagem agora e você não respondeu, ele já foi buscar outro lugar.',
-    subheadline:
-      'Organize o atendimento do WhatsApp da sua clínica. Menos faltas, menos carga manual, mais previsibilidade.',
-    primaryCTA: 'Ver demonstração gratuita',
+    headline: clinicasVariants.finalCTA.headline[ACTIVE_CLINICAS_VARIANT],
+    subheadline: clinicasVariants.finalCTA.subheadline[ACTIVE_CLINICAS_VARIANT],
+    primaryCTA: clinicasVariants.hero.primaryCTA[ACTIVE_CLINICAS_VARIANT],
     secondaryCTA: 'Falar com especialista',
   },
 

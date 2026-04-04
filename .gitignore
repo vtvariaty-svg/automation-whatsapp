@@ -8,3 +8,9 @@ dist/
 .env.test.local
 .env.production.local
 .DS_Store
+
+# TypeScript build artifacts
+*.tsbuildinfo
+
+# Compiled API output
+apps/api/dist/

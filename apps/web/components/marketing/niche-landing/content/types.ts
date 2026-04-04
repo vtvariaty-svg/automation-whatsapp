@@ -1,5 +1,23 @@
 export type NicheTheme = 'clinicas' | 'beleza'
 
+// ─── A/B Variant Types ────────────────────────────────────────────────────────
+
+/** Active variant key. 'A' = control. Change to 'B' or 'C' to switch. */
+export type VariantKey = 'A' | 'B' | 'C'
+
+/** Text blocks that can be A/B tested per niche. */
+export interface ContentVariants {
+  hero: {
+    headline: Record<VariantKey, string>
+    subheadline: Record<VariantKey, string>
+    primaryCTA: Record<VariantKey, string>
+  }
+  finalCTA: {
+    headline: Record<VariantKey, string>
+    subheadline: Record<VariantKey, string>
+  }
+}
+
 export interface NicheContent {
   theme: NicheTheme
   /** URL slug used to build niche-aware hrefs, e.g. 'clinicas-consultorios' */

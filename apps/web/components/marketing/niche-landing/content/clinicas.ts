@@ -4,128 +4,179 @@ export const clinicasContent: NicheContent = {
   theme: 'clinicas',
   slug: 'clinicas-consultorios',
   specialistWAText:
-    'Olá, quero entender a automação da Variaty para clínicas e consultórios.',
+    'Olá, quero entender como a Variaty funciona para clínicas e consultórios.',
   crossNiche: {
     text: 'Seu negócio é da área de beleza? Veja a versão feita para salão, barbearia e estética.',
     href: '/whatsapp/servicos-de-beleza',
-    ctaLabel: 'Ver para serviços de beleza',
+    ctaLabel: 'Ver para serviços de beleza →',
     targetNiche: 'beleza',
   },
 
+  credibilityAnchors: [
+    'Funciona com seu número de WhatsApp atual',
+    'Ativo fora do horário da recepção',
+    'Implantação orientada — sem parar a operação',
+  ],
+
   hero: {
     badge: 'Clínicas · Consultórios · Saúde',
-    headline: 'Sua clínica pode atender melhor no WhatsApp sem sobrecarregar a recepção',
-    headlineBreak: 5,
+    headline: 'Atendimento automático 24h — sem sobrecarregar sua equipe',
+    headlineBreak: 3,
     subheadline:
-      'Automatize confirmações, lembretes, respostas iniciais e organização do contato com pacientes para reduzir faltas, ganhar tempo e passar mais profissionalismo no atendimento.',
-    primaryCTA: 'Agendar demonstração',
-    secondaryCTA: 'Ver como funciona',
-    microcopy:
-      'Sem complicação. Implantação orientada. Ideal para clínicas, consultórios e profissionais da saúde.',
-    trustBullets: ['Atendimento mais rápido', 'Menos faltas', 'Mais organização no WhatsApp'],
+      'A Variaty confirma consultas, envia lembretes e responde dúvidas frequentes no WhatsApp da sua clínica — para que sua equipe cuide de pacientes, não de mensagens repetitivas.',
+    primaryCTA: 'Ver demonstração gratuita',
+    secondaryCTA: 'Como funciona',
+    microcopy: 'Sem cartão de crédito. Implantação orientada. Funciona com seu WhatsApp atual.',
+    trustBullets: [
+      'Ativo 24h — inclusive fora do horário',
+      'Faltas caem sem esforço manual',
+      'Sem mudar o WhatsApp da clínica',
+    ],
   },
 
   problem: {
-    title: 'O WhatsApp da clínica não pode virar um gargalo operacional',
+    title: 'O WhatsApp da clínica consome tempo que deveria estar com o paciente',
     bullets: [
-      'Confirmação manual toma tempo da recepção',
-      'Pacientes esquecem horário ou respondem em cima da hora',
-      'Muitas perguntas repetidas no WhatsApp',
-      'Atendimento fica inconsistente entre membros da equipe',
-      'A clínica parece menos organizada do que realmente é',
+      'Paciente manda mensagem às 20h — e espera resposta até amanhã',
+      'Recepção gasta horas confirmando consultas uma a uma no WhatsApp',
+      'Falta virou rotina porque o lembrete depende de alguém lembrar de enviar',
+      'Toda troca de recepcionista quebra o padrão do atendimento',
+      'A clínica parece menos organizada do que é, só pelo jeito que responde',
     ],
   },
 
   solution: {
-    title: 'Transforme o WhatsApp em um canal organizado de atendimento',
+    title: 'Atendimento automático no WhatsApp, sem abrir mão do toque humano',
     description:
-      'Em vez de responder manualmente cada mensagem repetitiva, a sua equipe passa a focar no que realmente importa — o contato humano e o cuidado com o paciente.',
+      'A Variaty assume as tarefas previsíveis — responder perguntas frequentes, confirmar consultas, enviar lembretes, acolher o paciente fora do horário. Sua equipe retoma o controle quando o contato precisa de atenção real.',
+    contrast: {
+      before: 'Recepção respondendo WhatsApp manualmente o dia todo',
+      after: 'Equipe focada no paciente — automação cobre o resto',
+    },
+  },
+
+  scenarios: {
+    title: 'Como clínicas usam a Variaty no dia a dia',
+    items: [
+      {
+        label: 'Recepção',
+        headline: 'Sem acúmulo de mensagens pela manhã',
+        description:
+          'A Variaty responde automaticamente fora do horário. Ao abrir, a recepção encontra só o que precisa de atenção humana.',
+        outcome: 'Menos pressão no início do turno',
+      },
+      {
+        label: 'Confirmação de consulta',
+        headline: 'Faltas caem sem esforço extra',
+        description:
+          'Lembrete automático vai para o paciente 24h antes — com opção de confirmar, reagendar ou avisar cancelamento direto pelo WhatsApp.',
+        outcome: 'Agenda mais previsível',
+      },
+      {
+        label: 'Paciente novo',
+        headline: 'Primeira impressão organizada, mesmo às 22h',
+        description:
+          'Paciente vê o anúncio, manda mensagem e recebe resposta em segundos — com informações claras e próximo passo definido.',
+        outcome: 'Mais conversão de contato em consulta',
+      },
+      {
+        label: 'Dúvidas frequentes',
+        headline: 'Sem repetir as mesmas respostas 10× por dia',
+        description:
+          'Convênios aceitos, horários, documentos, como chegar — respondidos de forma consistente, sem depender de quem está disponível.',
+        outcome: 'Equipe com mais tempo para o que importa',
+      },
+    ],
   },
 
   howItWorks: {
-    title: 'Como funciona na prática',
+    title: 'Do primeiro contato ao resultado — sem esforço manual',
     steps: [
       {
-        title: 'O paciente entra em contato pelo WhatsApp',
-        description: 'Ele chega por qualquer origem — indicação, anúncio ou busca direta.',
+        title: 'Paciente entra em contato pelo WhatsApp',
+        description: 'A qualquer hora — do anúncio, da indicação ou da busca direta.',
       },
       {
-        title: 'As etapas repetitivas deixam de ser manuais',
+        title: 'A Variaty assume o atendimento inicial',
         description:
-          'Confirmações, lembretes e respostas a dúvidas frequentes rodam de forma automática.',
+          'Responde em segundos, coleta o que precisa e direciona o fluxo correto.',
       },
       {
-        title: 'Sua equipe ganha tempo para o que importa',
-        description: 'A recepção foca em situações que precisam de atenção humana real.',
-      },
-      {
-        title: 'A clínica melhora previsibilidade e experiência',
+        title: 'Confirmações e lembretes acontecem automaticamente',
         description:
-          'Menos faltas, mais organização e um atendimento mais consistente para o paciente.',
+          'Sem depender de alguém lembrar de enviar — na frequência e no momento certos.',
+      },
+      {
+        title: 'Sua equipe foca no que precisa de atenção humana',
+        description:
+          'Menos faltas, mais previsibilidade e uma recepção que trabalha com mais foco.',
       },
     ],
   },
 
   benefits: {
-    title: 'O que sua clínica ganha com isso',
+    title: 'O que muda na operação da sua clínica',
     items: [
       {
-        title: 'Menos faltas e mais previsibilidade',
+        title: 'Menos faltas, agenda mais previsível',
         description:
-          'Lembretes automáticos reduzem ausências e facilitam a reorganização da agenda.',
+          'Lembrete automático com confirmação ativa — o paciente confirma, reagenda ou avisa no próprio WhatsApp.',
       },
       {
-        title: 'Recepção menos sobrecarregada',
+        title: 'Recepção focada, não sobrecarregada',
         description:
-          'Sem precisar responder cada mensagem repetitiva, a equipe tem mais tempo para o que exige atenção.',
+          'As mensagens repetitivas deixam de exigir atenção. Sua equipe só entra quando importa.',
       },
       {
-        title: 'Resposta mais rápida',
-        description: 'O paciente recebe retorno imediato, mesmo fora do horário da recepção.',
+        title: 'Atendimento 24h sem contratação extra',
+        description:
+          'Paciente novo que chegou às 22h recebe resposta imediata — e não vai para o concorrente.',
       },
       {
-        title: 'Mais organização no atendimento',
-        description: 'Fluxo claro e consistente, independente de quem está na recepção.',
+        title: 'Padrão consistente, independente da equipe',
+        description:
+          'O fluxo de atendimento não muda quando a recepcionista muda. Profissionalismo que não depende de pessoa.',
       },
       {
-        title: 'Imagem mais profissional',
-        description: 'Comunicação organizada e fluida transmite mais confiança para o paciente.',
+        title: 'Mais tempo para o que gera valor',
+        description:
+          'Consultas, procedimentos, relacionamento com paciente — não responder WhatsApp manualmente.',
       },
     ],
   },
 
   proof: {
-    title: 'Feito para clínicas que querem profissionalizar o atendimento no WhatsApp',
+    title: 'A Variaty é ideal para clínicas que querem crescer sem crescer o time',
     focusPoints: [
-      'Organizar o fluxo de atendimento sem complicar a operação',
-      'Reduzir carga manual da recepção',
-      'Dar respostas mais rápidas ao paciente',
-      'Criar experiência mais consistente e profissional',
+      'Clínica com 1 a 3 profissionais onde cada hora da recepção conta',
+      'Consultório que já perdeu paciente por demorar para responder',
+      'Gestão que quer previsibilidade de agenda sem depender de sorte',
+      'Clínica que quer profissionalizar o atendimento sem complicar a operação',
     ],
   },
 
   objections: {
-    title: 'Mas isso serve para a minha clínica?',
+    title: 'Sua dúvida provavelmente está aqui',
     items: [
       {
-        q: 'Tenho clínica pequena.',
-        a: 'A automação é ainda mais valiosa em clínicas pequenas, onde cada hora da recepção conta. Você não precisa de uma estrutura grande para se beneficiar de um atendimento mais organizado.',
+        q: 'Tenho clínica pequena — isso serve para mim?',
+        a: 'É justamente para você. Em clínicas pequenas, cada hora da recepção conta mais. Automatizar confirmações e respostas frequentes libera tempo direto para o que gera resultado — sem precisar de estrutura grande.',
       },
       {
-        q: 'Não quero atendimento impessoal.',
-        a: 'A automação cuida das tarefas repetitivas — confirmação, lembrete, resposta de FAQ. O contato humano continua quando realmente importa. O paciente percebe mais rapidez, não menos cuidado.',
+        q: 'Não quero que o atendimento fique frio ou robótico.',
+        a: 'A automação entra nas tarefas previsíveis — confirmação, lembrete, FAQ. O contato humano continua onde faz diferença. O paciente percebe mais velocidade e consistência, não menos cuidado.',
       },
       {
-        q: 'Parece difícil de implementar.',
-        a: 'A implantação é orientada e o processo é estruturado para você não precisar parar a operação. Você entra com o conhecimento do seu fluxo; a gente ajuda a organizar isso no WhatsApp.',
+        q: 'E se o paciente perceber que é automático?',
+        a: 'Confirmação de consulta por WhatsApp é natural e esperada. O que o paciente não tolera é esperar horas por uma resposta simples. A automação entrega o que o paciente quer: rapidez e clareza.',
       },
       {
-        q: 'Já usamos WhatsApp hoje.',
-        a: 'Ótimo — isso significa que o canal já é parte da operação. O próximo passo é deixar de depender de esforço manual para as partes que podem ser automatizadas.',
+        q: 'Já usamos WhatsApp — como isso é diferente?',
+        a: 'Usar WhatsApp e ter um WhatsApp organizado são coisas diferentes. A Variaty transforma o canal que você já usa em uma operação estruturada — sem mudar de ferramenta, sem complicar.',
       },
       {
-        q: 'Minha recepção já dá conta.',
-        a: 'Se a recepção dá conta, imagine o que ela conseguiria fazer se não precisasse responder confirmações e lembretes manualmente. O ganho é liberar tempo para o atendimento que realmente precisa de atenção humana.',
+        q: 'Quanto tempo leva para funcionar?',
+        a: 'A implantação é orientada e estruturada. Você não precisa parar a clínica para configurar. O processo é feito junto com você, no ritmo da sua operação.',
       },
     ],
   },
@@ -133,36 +184,36 @@ export const clinicasContent: NicheContent = {
   faq: {
     items: [
       {
-        q: 'A automação substitui minha equipe de recepção?',
-        a: 'Não. A automação cuida das tarefas repetitivas e previsíveis, como confirmações e respostas a perguntas frequentes. A equipe continua responsável pelo atendimento que exige julgamento e contato humano.',
+        q: 'A automação vai substituir minha recepcionista?',
+        a: 'Não. A automação cuida do que é repetitivo e previsível — confirmações, lembretes, dúvidas frequentes. Sua equipe continua presente no atendimento que requer julgamento e empatia. O ganho é liberar tempo, não eliminar pessoas.',
       },
       {
-        q: 'Funciona para clínica pequena com só um profissional?',
-        a: 'Sim, e pode ser ainda mais impactante. Em consultórios pequenos, o profissional muitas vezes faz tudo sozinho. Automação do WhatsApp libera tempo que seria gasto em tarefas manuais repetitivas.',
+        q: 'Funciona para consultório pequeno com um profissional?',
+        a: 'Sim — e é onde o impacto tende a ser maior. Quando o profissional faz tudo sozinho, automatizar o WhatsApp libera tempo que estava sendo gasto com tarefas que não precisam de intervenção humana.',
       },
       {
-        q: 'O paciente vai perceber que é automático?',
-        a: 'Depende de como você configura. Para confirmações e lembretes, é natural e esperado. O importante é que o fluxo seja fluido e útil — o que a automação permite justamente porque é mais consistente do que a resposta manual.',
+        q: 'Preciso mudar meu WhatsApp atual?',
+        a: 'Não. A Variaty funciona junto com seu número existente. Você não muda de ferramenta — só deixa de depender do esforço manual para as partes que podem ser automatizadas.',
       },
       {
-        q: 'Posso começar só com confirmações de consulta?',
-        a: 'Sim. Você pode começar com um fluxo específico e expandir conforme se sentir confortável. Não é necessário implementar tudo de uma vez.',
+        q: 'Posso começar com só um fluxo?',
+        a: 'Sim. Você pode começar com confirmações de consulta e expandir conforme se sentir confortável. Não precisa implementar tudo de uma vez.',
       },
       {
-        q: 'Preciso mudar todo o meu processo atual?',
-        a: 'Não. O objetivo é encaixar a automação no fluxo que você já tem, não refazer tudo. A configuração parte do que você já faz hoje e organiza isso de forma mais eficiente.',
+        q: 'E durante as horas que não tenho recepção?',
+        a: 'Exatamente para isso que a automação foi feita. Enquanto sua clínica está fechada, a Variaty continua respondendo, coletando informações e preparando o fluxo para quando você abrir.',
       },
     ],
   },
 
   finalCTA: {
     headline:
-      'Se o WhatsApp da sua clínica já virou parte da operação, ele precisa trabalhar a seu favor',
+      'Se um paciente mandou mensagem agora e você não respondeu, ele já foi buscar outro lugar.',
     subheadline:
-      'Organize confirmações, reduza carga manual da recepção e melhore a experiência do paciente com um fluxo mais eficiente no WhatsApp.',
-    primaryCTA: 'Agendar demonstração',
+      'Organize o atendimento do WhatsApp da sua clínica. Menos faltas, menos carga manual, mais previsibilidade.',
+    primaryCTA: 'Ver demonstração gratuita',
     secondaryCTA: 'Falar com especialista',
   },
 
-  stickyMobileCTA: 'Agendar demonstração',
+  stickyMobileCTA: 'Ver demonstração',
 }

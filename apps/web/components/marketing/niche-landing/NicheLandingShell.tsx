@@ -157,17 +157,17 @@ export function NicheLandingShell({ content }: { content: NicheContent }) {
       </section>
 
       {/* ── TRUST BAR ─────────────────────────────────────────────── */}
-      <section className="bg-white border-b border-slate-100 py-5" aria-label="Benefícios rápidos">
+      <section className="bg-white border-b border-slate-100 py-4" aria-label="Credenciais rápidas">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <ul className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8">
-            {content.hero.trustBullets.map((bullet, i) => (
-              <li key={i} className="flex items-center gap-2.5">
-                <span className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${tc.problemIconBg}`} aria-hidden="true">
-                  <svg className={`w-3.5 h-3.5 ${tc.problemIconText}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+          <ul className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-10 sm:divide-x sm:divide-slate-100">
+            {content.credibilityAnchors.map((anchor, i) => (
+              <li key={i} className="flex items-center gap-2.5 sm:px-6 first:pl-0 last:pr-0">
+                <span className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${tc.problemIconBg}`} aria-hidden="true">
+                  <svg className={`w-3 h-3 ${tc.problemIconText}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                   </svg>
                 </span>
-                <span className="text-sm font-semibold text-slate-600">{bullet}</span>
+                <span className="text-xs sm:text-sm font-semibold text-slate-600">{anchor}</span>
               </li>
             ))}
           </ul>
@@ -230,8 +230,62 @@ export function NicheLandingShell({ content }: { content: NicheContent }) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
             </svg>
           </Link>
+
+          {/* Before/after contrast block */}
+          {content.solution.contrast && (
+            <div className="mt-10 max-w-2xl mx-auto grid grid-cols-2 gap-0 rounded-2xl overflow-hidden border border-slate-200 shadow-[0_4px_16px_rgba(0,0,0,0.06)]" aria-label="Antes e depois">
+              <div className="bg-slate-800 px-5 py-5 flex flex-col gap-2">
+                <span className="text-xs font-extrabold uppercase tracking-widest text-slate-500">Antes</span>
+                <p className="text-sm font-semibold text-slate-300 leading-snug">{content.solution.contrast.before}</p>
+              </div>
+              <div className={`px-5 py-5 flex flex-col gap-2`} style={{ background: `linear-gradient(135deg, ${tc.gradientFrom}18, ${tc.gradientTo}12)` }}>
+                <span className={`text-xs font-extrabold uppercase tracking-widest ${tc.problemIconText}`}>Depois</span>
+                <p className="text-sm font-semibold text-slate-700 leading-snug">{content.solution.contrast.after}</p>
+              </div>
+            </div>
+          )}
         </div>
       </section>
+
+      {/* ── SCENARIOS ─────────────────────────────────────────────── */}
+      {content.scenarios && (
+        <section
+          className="py-16 lg:py-24 bg-white border-t border-slate-100"
+          data-section="scenarios"
+          aria-labelledby="scenarios-heading"
+        >
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-12">
+              <span className={`inline-block text-xs font-extrabold uppercase tracking-widest px-3 py-1.5 rounded-md mb-5 ${tc.sectionBadge} ${tc.sectionBadgeRing}`}>
+                Na prática
+              </span>
+              <h2 id="scenarios-heading" className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-[#0f172a] tracking-tight">
+                {content.scenarios.title}
+              </h2>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              {content.scenarios.items.map((item, i) => (
+                <div
+                  key={i}
+                  className={`group rounded-2xl border border-slate-200/70 bg-white p-7 shadow-[0_2px_12px_rgba(0,0,0,0.04)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300 ${tc.benefitHoverBorder}`}
+                >
+                  <span className={`inline-block text-xs font-extrabold uppercase tracking-widest px-2.5 py-1 rounded-md mb-4 ${tc.sectionBadge} ${tc.sectionBadgeRing}`}>
+                    {item.label}
+                  </span>
+                  <h3 className="font-extrabold text-[#0f172a] text-base sm:text-lg mb-2 leading-snug">{item.headline}</h3>
+                  <p className="text-sm sm:text-base text-slate-500 leading-relaxed font-medium mb-5">{item.description}</p>
+                  <div className={`flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest ${tc.accentText}`}>
+                    <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4" />
+                    </svg>
+                    {item.outcome}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ── HOW IT WORKS ──────────────────────────────────────────── */}
       <section
@@ -306,7 +360,7 @@ export function NicheLandingShell({ content }: { content: NicheContent }) {
         </div>
       </section>
 
-      {/* ── PROOF / CREDIBILITY ───────────────────────────────────── */}
+      {/* ── PROOF / BEST FIT ──────────────────────────────────────── */}
       <section
         className="py-16 lg:py-20 bg-[#080d19] relative overflow-hidden"
         data-section="proof"
@@ -314,11 +368,11 @@ export function NicheLandingShell({ content }: { content: NicheContent }) {
       >
         <div
           className="absolute inset-0 pointer-events-none"
-          style={{ background: `radial-gradient(ellipse 60% 60% at 50% 50%, ${tc.heroGlow}, transparent)` }}
+          style={{ background: `radial-gradient(ellipse 70% 60% at 50% 50%, ${tc.heroGlow}, transparent)` }}
           aria-hidden="true"
         />
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="text-center mb-10">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="text-center mb-12">
             <span className={`inline-block text-xs font-extrabold uppercase tracking-widest px-3 py-1.5 rounded-md mb-5 ${tc.heroBadgeBg} ${tc.heroBadgeBorder} ${tc.heroBadgeText}`}>
               Para quem é
             </span>
@@ -326,20 +380,25 @@ export function NicheLandingShell({ content }: { content: NicheContent }) {
               {content.proof.title}
             </h2>
           </div>
-          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {content.proof.focusPoints.map((point, i) => (
-              <li key={i} className="flex items-start gap-3 bg-white/5 border border-white/10 rounded-xl px-5 py-4">
-                <svg className="w-4 h-4 mt-0.5 shrink-0 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                </svg>
-                <span className="text-sm sm:text-base text-slate-300 font-medium leading-snug">{point}</span>
+              <li key={i} className="flex items-start gap-4 bg-white/[0.04] hover:bg-white/[0.07] border border-white/10 hover:border-white/20 rounded-2xl px-6 py-5 transition-all duration-200 group">
+                <span className="mt-0.5 shrink-0 w-8 h-8 rounded-xl flex items-center justify-center"
+                  style={{ background: `${tc.gradientFrom}22`, border: `1px solid ${tc.gradientFrom}30` }}
+                  aria-hidden="true"
+                >
+                  <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                  </svg>
+                </span>
+                <span className="text-sm sm:text-base text-slate-200 font-semibold leading-snug group-hover:text-white transition-colors">{point}</span>
               </li>
             ))}
           </ul>
-          <div className="mt-10 text-center">
+          <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
               href={demoHref}
-              className="inline-flex items-center gap-2 bg-blue-600 text-white font-bold px-8 py-4 rounded-xl hover:bg-blue-500 transition-all hover:-translate-y-1 shadow-[0_8px_30px_rgba(37,99,235,0.3)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#080d19]"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-blue-600 text-white font-bold px-8 py-4 rounded-xl hover:bg-blue-500 transition-all hover:-translate-y-1 shadow-[0_8px_30px_rgba(37,99,235,0.3)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#080d19]"
               data-track="proof_cta"
             >
               {content.hero.primaryCTA}
@@ -347,6 +406,16 @@ export function NicheLandingShell({ content }: { content: NicheContent }) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
               </svg>
             </Link>
+            <a
+              href={specialistWA}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 px-7 py-4 rounded-xl text-slate-300 font-semibold transition-all text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+              data-track="proof_secondary_cta"
+            >
+              {WA_ICON}
+              Falar com especialista
+            </a>
           </div>
         </div>
       </section>

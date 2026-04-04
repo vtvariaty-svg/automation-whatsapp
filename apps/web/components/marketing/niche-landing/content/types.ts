@@ -13,10 +13,13 @@ export interface NicheContent {
     ctaLabel: string
     targetNiche: string
   }
+  /** Three credibility chips in the trust bar below the hero */
+  credibilityAnchors: [string, string, string]
+
   hero: {
     badge: string
     headline: string
-    /** Word index at which the gradient span ends (0-based exclusive).
+    /** Word index at which the gradient span ends (exclusive).
      *  First `headlineBreak` words get the gradient treatment. */
     headlineBreak: number
     subheadline: string
@@ -32,6 +35,18 @@ export interface NicheContent {
   solution: {
     title: string
     description: string
+    /** Before/after contrast block rendered below the description */
+    contrast?: { before: string; after: string }
+  }
+  /** Specific operational scenario cards — rendered between Solution and How It Works */
+  scenarios?: {
+    title: string
+    items: Array<{
+      label: string
+      headline: string
+      description: string
+      outcome: string
+    }>
   }
   howItWorks: {
     title: string
@@ -89,8 +104,8 @@ export const themeColors: Record<NicheTheme, ThemeColors> = {
     heroBadgeBorder: 'border border-teal-400/20',
     heroBadgeText: 'text-teal-300',
     heroGlow: 'rgba(20,184,166,0.08)',
-    gradientFrom: '#34d399', // emerald-400
-    gradientTo: '#60a5fa',   // blue-400
+    gradientFrom: '#34d399',
+    gradientTo: '#60a5fa',
     sectionBadge: 'bg-blue-50 text-blue-700',
     sectionBadgeRing: 'ring-1 ring-blue-100',
     accentText: 'text-blue-600',
@@ -105,8 +120,8 @@ export const themeColors: Record<NicheTheme, ThemeColors> = {
     heroBadgeBorder: 'border border-rose-400/20',
     heroBadgeText: 'text-rose-300',
     heroGlow: 'rgba(244,63,94,0.07)',
-    gradientFrom: '#fb7185', // rose-400
-    gradientTo: '#fbbf24',   // amber-400
+    gradientFrom: '#fb7185',
+    gradientTo: '#fbbf24',
     sectionBadge: 'bg-rose-50 text-rose-700',
     sectionBadgeRing: 'ring-1 ring-rose-100',
     accentText: 'text-rose-500',

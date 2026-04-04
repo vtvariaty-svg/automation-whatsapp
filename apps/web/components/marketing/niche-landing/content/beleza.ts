@@ -4,129 +4,180 @@ export const belezaContent: NicheContent = {
   theme: 'beleza',
   slug: 'servicos-de-beleza',
   specialistWAText:
-    'Olá, quero entender a automação da Variaty para salão, barbearia ou estética.',
+    'Olá, quero entender como a Variaty funciona para salão, barbearia ou estética.',
   crossNiche: {
     text: 'Seu negócio é clínica ou consultório? Veja a versão feita para atendimento em saúde.',
     href: '/whatsapp/clinicas-consultorios',
-    ctaLabel: 'Ver para clínicas e consultórios',
+    ctaLabel: 'Ver para clínicas e consultórios →',
     targetNiche: 'clinicas',
   },
 
+  credibilityAnchors: [
+    'Responde em segundos — de dia e de madrugada',
+    'Reengaja clientes parados automaticamente',
+    'Implantação guiada — sem parar de atender',
+  ],
+
   hero: {
     badge: 'Salão · Barbearia · Estética · Manicure',
-    headline: 'Pare de perder clientes no WhatsApp e mantenha sua agenda mais cheia',
-    headlineBreak: 6,
+    headline: 'Sua agenda mais cheia começando pelo WhatsApp',
+    headlineBreak: 5,
     subheadline:
-      'Automatize respostas, confirmações, retornos e reengajamento para atender com mais velocidade, recuperar clientes parados e aumentar a recorrência do seu negócio de beleza.',
-    primaryCTA: 'Quero ver a demonstração',
-    secondaryCTA: 'Ver como funciona',
+      'A Variaty responde clientes imediatamente, confirma agendamentos, envia lembretes e reengaja quem sumiu — para você focar em atender, não em ficar no celular.',
+    primaryCTA: 'Quero ver funcionando',
+    secondaryCTA: 'Como funciona',
     microcopy:
-      'Ideal para salão, barbearia, estética, manicure, lash, sobrancelha e serviços de beleza em geral.',
-    trustBullets: ['Mais agilidade', 'Mais retorno', 'Menos tempo no celular'],
+      'Para salão, barbearia, estética, manicure e qualquer negócio de beleza. Sem complicação.',
+    trustBullets: [
+      'Responde em segundos — 24h por dia',
+      'Clientes parados voltam a agendar',
+      'Menos tempo preso no celular',
+    ],
   },
 
   problem: {
-    title: 'Seu WhatsApp pode estar deixando dinheiro na mesa',
+    title: 'A agenda vazia não é falta de cliente — é falta de seguimento',
     bullets: [
-      'Clientes somem porque a resposta demora',
-      'Agenda fica com buracos',
-      'Falta rotina para trazer clientes de volta',
-      'Muito tempo gasto respondendo no WhatsApp',
-      'Atendimento depende demais de disponibilidade manual',
+      'Cliente manda mensagem às 21h e vai para o concorrente que responde primeiro',
+      'Agenda com buracos porque faltou lembrar o cliente de confirmar',
+      'Cliente que veio uma vez e sumiu — nunca teve ninguém para trazer de volta',
+      'Horas do dia indo embora respondendo as mesmas perguntas de sempre',
+      'Você trabalha preso no celular no mesmo ritmo em que está atendendo',
     ],
   },
 
   solution: {
-    title: 'Use o WhatsApp para encher agenda, não para consumir seu dia',
+    title: 'WhatsApp trabalhando por você, mesmo quando você está com alguém na cadeira',
     description:
-      'Em vez de ficar preso no celular respondendo as mesmas perguntas, você automatiza o que é repetitivo e usa seu tempo para atender, executar e crescer o negócio.',
+      'A Variaty responde enquanto você atende, confirma enquanto você descansa e lembra quem sumiu enquanto você foca em crescer. O que era operação manual vira resultado automático.',
+    contrast: {
+      before: 'Você no celular entre atendimentos, perdendo tempo e cliente',
+      after: 'Variaty no WhatsApp. Você na cadeira, gerando receita.',
+    },
+  },
+
+  scenarios: {
+    title: 'Como negócios de beleza usam a Variaty no dia a dia',
+    items: [
+      {
+        label: 'Resposta rápida',
+        headline: 'Cliente às 20h recebe resposta em segundos',
+        description:
+          'Enquanto você está em casa ou atendendo, a Variaty responde com disponibilidade, preços e próximo passo — antes que o cliente vá embora.',
+        outcome: 'Mais conversão de contato em agendamento',
+      },
+      {
+        label: 'Confirmação automática',
+        headline: 'Buracos na agenda caem com confirmação ativa',
+        description:
+          'Lembrete vai automático antes do horário marcado. Cliente confirma, reagenda ou avisa cancelamento direto no WhatsApp — sem você fazer nada.',
+        outcome: 'Menos no-show, agenda mais previsível',
+      },
+      {
+        label: 'Cliente que sumiu',
+        headline: 'Quem não volta é lembrado no momento certo',
+        description:
+          'A Variaty identifica clientes que não agendaram há um tempo e envia mensagem personalizada — automaticamente. Sem você precisar lembrar de cada um.',
+        outcome: 'Mais recorrência sem esforço',
+      },
+      {
+        label: 'Autônomo solo',
+        headline: 'Trabalha por você quando você não pode responder',
+        description:
+          'Para profissional que trabalha sozinho, a automação funciona como um assistente que nunca para — respondendo, confirmando e mantendo o contato ativo.',
+        outcome: 'Operação independente da sua disponibilidade',
+      },
+    ],
   },
 
   howItWorks: {
-    title: 'Como funciona no dia a dia',
+    title: 'Como funciona no dia a dia do seu negócio',
     steps: [
       {
-        title: 'O cliente entra em contato',
+        title: 'Cliente manda mensagem — recebe resposta em segundos',
+        description: 'A qualquer hora. A Variaty responde com o que ele precisa e mantém o interesse.',
+      },
+      {
+        title: 'Perguntas repetitivas saem do seu colo',
         description:
-          'Ele manda mensagem a qualquer hora — e recebe resposta imediata, mesmo quando você está atendendo.',
+          'Horário, preço, disponibilidade — respondidos automaticamente. Você só entra quando necessário.',
       },
       {
-        title: 'As mensagens repetitivas saem do seu colo',
-        description: 'Perguntas de horário, preço e disponibilidade são respondidas automaticamente.',
+        title: 'Confirmações e lembretes acontecem sem você fazer nada',
+        description:
+          'O sistema confirma, lembra e mantém o agendamento vivo. Menos cancelamento de última hora.',
       },
       {
-        title: 'O sistema ajuda a manter o relacionamento ativo',
-        description: 'Confirmações, lembretes e retornos para clientes que pararam de agendar.',
-      },
-      {
-        title: 'Sua agenda ganha mais consistência',
-        description: 'Menos buracos, mais previsibilidade e mais faturamento por recorrência.',
+        title: 'Clientes parados recebem reengajamento automático',
+        description:
+          'A Variaty identifica quem sumiu e manda mensagem no momento certo para trazer de volta.',
       },
     ],
   },
 
   benefits: {
-    title: 'O que seu negócio de beleza ganha',
+    title: 'O que muda no seu negócio de beleza',
     items: [
       {
-        title: 'Mais velocidade no atendimento',
+        title: 'Mais agendamentos sem mais esforço',
         description:
-          'Resposta imediata aumenta a chance de conversão antes do cliente procurar outra opção.',
+          'Resposta imediata aumenta a conversão. Cliente que recebe atenção rápida agenda — o que espera vai para o concorrente.',
       },
       {
-        title: 'Mais retorno de clientes',
+        title: 'Clientes que voltam com mais frequência',
         description:
-          'Clientes que pararam de agendar podem ser reengajados com fluxos automatizados de retorno.',
+          'Reengajamento automático para quem não agendou há um tempo. Sem você lembrar de cada contato.',
       },
       {
         title: 'Agenda com menos buracos',
         description:
-          'Confirmações e lembretes automáticos reduzem cancelamentos e no-shows de última hora.',
+          'Confirmação automática com resposta ativa — cliente confirma, avisa ou reagenda sem você ligar para cada um.',
       },
       {
-        title: 'Menos tempo preso no WhatsApp',
-        description: 'Menos mensagens repetitivas para você responder manualmente.',
-      },
-      {
-        title: 'Mais faturamento por recorrência',
+        title: 'Menos tempo preso no celular',
         description:
-          'Cliente que volta mais vezes gera receita previsível e crescimento sem depender só de novos leads.',
+          'Sem responder as mesmas perguntas manualmente. Cada minuto ganho é tempo no atendimento, não no WhatsApp.',
+      },
+      {
+        title: 'Faturamento mais previsível',
+        description:
+          'Agenda consistente gera receita previsível. Recorrência de clientes é a base de um negócio que cresce sem depender só de novos leads.',
       },
     ],
   },
 
   proof: {
-    title: 'Feito para negócios de beleza que querem atender melhor e vender com mais consistência',
+    title: 'Para quem a Variaty faz sentido de verdade',
     focusPoints: [
-      'Atender mais rápido e não perder cliente por demora',
-      'Reduzir tempo perdido respondendo o celular',
-      'Melhorar conversão de conversa em agendamento',
-      'Aumentar recorrência com mais consistência',
+      'Profissional autônomo cansado de perder cliente por demora na resposta',
+      'Salão que quer crescer sem contratar mais atendentes',
+      'Negócio com agenda vazia quando deveria estar mais cheia',
+      'Dono que quer parar de trabalhar no celular e começar a trabalhar no negócio',
     ],
   },
 
   objections: {
-    title: 'Isso serve para o meu negócio?',
+    title: 'Tem dúvidas? Essas são as mais comuns',
     items: [
       {
-        q: 'Meu salão é pequeno.',
-        a: 'Negócios pequenos têm ainda mais a ganhar. Com menos equipe, cada minuto conta mais. Automatizar as mensagens repetitivas libera tempo direto para atender, executar e vender.',
+        q: 'Meu salão é pequeno — isso serve para mim?',
+        a: 'Pequeno é onde a automação faz mais diferença. Com menos equipe, cada mensagem não respondida é um cliente perdido. A Variaty atende o que você não consegue atender sozinho — sem custo de contratação.',
       },
       {
-        q: 'Tenho medo de ficar robótico.',
-        a: 'A automação cuida das respostas previsíveis — preço, horário, disponibilidade. Você continua presente onde conta. O cliente percebe mais velocidade, não menos atenção.',
+        q: 'Tenho medo de parecer robótico para o cliente.',
+        a: 'O que o cliente percebe é velocidade. Resposta rápida = negócio organizado = profissional confiável. A automação cuida das perguntas previsíveis. Você continua presente no atendimento que importa.',
       },
       {
-        q: 'Não sei se meus clientes vão gostar.',
-        a: 'O que os clientes não gostam é de esperar. Resposta rápida e confirmação clara são bem-vindas. A automação entrega exatamente isso, de forma consistente.',
+        q: 'Não sei se vale o investimento.',
+        a: 'Quantos clientes você perde por não responder rápido? Quantos não voltam porque ninguém lembrou? Se a agenda tem buracos que poderiam ser preenchidos, o retorno vem com os primeiros agendamentos recuperados.',
       },
       {
-        q: 'Eu mesmo já respondo no WhatsApp.',
-        a: 'Ótimo — mas quanto tempo isso toma? Cada mensagem que você responde manualmente é tempo que poderia estar sendo usado para atender, vender ou descansar. A automação não tira isso de você, libera você disso.',
+        q: 'Eu já respondo o WhatsApp.',
+        a: 'Ótimo — mas quanto tempo isso consome? Cada mensagem manual é tempo tirado do atendimento. A automação não tira a tarefa de você. Ela faz a tarefa por você, no horário que você não conseguiria responder.',
       },
       {
-        q: 'Será que vale o investimento?',
-        a: 'Depende de quantos clientes você perde por demora na resposta ou por não ter um fluxo de retorno. Se a agenda tem buracos que poderiam ser preenchidos, a automação paga por si mesma com consistência.',
+        q: 'É difícil de configurar?',
+        a: 'Não. A implantação é guiada — você não precisa entender de tecnologia. O processo começa pelo seu fluxo atual e a gente organiza junto, sem parar a operação.',
       },
     ],
   },
@@ -134,35 +185,35 @@ export const belezaContent: NicheContent = {
   faq: {
     items: [
       {
-        q: 'Serve para salão pequeno ou só para grandes?',
-        a: 'Funciona para qualquer tamanho. Salões pequenos costumam ter ainda mais ganho porque o dono ou a equipe faz tudo — e a automação libera exatamente o tempo que estava sendo gasto com mensagens repetitivas.',
+        q: 'Funciona para profissional autônomo que trabalha sozinho?',
+        a: 'Sim — e é um dos casos de maior impacto. Quem trabalha sozinho não tem ninguém para delegar mensagens. A Variaty age como um assistente sempre disponível, sem custo de contratação.',
       },
       {
-        q: 'Isso ajuda a trazer cliente de volta?',
-        a: 'Sim. Você pode configurar fluxos para reengajar clientes que não agendam há um tempo, com mensagens automáticas no momento certo — sem precisar fazer isso manualmente para cada contato.',
+        q: 'Como funciona o reengajamento de clientes?',
+        a: 'Você define o critério — por exemplo, clientes que não agendam há 30 dias. A Variaty dispara mensagem automática no momento certo, com texto personalizado para trazer o cliente de volta.',
       },
       {
-        q: 'Preciso parar tudo para implementar?',
-        a: 'Não. A configuração é feita junto com você sem precisar interromper a operação. O processo é estruturado para ter impacto rápido sem virar um projeto de meses.',
+        q: 'Preciso parar tudo para configurar?',
+        a: 'Não. A configuração é feita junto com você sem interromper a operação. O processo é estruturado para ter impacto rápido sem virar um projeto demorado.',
       },
       {
-        q: 'Posso começar só com respostas e confirmações?',
-        a: 'Sim. Você pode começar com o fluxo mais simples — resposta automática e confirmação de agendamento — e ir expandindo conforme quiser. Não precisa implementar tudo de uma vez.',
+        q: 'Posso começar só com confirmações de agendamento?',
+        a: 'Sim. Você começa com o que faz mais sentido agora e expande quando quiser. Não é tudo ou nada.',
       },
       {
-        q: 'Isso é só para quem tem equipe?',
-        a: 'Não. Profissionais autônomos que trabalham sozinhos são justamente quem mais se beneficia, porque não têm ninguém para delegar as mensagens. A automação funciona como um assistente disponível o tempo todo.',
+        q: 'Serve para barbearia, não só salão?',
+        a: 'Sim — barbearia, estética, manicure, lash, sobrancelha, massagem. Qualquer negócio de beleza que usa WhatsApp para agendar e se comunicar com clientes.',
       },
     ],
   },
 
   finalCTA: {
-    headline: 'Seu WhatsApp pode virar uma máquina melhor de agendamento e retorno',
+    headline: 'Cada cliente que não recebeu resposta rápida foi embora. Quantos já foram?',
     subheadline:
-      'Atenda mais rápido, reduza tempo operacional e mantenha sua agenda em movimento com automação prática para negócios de beleza.',
-    primaryCTA: 'Quero ver a demonstração',
+      'Comece a responder em segundos, manter clientes e encher a agenda — sem parar de atender para ficar no celular.',
+    primaryCTA: 'Quero ver funcionando',
     secondaryCTA: 'Falar com especialista',
   },
 
-  stickyMobileCTA: 'Quero ver a demonstração',
+  stickyMobileCTA: 'Quero ver funcionando',
 }

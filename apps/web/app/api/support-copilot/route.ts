@@ -4,12 +4,16 @@
  * Answers product questions in context (route, plan, role, channels).
  * Uses platform-level OPENAI_API_KEY — does NOT use tenant key.
  * Rate limit: 20 questions/hour per tenant.
+ *
+ * Agent upgrade: if OpenCrow is configured, the AI call is delegated to the
+ * agent layer. Falls back to the existing OpenAI path if agent fails.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthTenant } from '@/lib/getAuthTenant';
 import { prisma } from '@/lib/prisma';
 import { getPageKnowledge, GENERAL_FAQ, getFaqAnswer } from '@/lib/supportCopilot/knowledgeBase';
 import OpenAI from 'openai';
+import { runAgentCopilotAssist } from '@/lib/agent';
 
 const RATE_LIMIT_PER_HOUR = 20;
 
@@ -144,11 +148,32 @@ REGRAS DE RESPOSTA:
 6. NÃO sugira ações destrutivas, irreversíveis ou fora do sistema
 7. Se o usuário não tiver setup completo, priorize orientar para o onboarding`;
 
-  // ── Call OpenAI ─────────────────────────────────────────────────────────────
-  let answer: string;
+  // ── Agent assist (primary, if configured) ──────────────────────────────────
+  let answer: string = '';
   let confidence: 'high' | 'medium' | 'low' = 'high';
   let fallback_needed = false;
+  let answeredByAgent = false;
 
+  try {
+    const agentResult = await runAgentCopilotAssist({
+      tenantId: auth.tenantId,
+      userId: auth.userId,
+      role: auth.role,
+      question,
+      route,
+      history,
+    });
+    if (agentResult) {
+      answer = agentResult.answer;
+      confidence = agentResult.confidence as 'high' | 'medium' | 'low';
+      answeredByAgent = true;
+    }
+  } catch {
+    // Agent assist failure — fall through to OpenAI
+  }
+
+  // ── Call OpenAI (fallback when agent is not configured or fails) ────────────
+  if (!answeredByAgent) {
   try {
     if (!process.env.OPENAI_API_KEY) throw new Error('no_key');
 
@@ -181,6 +206,7 @@ REGRAS DE RESPOSTA:
     confidence = 'low';
     fallback_needed = true;
   }
+  } // end if (!answeredByAgent)
 
   // ── Suggested links ─────────────────────────────────────────────────────────
   const suggested_links = getSuggestedLinks(question);

@@ -26,6 +26,7 @@ import { runCommercialOrchestrator } from '@/src/services/commercialOrchestrator
 import { detectExplicitRequest, detectAiLowConfidence, executeHandoff } from '@/src/services/handoffService';
 import type { HandoffContext } from '@/src/services/handoffService';
 import { sendAndSave } from '@/lib/webhook/outboundSender';
+import { runAgentAssist } from '@/lib/agent';
 
 // ── Utilities ────────────────────────────────────────────────────────────────
 
@@ -416,6 +417,205 @@ async function handleAutomationBranch(
   return true;
 }
 
+// ── Agent decision executor ───────────────────────────────────────────────────
+
+/**
+ * Maps a validated AgentDecision to existing deterministic backend services.
+ * Called only when OpenCrow returns a non-fallback decision.
+ *
+ * Invariants:
+ * - Exactly one outbound message is sent (or none for diagnostic/handoff)
+ * - All execution uses existing trusted services
+ * - OpenCrow is NEVER given direct provider access
+ * Returns true if a reply was sent (caller should return from processInboundMessage).
+ */
+async function executeAgentDecision(
+  decision: import('@/lib/agent').AgentDecision,
+  tenant: any,
+  from: string,
+  status: string,
+  phoneId: string | undefined,
+  resolvedIdentityContext: import('@/src/services/conversationService').IdentityContext | undefined
+): Promise<boolean> {
+  const { decisionType } = decision;
+
+  // ── reply / clarify — pure language response ──────────────────────────────
+  if (decisionType === 'reply' || decisionType === 'clarify') {
+    if (!decision.replyText) return false; // validator already checks this; double-guard
+    await sendAndSave({
+      to: from,
+      message: decision.replyText,
+      phoneId,
+      token: tenant.whatsappToken,
+      tenantId: tenant.id,
+      status,
+      aiGenerated: true,
+      channel: 'whatsapp',
+      identity: resolvedIdentityContext,
+      logContext: { source: `agent_${decisionType}`, confidence: decision.confidence },
+    });
+    return true;
+  }
+
+  // ── send_catalog — deterministic catalog from existing buildAIContext ─────
+  if (decisionType === 'send_catalog') {
+    const msg = decision.replyText;
+    if (!msg) return false; // agent must supply the formatted catalog text
+    await sendAndSave({
+      to: from,
+      message: msg,
+      phoneId,
+      token: tenant.whatsappToken,
+      tenantId: tenant.id,
+      status,
+      aiGenerated: false,
+      channel: 'whatsapp',
+      identity: resolvedIdentityContext,
+      logContext: { source: 'agent_send_catalog' },
+    });
+    return true;
+  }
+
+  // ── send_offer — present single product ───────────────────────────────────
+  if (decisionType === 'send_offer') {
+    const msg = decision.replyText;
+    if (!msg) return false;
+    await sendAndSave({
+      to: from,
+      message: msg,
+      phoneId,
+      token: tenant.whatsappToken,
+      tenantId: tenant.id,
+      status,
+      aiGenerated: false,
+      channel: 'whatsapp',
+      identity: resolvedIdentityContext,
+      logContext: { source: 'agent_send_offer', productId: decision.productId },
+    });
+    return true;
+  }
+
+  // ── prepare_checkout — execute via conversationalCheckoutService ──────────
+  if (decisionType === 'prepare_checkout' && decision.productId) {
+    const contactId = resolvedIdentityContext?.contactId;
+    if (!contactId) {
+      console.warn('[Webhook][Agent] prepare_checkout: no contactId — falling through');
+      return false;
+    }
+    try {
+      const product = await prisma.product.findFirst({
+        where: { id: decision.productId, tenantId: tenant.id, active: true },
+        select: { id: true, name: true, price: true, currency: true, description: true, salesCtaText: true },
+      });
+      if (!product) {
+        console.warn(`[Webhook][Agent] prepare_checkout: product ${decision.productId} not found`);
+        return false;
+      }
+      const { executeConversationalCheckout } = await import('@/lib/services/conversationalCheckoutService');
+      const checkoutResult = await executeConversationalCheckout({
+        tenantId: tenant.id,
+        product: {
+          id: product.id,
+          name: product.name,
+          price: product.price,
+          currency: product.currency,
+          description: product.description,
+          salesCtaText: product.salesCtaText,
+        },
+        customerPhone: from,
+        contactId,
+        channel: 'whatsapp',
+      });
+      if (checkoutResult.success && checkoutResult.message) {
+        await sendAndSave({
+          to: from,
+          message: checkoutResult.message,
+          phoneId,
+          token: tenant.whatsappToken,
+          tenantId: tenant.id,
+          status,
+          aiGenerated: false,
+          channel: 'whatsapp',
+          identity: resolvedIdentityContext,
+          logContext: {
+            source: 'agent_checkout',
+            productId: product.id,
+            orderId: checkoutResult.orderId,
+            paymentId: checkoutResult.paymentId,
+          },
+        });
+        return true;
+      }
+      console.warn('[Webhook][Agent] prepare_checkout: checkout failed, falling through to legacy');
+    } catch (checkoutErr) {
+      console.error('[Webhook][Agent] prepare_checkout error:', checkoutErr);
+    }
+    return false;
+  }
+
+  // ── schedule_service — route to deterministic booking flow ────────────────
+  if (decisionType === 'schedule_service') {
+    const serviceName = decision.serviceName ?? decision.serviceId ?? 'serviço';
+    try {
+      const conv = await prisma.conversation.findFirst({
+        where: { tenantId: tenant.id, customerPhone: from },
+        orderBy: { lastMessageAt: 'desc' },
+        select: { id: true },
+      });
+      const bookingReply = await handleBookingFlow(
+        tenant.id, from, `agendar ${serviceName}`, conv?.id
+      );
+      if (bookingReply) {
+        const fullMessage = decision.replyText
+          ? `${decision.replyText}\n\n${bookingReply}`
+          : bookingReply;
+        await sendAndSave({
+          to: from,
+          message: fullMessage,
+          phoneId,
+          token: tenant.whatsappToken,
+          tenantId: tenant.id,
+          status,
+          aiGenerated: false,
+          channel: 'whatsapp',
+          identity: resolvedIdentityContext,
+          logContext: { source: 'agent_schedule_service', serviceId: decision.serviceId },
+        });
+        return true;
+      }
+    } catch (schedErr) {
+      console.error('[Webhook][Agent] schedule_service error:', schedErr);
+    }
+    return false;
+  }
+
+  // ── handoff_human ─────────────────────────────────────────────────────────
+  if (decisionType === 'handoff_human') {
+    try {
+      const handoffResult = await executeHandoff({
+        tenantId: tenant.id,
+        customerPhone: from,
+        channel: 'whatsapp',
+        triggerReason: 'ai_low_confidence',
+        lastMessage: decision.explanation ?? 'OpenCrow requested handoff',
+        contactId: resolvedIdentityContext?.contactId,
+      });
+      if (handoffResult.triggered) return true;
+    } catch (hErr) {
+      console.error('[Webhook][Agent] handoff_human error:', hErr);
+    }
+    return false;
+  }
+
+  // ── diagnostic — no outbound, just telemetry ──────────────────────────────
+  if (decisionType === 'diagnostic') {
+    console.log(`[Webhook][Agent] diagnostic — ${decision.explanation?.slice(0, 200)}`);
+    return false; // no outbound message → falls through to legacy path
+  }
+
+  return false;
+}
+
 // ── Main inbound message processor ───────────────────────────────────────────
 
 /**
@@ -610,6 +810,36 @@ async function processInboundMessage(
     }
   } catch (apptErr) {
     console.error('[Webhook] Erro no fluxo de agendamentos (continuando para orchestrator):', apptErr);
+  }
+
+  // ── H+. OpenCrow Agent Assist (PRIMARY orchestration layer) ─────────────
+  // Runs after all deterministic guards and booking flows.
+  // Falls back cleanly to the existing I+K path on any failure or explicit fallback request.
+  // INVARIANT: If this block sends a reply (returns true), processInboundMessage returns
+  // immediately — no duplicate sends are possible.
+  try {
+    const agentResult = await runAgentAssist({
+      tenantId: tenant.id,
+      from,
+      textBody,
+      contactId: resolvedIdentityContext?.contactId,
+      channel: 'whatsapp',
+    });
+
+    if (agentResult && agentResult.decision.decisionType !== 'fallback_to_legacy') {
+      const executed = await executeAgentDecision(
+        agentResult.decision,
+        tenant,
+        from,
+        status,
+        phoneId,
+        resolvedIdentityContext
+      );
+      if (executed) return;
+      // executeAgentDecision returned false — fall through to existing I+K path
+    }
+  } catch (agentErr) {
+    console.error('[Webhook][Agent] Unexpected error in agent assist — falling back to legacy:', agentErr);
   }
 
   // ── I. Commercial orchestrator ────────────────────────────────────────────

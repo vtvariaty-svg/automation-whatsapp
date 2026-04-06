@@ -7,6 +7,9 @@ import ExpansionBanner from "@/components/ExpansionBanner";
 import FeedbackWidget from "@/components/FeedbackWidget";
 import SupportCopilot from "@/components/SupportCopilot";
 import MaintenanceBanner from "@/components/MaintenanceBanner";
+import CrowWidget from "@/components/CrowWidget";
+
+const CROW_ENABLED = process.env.NEXT_PUBLIC_CROW_ENABLED === 'true';
 
 export default function DashboardLayout({
   children,
@@ -31,6 +34,7 @@ export default function DashboardLayout({
       </div>
       <FeedbackWidget />
       <SupportCopilot />
+      {CROW_ENABLED && <CrowWidget />}
     </div>
   );
 }

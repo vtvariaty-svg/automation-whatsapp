@@ -5,65 +5,44 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { billingApi } from '@/lib/api/client';
-import { WHATSAPP_BUSINESS_URL } from '@/lib/config/plans';
 
+// Active commercial plans (shown as upgrade/checkout options)
 const PLANS = [
   {
-    slug: 'free',
-    name: 'Free',
-    price: 0,
-    highlight: 'Comece gratuitamente',
-    hasTrial: false,
+    slug: 'consultorio',
+    name: 'Plano Consultório',
+    price: 97.00, // provisional — confirm before launch
+    highlight: 'Clínicas · Consultórios · Odontologia',
+    hasTrial: true,
     isConsultative: false,
     features: [
-      'Instagram DM automatizado',
-      'Até 1.000 contatos',
-      '500 mensagens IA/mês',
-      '5 automações',
-      'Painel de conversas básico',
-    ],
-    missing: ['WhatsApp', 'Facebook', 'Analytics avançado', 'Testes A/B'],
-  },
-  {
-    slug: 'pro',
-    name: 'Pro',
-    price: 49.90,
-    oldPrice: 139.00,
-    popular: true,
-    highlight: 'Garanta o valor promocional agora',
-    hasTrial: false,
-    isConsultative: false,
-    features: [
-      'WhatsApp + Instagram + Facebook',
-      'Comentários do Instagram',
-      'Até 20.000 contatos',
-      '10.000 mensagens IA/mês',
-      'Automações ilimitadas',
-      'CRM avançado + segmentos',
-      'Testes A/B',
-      'Analytics e AI Copilot',
-      'Templates premium',
-    ],
-    missing: ['White-label', 'Painel de agência', 'Prospecção IA'],
-  },
-  {
-    slug: 'business',
-    name: 'Business',
-    price: 197.00,
-    highlight: 'Vendas consultivas B2B',
-    hasTrial: false,
-    isConsultative: true,
-    features: [
-      'Tudo do Pro',
-      'Contatos e mensagens ilimitadas',
-      'White-label com a sua marca',
-      'Painel de agência e revenda',
-      'Prospecção Inteligente (IA)',
-      'Suporte prioritário',
-      'Onboarding dedicado',
-      'Limites customizados',
+      'Atendimento via WhatsApp',
+      'IA administrativa',
+      'Estrutura para página própria',
+      'Registro de interessados no painel',
+      'Lembretes e follow-up',
+      'Encaminhamento humano',
     ],
     missing: [],
+    disclaimer: 'A IA não diagnostica, não prescreve e não interpreta exames.',
+  },
+  {
+    slug: 'restaurante',
+    name: 'Plano Restaurante',
+    price: 97.00, // provisional — confirm before launch
+    highlight: 'Restaurante · Delivery · Marmitaria',
+    hasTrial: true,
+    isConsultative: false,
+    features: [
+      'Atendimento via WhatsApp',
+      'IA de atendimento no horário de pico',
+      'Estrutura para página própria',
+      'Preparado para catálogo/cardápio online',
+      'Base para organizar pedidos pelo WhatsApp',
+      'Preparado para entrega ou retirada',
+    ],
+    missing: [],
+    disclaimer: 'Pagamento online não é processado nesta etapa.',
   },
 ];
 
@@ -124,14 +103,7 @@ export default function BillingPage() {
 
   const handleCheckout = async (planSlug: string) => {
     if (planSlug === 'free') {
-      // Show a confirmation dialog before canceling the paid subscription.
       setConfirmFreeDowngrade(true);
-      return;
-    }
-
-    // For consultative plans, redirect to WhatsApp or Contato page
-    if (planSlug === 'business') {
-      window.open(WHATSAPP_BUSINESS_URL, '_blank');
       return;
     }
 
@@ -296,27 +268,16 @@ export default function BillingPage() {
           {subscription?.hasSubscription ? 'Alterar plano' : 'Escolha seu plano'}
         </h3>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-2xl">
           {PLANS.map((plan) => {
             const isCurrent = subscription?.plan === plan.slug;
             return (
               <div
                 key={plan.slug}
                 className={`relative rounded-2xl border-2 bg-white p-6 flex flex-col transition-shadow hover:shadow-lg ${
-                  plan.popular && !isCurrent
-                    ? 'border-[#4f46e5] shadow-md'
-                    : isCurrent
-                    ? 'border-[#4f46e5]'
-                    : 'border-gray-200'
+                  isCurrent ? 'border-[#4f46e5]' : 'border-gray-200'
                 }`}
               >
-                {plan.popular && !isCurrent && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-[90%] flex justify-center">
-                    <span className="bg-gradient-to-r from-red-600 to-rose-500 text-white text-[10px] font-bold px-4 py-1.5 rounded-full shadow-lg shadow-rose-500/30 whitespace-nowrap uppercase tracking-wider ring-2 ring-white">
-                      PREÇO PROMOCIONAL POR TEMPO LIMITADO
-                    </span>
-                  </div>
-                )}
                 {isCurrent && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                     <span className="bg-gradient-to-r from-[#4f46e5] to-[#7c3aed] text-white text-xs font-bold px-4 py-1 rounded-full shadow whitespace-nowrap">
@@ -329,72 +290,44 @@ export default function BillingPage() {
                 <p className="text-xs text-gray-400 mt-0.5 mb-3">{plan.highlight}</p>
 
                 <div className="mb-5">
-                  {plan.price === 0 ? (
-                    <span className="text-3xl font-bold text-gray-900">Grátis</span>
-                  ) : plan.isConsultative ? (
-                    <span className="text-3xl font-bold text-gray-900">Custom</span>
-                  ) : (
-                    <div className="flex flex-col">
-                      {plan.oldPrice && (
-                        <p className="text-sm font-bold text-gray-400 line-through decoration-rose-500/70 mb-0.5">
-                          de R$ {plan.oldPrice.toFixed(2).replace('.', ',')}
-                        </p>
-                      )}
-                      <div className="flex items-baseline gap-1">
-                        {plan.oldPrice && <span className="text-sm font-bold text-gray-500 mr-1">por</span>}
-                        <span className="text-4xl font-extrabold text-gray-900 tracking-tight">
-                          R$ {plan.price.toFixed(2).replace('.', ',')}
-                        </span>
-                        <span className="text-sm font-semibold text-gray-400">/mês</span>
-                      </div>
-                    </div>
+                  {plan.hasTrial && !isCurrent && (
+                    <p className="text-xs font-semibold text-emerald-600 mb-1">7 dias grátis</p>
                   )}
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-4xl font-extrabold text-gray-900 tracking-tight">
+                      R$ {plan.price.toFixed(2).replace('.', ',')}
+                    </span>
+                    <span className="text-sm font-semibold text-gray-400">/mês</span>
+                  </div>
                 </div>
 
-                <ul className="space-y-2 flex-1 mb-6">
+                <ul className="space-y-2 flex-1 mb-4">
                   {plan.features.map((f) => (
                     <li key={f} className="flex items-start gap-2 text-sm text-gray-600">
                       <span className="text-green-500 mt-0.5 shrink-0">✓</span>
                       {f}
                     </li>
                   ))}
-                  {plan.missing.map((f) => (
-                    <li key={f} className="flex items-start gap-2 text-sm text-gray-300">
-                      <span className="mt-0.5 shrink-0">—</span>
-                      {f}
-                    </li>
-                  ))}
                 </ul>
 
-                {plan.slug === 'free' ? (
-                  <Button
-                    className="w-full"
-                    variant="secondary"
-                    disabled={isCurrent || checkoutLoading === 'free'}
-                    onClick={() => handleCheckout('free')}
-                  >
-                    {checkoutLoading === 'free'
-                      ? 'Processando...'
-                      : isCurrent
-                      ? 'Plano atual'
-                      : 'Usar grátis'}
-                  </Button>
-                ) : (
-                  <Button
-                    className="w-full"
-                    variant={isCurrent ? 'secondary' : plan.popular ? 'primary' : 'secondary'}
-                    disabled={isCurrent || checkoutLoading === plan.slug}
-                    onClick={() => handleCheckout(plan.slug)}
-                  >
-                    {checkoutLoading === plan.slug
-                      ? 'Aguarde...'
-                      : isCurrent
-                      ? 'Plano atual'
-                      : plan.isConsultative
-                      ? 'Falar com vendas'
-                      : 'Assinar'}
-                  </Button>
+                {plan.disclaimer && (
+                  <p className="text-xs text-gray-400 mb-4 border-t border-gray-100 pt-3">{plan.disclaimer}</p>
                 )}
+
+                <Button
+                  className="w-full"
+                  variant={isCurrent ? 'secondary' : 'primary'}
+                  disabled={isCurrent || checkoutLoading === plan.slug}
+                  onClick={() => handleCheckout(plan.slug)}
+                >
+                  {checkoutLoading === plan.slug
+                    ? 'Aguarde...'
+                    : isCurrent
+                    ? 'Plano atual'
+                    : plan.hasTrial
+                    ? 'Iniciar teste grátis'
+                    : 'Assinar'}
+                </Button>
               </div>
             );
           })}

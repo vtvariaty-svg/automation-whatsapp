@@ -20,13 +20,23 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid plan' }, { status: 400 });
     }
 
+    // Legacy paid plans are no longer available for new checkout.
+    // free downgrade remains available for backward compat (handled below).
+    const LEGACY_PAID_PLANS = ['pro', 'business', 'starter', 'standard'];
+    if (LEGACY_PAID_PLANS.includes(plan)) {
+      return NextResponse.json(
+        { error: 'Este plano foi descontinuado para novas assinaturas. Escolha Plano Consultório ou Plano Restaurante.' },
+        { status: 410 }
+      );
+    }
+
     if (planConfig.isConsultative) {
       return NextResponse.json(
-        { 
-          noCheckout: true, 
-          contactSales: true, 
+        {
+          noCheckout: true,
+          contactSales: true,
           contactUrl: WHATSAPP_BUSINESS_URL,
-          message: 'O plano selecionado é consultivo. Entre em contato com a equipe comercial para assinar.' 
+          message: 'O plano selecionado é consultivo. Entre em contato com a equipe comercial para assinar.'
         },
         { status: 200 }
       );

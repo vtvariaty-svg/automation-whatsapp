@@ -1,6 +1,7 @@
-// ─── PLAN_V3: 3-plan commercial structure ─────────────────────────────────
-// Free → Pro → Business (Consultative)
-// Legacy templates (Starter/Standard) kept locally for backward compatibility
+// ─── PLAN_V4: 2 vertical public plans + legacy backward compat ────────────
+// Public plans: consultorio · restaurante (both with 7-day Stripe trial)
+// Legacy (isPublic: false, not shown in new commercial flow): free · pro · business · starter · standard
+// STRIPE envs required for production: STRIPE_PRICE_CONSULTORIO · STRIPE_PRICE_RESTAURANTE
 // ──────────────────────────────────────────────────────────────────────────────
 
 export interface PlanConfig {
@@ -15,6 +16,29 @@ export interface PlanConfig {
 }
 
 export const PLANS: Record<string, PlanConfig> = {
+  // ── Public vertical plans ──────────────────────────────────────────────────
+  // [!] PENDING: Confirm final price before launch. R$97 is a provisional placeholder.
+  // [!] REQUIRED env for production: STRIPE_PRICE_CONSULTORIO · STRIPE_PRICE_RESTAURANTE
+  consultorio: {
+    name: 'Plano Consultório',
+    slug: 'consultorio',
+    price: 97.00, // provisional — confirm before launch
+    limitMessages: 10000,
+    stripePriceId: process.env.STRIPE_PRICE_CONSULTORIO || 'price_consultorio_placeholder',
+    hasTrial: true,
+    isPublic: true,
+  },
+  restaurante: {
+    name: 'Plano Restaurante',
+    slug: 'restaurante',
+    price: 97.00, // provisional — confirm before launch
+    limitMessages: 10000,
+    stripePriceId: process.env.STRIPE_PRICE_RESTAURANTE || 'price_restaurante_placeholder',
+    hasTrial: true,
+    isPublic: true,
+  },
+
+  // ── Legacy plans (isPublic: false — not shown in new commercial flow) ──────
   free: {
     name: 'Free',
     slug: 'free',
@@ -22,29 +46,27 @@ export const PLANS: Record<string, PlanConfig> = {
     limitMessages: 500,
     stripePriceId: '',
     hasTrial: false,
-    isPublic: true,
+    isPublic: false,
   },
   pro: {
     name: 'Pro',
     slug: 'pro',
-    price: 49.90, // Real billing price (Promotional)
+    price: 49.90,
     limitMessages: 10000,
-    // [!] IMPORTANT: The environment variable STRIPE_PRICE_PRO must map to a product of R$ 49,90 in Stripe.
     stripePriceId: process.env.STRIPE_PRICE_PRO || 'price_pro_placeholder',
-    hasTrial: false, // Pro no longer has an upfront free trial
-    isPublic: true,
+    hasTrial: false,
+    isPublic: false,
   },
   business: {
     name: 'Business',
     slug: 'business',
     price: 197.00,
-    limitMessages: -1, // unlimited
+    limitMessages: -1,
     stripePriceId: process.env.STRIPE_PRICE_BUSINESS || 'price_business_placeholder',
     hasTrial: false,
-    isPublic: true,
+    isPublic: false,
     isConsultative: true,
   },
-  // Legacy aliases
   standard: {
     name: 'Standard (Legacy)',
     slug: 'standard',
@@ -103,6 +125,52 @@ export interface PlanEntitlements {
 const UNLIMITED = -1;
 
 export const PLAN_ENTITLEMENTS: Record<string, PlanEntitlements> = {
+  // ── Consultório (vertical — WhatsApp + IA administrativa) ────────────────
+  consultorio: {
+    channels: ['whatsapp'],
+    features: {
+      whatsapp: true,
+      instagram: false,
+      facebook: false,
+      instagramComments: false,
+      advancedCRM: true,
+      dynamicSegments: false,
+      abTesting: false,
+      aiCopilot: true,
+      conversionSequences: true,
+      premiumTemplates: false,
+      whiteLabel: false,
+      agencyReseller: false,
+      advancedAnalytics: false,
+      leadProspectingIntel: false,
+      beautyWorkspace: false,
+    },
+    limits: { messages: 10000, agents: 3, automations: 20, contacts: 5000, conversations: UNLIMITED },
+  },
+
+  // ── Restaurante (vertical — WhatsApp + IA de atendimento) ────────────────
+  restaurante: {
+    channels: ['whatsapp'],
+    features: {
+      whatsapp: true,
+      instagram: false,
+      facebook: false,
+      instagramComments: false,
+      advancedCRM: true,
+      dynamicSegments: false,
+      abTesting: false,
+      aiCopilot: true,
+      conversionSequences: false,
+      premiumTemplates: false,
+      whiteLabel: false,
+      agencyReseller: false,
+      advancedAnalytics: false,
+      leadProspectingIntel: false,
+      beautyWorkspace: false,
+    },
+    limits: { messages: 10000, agents: 2, automations: 10, contacts: 5000, conversations: UNLIMITED },
+  },
+
   // ── Free ────────────────────────────────────────────────────────────────
   free: {
     channels: ['instagram'],
@@ -277,7 +345,13 @@ export const FEATURE_UPGRADE_MESSAGES: Record<FeatureKey, string> = {
 // ─── Helpers ─────────────────────────────────────────────────────────────
 
 /** The minimum paid plan for a feature (used for upgrade CTA labels). */
-export const PLAN_ORDER = ['free', 'starter', 'standard', 'pro', 'business'];
+// Vertical plans (consultorio/restaurante) sit between pro and business so that:
+// - planAtLeast(vertical, 'pro') = true  (they inherit pro-level access)
+// - planAtLeast(vertical, 'business') = false (business remains the max tier)
+// Known ambiguity: consultorio and restaurante are at adjacent positions, so
+// canUpgrade/planAtLeast comparisons between them are not semantically meaningful.
+// Do not refactor the pricing engine in this phase — document and accept for now.
+export const PLAN_ORDER = ['free', 'starter', 'standard', 'pro', 'consultorio', 'restaurante', 'business'];
 
 export const isPaidPlan = (slug: string) => slug !== 'free' && slug !== 'starter';
 

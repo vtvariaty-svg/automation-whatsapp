@@ -5,8 +5,8 @@ import { CTASection } from "@/components/marketing/landing/CTASection";
 import { Footer } from "@/components/marketing/landing/Footer";
 
 export const metadata = {
-  title: "Planos e Preços — Variaty",
-  description: "Conheça nossos planos e comece a automatizar seu atendimento no WhatsApp com IA hoje mesmo sem taxas ocultas.",
+  title: "Planos e Preços | Variaty — Consultório e Restaurante",
+  description: "Plano Consultório e Plano Restaurante com 7 dias de teste grátis. Automatize atendimento via WhatsApp para clínicas, consultórios, restaurantes e delivery.",
 };
 
 export default function PrecosPage() {

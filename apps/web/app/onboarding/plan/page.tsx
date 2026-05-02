@@ -1,179 +1,149 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { WHATSAPP_BUSINESS_URL } from "@/lib/config/plans";
 
-const PLANS = [
+const OPERATION_TYPES = [
   {
-    id: "free",
-    name: "Free",
-    price: "Grátis",
-    priceNote: "para sempre",
-    badge: null,
-    highlight: false,
-    channels: ["Instagram"],
-    features: ["500 mensagens/mês", "1 agente", "5 automações", "IA básica"],
-    cta: "Começar grátis",
-    ctaStyle: "border border-gray-300 text-gray-700 hover:bg-gray-50",
+    id: "clinica",
+    label: "Clínica / Odontologia",
+    description: "Consultórios, clínicas médicas, odontológicas ou de estética.",
+    icon: "🏥",
+    borderActive: "border-teal-500",
+    bgActive: "bg-teal-50",
+    disclaimer: "A IA não diagnostica, não prescreve e não interpreta exames.",
   },
   {
-    id: "pro",
-    name: "Pro",
-    price: "R$ 49,90",
-    oldPrice: "139,00",
-    priceNote: "Garanta o valor promocional agora",
-    badge: "PREÇO PROMOCIONAL POR TEMPO LIMITADO",
-    highlight: true,
-    channels: ["WhatsApp", "Instagram", "Facebook"],
-    features: ["10.000 mensagens/mês", "5 agentes", "Automações ilimitadas", "CRM avançado", "AI Copilot"],
-    cta: "Assinar Pro",
-    ctaStyle: "bg-gray-900 text-white hover:bg-gray-800",
+    id: "restaurante",
+    label: "Restaurante / Delivery",
+    description: "Restaurantes, delivery, marmitarias e estabelecimentos alimentares.",
+    icon: "🍽️",
+    borderActive: "border-orange-500",
+    bgActive: "bg-orange-50",
+    disclaimer: "Pagamento online não é processado nesta etapa.",
   },
   {
-    id: "business",
-    name: "Business",
-    price: "Custom",
-    priceNote: "",
-    badge: null,
-    highlight: false,
-    channels: ["WhatsApp", "Instagram", "Facebook"],
-    features: ["Mensagens ilimitadas", "Agentes ilimitados", "White-label", "Painel de agência", "Tudo do Pro"],
-    cta: "Falar com vendas",
-    ctaStyle: "bg-gray-900 text-white hover:bg-gray-800",
+    id: "outro",
+    label: "Outro negócio via WhatsApp",
+    description: "Loja, serviços, educação, imobiliária, academia e outros.",
+    icon: "💬",
+    borderActive: "border-indigo-500",
+    bgActive: "bg-indigo-50",
+    disclaimer: null,
   },
-];
+] as const;
+
+// Map subscription plan to suggested operation type for pre-highlight
+const PLAN_TO_TYPE: Record<string, string> = {
+  consultorio: "clinica",
+  restaurante: "restaurante",
+};
 
 export default function OnboardingPlanPage() {
   const router = useRouter();
-  const [loading, setLoading] = useState<string | null>(null);
-  const [error, setError] = useState("");
+  const [loadingCheck, setLoadingCheck] = useState(true);
+  const [suggested, setSuggested] = useState<string | null>(null);
+  const checkedRef = useRef(false);
 
-  const handleSelect = async (planId: string) => {
-    if (planId === "business") {
-      window.open(WHATSAPP_BUSINESS_URL, "_blank");
+  useEffect(() => {
+    if (checkedRef.current) return;
+    checkedRef.current = true;
+
+    const token = localStorage.getItem("auth_token");
+    if (!token) {
+      router.replace("/login");
       return;
     }
 
-    setLoading(planId);
-    setError("");
-    try {
-      const token = localStorage.getItem("auth_token");
-      const res = await fetch("/api/onboarding/plan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ plan: planId }),
-      });
-      const data = await res.json();
-      if (!res.ok) { setError(data.error || "Erro ao selecionar plano"); setLoading(null); return; }
+    // Check if user already has a subscription.
+    // If not → redirect to /precos (plan selection happens there now).
+    // If yes → show operation type selector with optional pre-highlight.
+    fetch("/api/billing/subscription", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        if (!d.hasSubscription) {
+          router.replace("/precos");
+          return;
+        }
+        // Pre-highlight (not pre-select) based on subscription plan
+        if (d.plan && PLAN_TO_TYPE[d.plan]) {
+          setSuggested(PLAN_TO_TYPE[d.plan]);
+        }
+        setLoadingCheck(false);
+      })
+      .catch(() => setLoadingCheck(false));
+  }, [router]);
 
-      // Save to localStorage for quick access on later steps
-      localStorage.setItem("onboarding_plan", planId);
-
-      if (data.checkoutUrl) {
-        // Pro/Business: redirect to Stripe
-        window.location.href = data.checkoutUrl;
-        return;
-      }
-
-      // Free/Standard: proceed directly to onboarding
-      router.push("/onboarding/step/1");
-    } catch (err: any) {
-      setError(err.message);
-      setLoading(null);
-    }
+  const handleSelect = (typeId: string) => {
+    // Pass the chosen type to Step 1 via query param.
+    // Step 1 will use it as a secondary signal for pre-selection.
+    // Actual persistence happens when Step 1 submits to /api/onboarding/step1.
+    router.push(`/onboarding/step/1?type=${typeId}`);
   };
+
+  if (loadingCheck) {
+    return (
+      <div className="flex items-center justify-center min-h-[40vh]">
+        <div className="w-8 h-8 border-2 border-gray-200 border-t-indigo-600 rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div>
       <div className="text-center mb-10">
-        <h1 className="text-3xl font-extrabold text-gray-900">Escolha seu plano</h1>
+        <h1 className="text-3xl font-extrabold text-gray-900">
+          Qual operação você quer automatizar?
+        </h1>
         <p className="text-gray-500 mt-2 text-sm max-w-md mx-auto">
-          Comece agora. Você pode mudar de plano a qualquer momento.
+          Escolha o tipo de negócio. A configuração inicial da IA será ajustada para o seu segmento.
+          Você pode alterar depois nas configurações.
         </p>
       </div>
 
-      {error && (
-        <div className="mb-6 p-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-700 text-center">
-          {error}
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:grid-cols-4">
-        {PLANS.map((plan) => (
-          <div
-            key={plan.id}
-            className={`relative bg-white rounded-2xl border shadow-sm flex flex-col transition-all ${
-              plan.highlight
-                ? "border-indigo-400 ring-2 ring-indigo-500/20 shadow-indigo-100"
-                : "border-gray-200/60"
-            }`}
-          >
-            {plan.badge && (
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-[90%] flex justify-center">
-                <span className={`px-4 py-1.5 text-white text-[9px] sm:text-[10px] font-bold rounded-full uppercase tracking-wider shadow-lg ring-2 ring-white whitespace-nowrap ${plan.badge === 'PREÇO PROMOCIONAL POR TEMPO LIMITADO' ? 'bg-gradient-to-r from-red-600 to-rose-500 shadow-rose-500/40' : 'bg-gradient-to-r from-indigo-600 to-purple-600'}`}>
-                  {plan.badge}
-                </span>
-              </div>
-            )}
-
-            <div className={`px-5 pt-8 pb-5 border-b ${plan.highlight ? "border-indigo-100 bg-indigo-50/30" : "border-gray-100"}`}>
-              <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-1">{plan.name}</p>
-              {plan.oldPrice && (
-                <p className="text-xs font-bold text-gray-400 line-through decoration-red-500/70 mb-0.5">
-                  de R$ {plan.oldPrice}
+      <div className="grid grid-cols-1 gap-4 max-w-xl mx-auto">
+        {OPERATION_TYPES.map((op) => {
+          const isSuggested = suggested === op.id;
+          return (
+            <button
+              key={op.id}
+              type="button"
+              onClick={() => handleSelect(op.id)}
+              className={`text-left flex items-start gap-4 p-6 rounded-2xl border-2 transition-all hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 ${
+                isSuggested
+                  ? `${op.borderActive} ${op.bgActive}`
+                  : "border-gray-200 bg-white hover:border-gray-300"
+              }`}
+            >
+              <span className="text-3xl shrink-0" aria-hidden="true">
+                {op.icon}
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-gray-900 text-base">
+                  {op.label}
+                  {isSuggested && (
+                    <span className="ml-2 text-xs font-semibold text-indigo-500 align-middle">
+                      ← seu plano
+                    </span>
+                  )}
                 </p>
-              )}
-              <div className="flex items-baseline gap-1">
-                {plan.oldPrice && <span className="text-sm font-bold text-gray-500 mr-1">por</span>}
-                <p className="text-4xl font-extrabold text-gray-900 tracking-tight">{plan.price}</p>
-                <span className="text-sm font-semibold text-gray-500">/mês</span>
-              </div>
-              {plan.priceNote && (
-                 <p className={`mt-2 inline-block px-2 py-1 rounded text-[11px] font-bold uppercase tracking-wider ${plan.highlight ? "bg-emerald-50 text-emerald-700 border border-emerald-100" : "text-gray-400"}`}>
-                   {plan.priceNote}
-                 </p>
-              )}
-              <div className="flex flex-wrap gap-1.5 mt-3">
-                {plan.channels.map((ch) => (
-                  <span key={ch} className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-[10px] font-semibold">
-                    {ch}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            <ul className="flex-1 px-5 py-4 space-y-2">
-              {plan.features.map((f) => (
-                <li key={f} className="flex items-start gap-2 text-xs text-gray-600">
-                  <span className="text-emerald-500 mt-0.5 shrink-0">✓</span>
-                  {f}
-                </li>
-              ))}
-            </ul>
-
-            <div className="px-5 pb-5">
-              <button
-                onClick={() => handleSelect(plan.id)}
-                disabled={loading !== null}
-                className={`w-full py-2.5 rounded-xl font-semibold text-sm transition-all disabled:opacity-60 ${plan.ctaStyle}`}
-              >
-                {loading === plan.id ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <span className="w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin"></span>
-                    Aguarde...
-                  </span>
-                ) : (
-                  plan.cta
+                <p className="text-sm text-gray-500 mt-0.5">{op.description}</p>
+                {op.disclaimer && (
+                  <p className="text-xs text-gray-400 mt-2">{op.disclaimer}</p>
                 )}
-              </button>
-            </div>
-          </div>
-        ))}
+              </div>
+              <span className="shrink-0 text-gray-300 text-lg" aria-hidden="true">
+                →
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       <p className="text-center text-xs text-gray-400 mt-6">
-        Sem cartão de crédito para assinar o plano Free. Assine o plano Pro com cancelamento a qualquer momento.
+        Você pode alterar o tipo de negócio a qualquer momento nas configurações.
       </p>
     </div>
   );

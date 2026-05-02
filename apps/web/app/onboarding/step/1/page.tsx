@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { marketplaceBots, Blueprint } from "@/lib/marketplace/bots";
 
@@ -21,6 +21,24 @@ const businessTypeOptions = [
   { id: "outro", label: "Outro" },
 ];
 
+// Map subscription plan → businessType + recommended bot + blueprint
+const PLAN_VERTICAL: Record<string, { type: string; botId: string; blueprint: Blueprint }> = {
+  consultorio: { type: "clinica", botId: "bot-clinica", blueprint: "agenda-servicos" },
+  restaurante: { type: "restaurante", botId: "bot-restaurante", blueprint: "catalogo-vendas" },
+};
+
+// Copy shown in the step header per vertical
+const VERTICAL_COPY: Record<string, { subtitle: string; disclaimer: string | null }> = {
+  consultorio: {
+    subtitle: "Vamos configurar seu atendimento pelo WhatsApp para sua clínica ou consultório.",
+    disclaimer: "A IA não diagnostica, não prescreve e não interpreta exames.",
+  },
+  restaurante: {
+    subtitle: "Vamos configurar seu atendimento e pedidos pelo WhatsApp para seu restaurante ou delivery.",
+    disclaimer: "Pagamento online não é processado nesta etapa.",
+  },
+};
+
 export default function OnboardingStep1() {
   const router = useRouter();
   const [companyName, setCompanyName] = useState("");
@@ -32,18 +50,69 @@ export default function OnboardingStep1() {
   const [activeBlueprint, setActiveBlueprint] = useState<Blueprint | "all">("all");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [planSlug, setPlanSlug] = useState<string>("");
+  const planInitializedRef = useRef(false);
 
   useEffect(() => {
     const check = async () => {
       const token = localStorage.getItem("auth_token");
       if (!token) return;
       try {
-        const res = await fetch("/api/billing/subscription", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (!data.hasSubscription) router.replace("/onboarding/plan");
+        // Parallel fetch: subscription check + existing tenant data (businessType)
+        const [subRes, statusRes] = await Promise.all([
+          fetch("/api/billing/subscription", { headers: { Authorization: `Bearer ${token}` } }),
+          fetch("/api/onboarding/status", { headers: { Authorization: `Bearer ${token}` } }),
+        ]);
+
+        const [subData, statusData] = await Promise.all([
+          subRes.ok ? subRes.json() : null,
+          statusRes.ok ? statusRes.json() : null,
+        ]);
+
+        if (!subData?.hasSubscription) {
+          router.replace("/onboarding/plan");
+          return;
+        }
+
+        if (!planInitializedRef.current) {
+          planInitializedRef.current = true;
+          const plan: string = subData?.plan ?? "";
+          setPlanSlug(plan);
+
+          // Priority 1: businessType already saved in tenant — do not overwrite
+          const existingType: string = statusData?.businessType ?? "";
+          if (existingType) {
+            setBusinessType(existingType);
+            const typeVertical = Object.values(PLAN_VERTICAL).find((v) => v.type === existingType);
+            if (typeVertical) {
+              setSelectedBotId(typeVertical.botId);
+              setActiveBlueprint(typeVertical.blueprint);
+            }
+            return;
+          }
+
+          // Priority 2: subscription plan is a known vertical
+          const vertical = PLAN_VERTICAL[plan];
+          if (vertical) {
+            setBusinessType(vertical.type);
+            setSelectedBotId(vertical.botId);
+            setActiveBlueprint(vertical.blueprint);
+            return;
+          }
+
+          // Priority 3: ?type= query param (passed from /onboarding/plan)
+          const urlParams = new URLSearchParams(window.location.search);
+          const typeParam = urlParams.get("type");
+          const validTypes = businessTypeOptions.map((o) => o.id);
+          if (typeParam && validTypes.includes(typeParam)) {
+            setBusinessType(typeParam);
+            const typeVertical = Object.values(PLAN_VERTICAL).find((v) => v.type === typeParam);
+            if (typeVertical) {
+              setSelectedBotId(typeVertical.botId);
+              setActiveBlueprint(typeVertical.blueprint);
+            }
+          }
+          // Priority 4: default — user selects manually
         }
       } catch {}
     };
@@ -96,7 +165,8 @@ export default function OnboardingStep1() {
         <div className="px-8 py-6 border-b border-gray-100 bg-gradient-to-r from-indigo-50/50 to-purple-50/50">
           <h2 className="text-xl font-bold text-gray-900">🤖 Bot + Negócio</h2>
           <p className="text-sm text-gray-500 mt-1">
-            Escolha um bot especializado e informe os dados da sua empresa.
+            {VERTICAL_COPY[planSlug]?.subtitle ??
+              "Escolha um bot especializado e informe os dados da sua empresa."}
           </p>
         </div>
 
@@ -256,6 +326,12 @@ export default function OnboardingStep1() {
               />
             </div>
           </div>
+
+          {VERTICAL_COPY[planSlug]?.disclaimer && (
+            <p className="text-xs text-gray-400 border-t border-gray-100 pt-4">
+              {VERTICAL_COPY[planSlug].disclaimer}
+            </p>
+          )}
 
           <div className="flex justify-end pt-2">
             <button

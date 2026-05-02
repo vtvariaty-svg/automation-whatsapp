@@ -66,7 +66,14 @@ export default function OnboardingCompleted() {
             <div className="flex justify-center mb-6">
               {planInfo.status === 'trialing' && planInfo.trialEnd ? (
                 <div className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 border border-indigo-200 rounded-xl">
-                  <span className="text-indigo-600 font-bold text-sm">Standard — Teste grátis</span>
+                  <span className="text-indigo-600 font-bold text-sm capitalize">
+                    {planInfo.plan === 'consultorio'
+                      ? 'Plano Consultório'
+                      : planInfo.plan === 'restaurante'
+                      ? 'Plano Restaurante'
+                      : `Plano ${planInfo.plan}`}{' '}
+                    — Teste grátis
+                  </span>
                   <span className="text-indigo-400 text-xs">
                     até {new Date(planInfo.trialEnd).toLocaleDateString('pt-BR')}
                   </span>

@@ -1,4 +1,4 @@
-export type NicheTheme = 'clinicas' | 'beleza'
+export type NicheTheme = 'clinicas' | 'beleza' | 'restaurantes'
 
 // ─── A/B Variant Types ────────────────────────────────────────────────────────
 
@@ -148,5 +148,21 @@ export const themeColors: Record<NicheTheme, ThemeColors> = {
     problemIconText: 'text-rose-500',
     stepConnector: 'from-rose-100 via-amber-200 to-amber-100',
     benefitHoverBorder: 'hover:border-rose-200',
+  },
+  restaurantes: {
+    heroBadgeBg: 'bg-orange-500/10',
+    heroBadgeBorder: 'border border-orange-400/20',
+    heroBadgeText: 'text-orange-300',
+    heroGlow: 'rgba(249,115,22,0.08)',
+    gradientFrom: '#f97316',
+    gradientTo: '#fbbf24',
+    sectionBadge: 'bg-orange-50 text-orange-700',
+    sectionBadgeRing: 'ring-1 ring-orange-100',
+    accentText: 'text-orange-600',
+    bulletDot: 'bg-orange-500',
+    problemIconBg: 'bg-orange-50',
+    problemIconText: 'text-orange-600',
+    stepConnector: 'from-orange-100 via-amber-200 to-amber-100',
+    benefitHoverBorder: 'hover:border-orange-200',
   },
 }

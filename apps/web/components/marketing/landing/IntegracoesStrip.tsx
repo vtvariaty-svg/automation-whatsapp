@@ -3,39 +3,8 @@ export function IntegracoesStrip() {
     <section className="py-14 bg-white border-b border-slate-100 relative overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-        {/* Social Proof — número em destaque máximo com contexto */}
-        <div className="text-center mb-10">
-          <p className="text-xs font-extrabold text-slate-400 uppercase tracking-[0.2em] mb-4">Resultado comprovado por quem já usa</p>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-10 mb-4">
-            <div className="flex flex-col items-center">
-              <span className="text-7xl md:text-8xl font-black text-[#0f172a] tracking-tight leading-none">
-                5.000<span className="text-blue-600">+</span>
-              </span>
-              <span className="text-base md:text-lg font-bold text-slate-500 mt-2">empresas atendidas</span>
-            </div>
-
-            <div className="hidden sm:block w-px h-16 bg-slate-200" />
-
-            <div className="flex flex-col sm:flex-row items-center gap-6 sm:gap-8 text-sm text-slate-500 font-medium">
-              <div className="text-center">
-                <p className="text-2xl font-black text-[#0f172a]">24<span className="text-indigo-600">/7</span></p>
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mt-1">Operação ativa</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-black text-[#0f172a]">&lt;3s</p>
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mt-1">Tempo de resposta</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-black text-[#0f172a]">API<span className="text-blue-600"> ✓</span></p>
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mt-1">Oficial da Meta</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* Tech Logos — parceiros e integrações */}
-        <div className="relative mt-8">
+        <div className="relative">
           <div className="absolute top-0 bottom-0 left-0 w-12 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none" />
           <div className="absolute top-0 bottom-0 right-0 w-12 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none" />
           <p className="text-center text-xs font-bold text-slate-300 uppercase tracking-[0.15em] mb-6">Tecnologias e integrações oficiais</p>

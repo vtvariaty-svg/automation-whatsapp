@@ -23,9 +23,8 @@ export function TestimonialSection() {
             Quem já usa
           </div>
           <h2 className="text-4xl md:text-5xl lg:text-[3.5rem] font-extrabold text-white tracking-tight leading-tight mb-4">
-            Mais de{" "}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">5.000 empresas</span>
-            <br className="hidden md:block" /> já automatizaram com a Variaty.
+            Atendimento automático,{" "}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">resultado real.</span>
           </h2>
           <p className="text-base md:text-lg text-slate-400 font-medium max-w-xl mx-auto leading-relaxed">
             Do primeiro atendimento automático ao agendamento confirmado — sem aumentar o time.

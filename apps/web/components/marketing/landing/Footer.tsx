@@ -15,7 +15,7 @@ export function Footer() {
               <img src="/logo.webp" alt="Variaty" className="h-[52px] w-auto grayscale mix-blend-screen opacity-70 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-500 relative z-10" />
             </Link>
             <p className="text-slate-500/80 leading-relaxed max-w-sm text-sm font-medium">
-              Plataforma de atendimento com IA para WhatsApp, Instagram e Facebook. Conectada à API Oficial da Meta.
+              Automação de atendimento via WhatsApp para clínicas, restaurantes e negócios locais.
             </p>
           </div>
 

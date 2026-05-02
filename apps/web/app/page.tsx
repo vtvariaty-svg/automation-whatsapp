@@ -1,6 +1,7 @@
 import MetaPixel from "@/components/marketing/MetaPixel";
 import { Navbar } from "@/components/marketing/landing/Navbar";
 import { HeroSection } from "@/components/marketing/landing/HeroSection";
+import { SegmentacaoSection } from "@/components/marketing/landing/SegmentacaoSection";
 import { IntegracoesStrip } from "@/components/marketing/landing/IntegracoesStrip";
 import { TeseMercadoSection } from "@/components/marketing/landing/TeseMercadoSection";
 import { ComoFuncionaSection } from "@/components/marketing/landing/ComoFuncionaSection";
@@ -14,14 +15,14 @@ import { CTASection } from "@/components/marketing/landing/CTASection";
 import { Footer } from "@/components/marketing/landing/Footer";
 
 export const metadata = {
-  title: "Variaty — Transforme seu WhatsApp em uma Operação que Atende, Agenda e Vende 24h",
+  title: "Variaty | Automação de Atendimento e Pedidos pelo WhatsApp",
   description:
-    "A Variaty conecta IA, automação e controle humano para responder clientes mais rápido, qualificar leads e escalar sua operação no WhatsApp, Instagram e Facebook — sem aumentar o time.",
+    "Automatize atendimento pelo WhatsApp para clínicas, consultórios, restaurantes e negócios locais. Organize conversas, agendamentos, dúvidas e pedidos com IA assistiva.",
   openGraph: {
-    title: "Variaty — Atendimento com IA para WhatsApp, Instagram e Facebook",
+    title: "Variaty | Automação de Atendimento e Pedidos pelo WhatsApp",
     description:
-      "Conecte sua operação ao WhatsApp Oficial, configure sua IA em minutos e escale atendimento, vendas e agendamentos sem precisar aumentar o time.",
-    url: "https://vtvariatysecretary.com.br",
+      "Automatize atendimento pelo WhatsApp para clínicas, consultórios, restaurantes e negócios locais. Organize conversas, agendamentos, dúvidas e pedidos com IA assistiva.",
+    url: "https://variaty.com.br",
     siteName: "Variaty",
     type: "website",
   },
@@ -36,7 +37,10 @@ export default function LandingPage() {
       {/* 1. Hero de Transformação */}
       <HeroSection />
 
-      {/* 2. Faixa de Confiança Imediata */}
+      {/* 2. Segmentação — Clínicas e Restaurantes */}
+      <SegmentacaoSection />
+
+      {/* 3. Faixa de Confiança Imediata */}
       <IntegracoesStrip />
 
       {/* 3. Tese de Mercado */}

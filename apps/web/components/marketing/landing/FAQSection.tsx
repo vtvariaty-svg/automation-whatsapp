@@ -3,20 +3,32 @@ import Link from "next/link";
 export function FAQSection() {
   const faqs = [
     {
-      q: "É diferente de chatbot com respostas fixas?",
-      a: "Muito. Chatbots seguem árvores de decisão. A Variaty usa IA generativa (GPT-4) que entende contexto e intenção real — e responde naturalmente focada em converter, não em redirecionar.",
+      q: "O Variaty funciona pelo WhatsApp?",
+      a: "Sim. O foco público atual da Variaty é atendimento via WhatsApp — usando a API Oficial para garantir estabilidade e segurança do número.",
     },
     {
-      q: "Preciso de desenvolvedor para configurar?",
-      a: "Não. Você mesmo define o tom, as regras e os fluxos em uma interface simples. Sem código, sem fluxograma complexo. A maioria das contas está operando no mesmo dia.",
+      q: "Serve para clínicas e consultórios?",
+      a: "Sim. A Variaty ajuda clínicas e consultórios a responder pacientes fora do horário, confirmar consultas, reduzir faltas e encaminhar para atendimento humano quando necessário.",
     },
     {
-      q: "Minha equipe pode assumir a conversa quando quiser?",
-      a: "Sim. Um clique pausa a IA. O atendente assume com o histórico completo visível. Retomar é outro clique. Controle total, a qualquer momento.",
+      q: "Serve para restaurantes e delivery?",
+      a: "Sim. Restaurantes e deliveries usam a Variaty para responder perguntas sobre cardápio, organizar a entrada de pedidos e reduzir mensagens perdidas no horário de pico.",
     },
     {
-      q: "Tem risco de banimento do meu WhatsApp?",
-      a: "Zero. A conexão é via API Oficial da Meta — o canal corporativo homologado pelo próprio WhatsApp. Sem aplicativos paralelos, sem risco.",
+      q: "A IA substitui o atendimento humano?",
+      a: "Não. A IA cuida do volume e das etapas previsíveis. Quando o cliente precisa de atenção humana, a conversa é encaminhada com o histórico completo visível.",
+    },
+    {
+      q: "A IA faz diagnóstico médico ou orienta tratamentos?",
+      a: "Não. A Variaty não diagnostica, não prescreve e não interpreta exames. O uso para clínicas é restrito ao atendimento administrativo — agendamento, confirmação e comunicação.",
+    },
+    {
+      q: "O sistema processa pagamento online?",
+      a: "Não. A Variaty organiza o atendimento e o fluxo de pedidos pelo WhatsApp. O pagamento e a confirmação final continuam sendo gerenciados por você, no seu fluxo atual.",
+    },
+    {
+      q: "Posso começar com uma operação simples?",
+      a: "Sim. Você pode começar com um único fluxo — responder dúvidas frequentes, por exemplo — e expandir conforme se sentir confortável. Não é tudo ou nada.",
     },
   ];
 

@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { getPublicClinicBySlug } from '@/lib/public/clinic';
+import { AppointmentRequestForm } from './AppointmentRequestForm';
 
 const DAY_NAMES = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
@@ -134,10 +135,22 @@ export default async function AgendarPage(
           </section>
         )}
 
+        {/* Appointment request form */}
+        <section>
+          <AppointmentRequestForm
+            slug={slug}
+            clinicName={clinic.displayName}
+            whatsappPhone={phone}
+            services={clinic.services}
+            professionals={clinic.professionals}
+            showProfessionals={showProfessionals}
+          />
+        </section>
+
         {/* CTA bottom */}
         {phone && (
           <div className="bg-teal-50 border border-teal-100 rounded-2xl p-6 text-center">
-            <p className="text-sm font-semibold text-teal-800 mb-3">Pronto para agendar?</p>
+            <p className="text-sm font-semibold text-teal-800 mb-3">Prefere ir direto pelo WhatsApp?</p>
             <a
               href={waLink(phone, generalMsg)}
               target="_blank"

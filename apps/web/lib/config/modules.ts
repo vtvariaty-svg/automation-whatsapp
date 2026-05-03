@@ -72,7 +72,7 @@ export interface SidebarSection {
 
 export const SIDEBAR_SECTIONS: SidebarSection[] = [
   { id: 'principal',      label: 'Principal',     moduleIds: ['dashboard', 'analytics'] },
-  { id: 'atendimento',    label: 'Atendimento',   moduleIds: ['conversations', 'contacts', 'sales', 'appointments', 'orders', 'payments', 'catalog', 'services', 'professionals', 'handoff', 'beauty_workspace', 'clinic_workspace'] },
+  { id: 'atendimento',    label: 'Atendimento',   moduleIds: ['conversations', 'contacts', 'sales', 'appointments', 'orders', 'payments', 'catalog', 'services', 'professionals', 'handoff', 'beauty_workspace', 'clinic_workspace', 'restaurant_workspace'] },
   { id: 'canais',         label: 'Canais & IA',   moduleIds: ['channels', 'instagram_comments', 'atendimento_ia', 'bots', 'templates', 'broadcasts', 'insights'] },
   { id: 'crescimento',    label: 'Crescimento',   moduleIds: ['setup', 'metrics', 'attribution', 'referral', 'go_live', 'lead_intelligence'] },
   { id: 'fiscal',         label: 'Fiscal',        moduleIds: ['fiscal', 'fiscal_new', 'fiscal_history', 'fiscal_whatsapp'] },
@@ -552,6 +552,21 @@ export const MODULE_CATALOG: AppModule[] = [
     pinnedByDefaultFor: ['consultorio'],
     recommendedFor: ['clínica', 'consultório', 'saúde'],
     sidebarOrder: 26,
+  },
+
+  // ── Restaurant Workspace (Restaurante) ───────────────────────────────────
+  {
+    id: 'restaurant_workspace',
+    label: 'Restaurante',
+    icon: '🍽️',
+    href: '/dashboard/restaurant',
+    category: 'atendimento',
+    description: 'Workspace do Plano Restaurante: perfil, cardápio, categorias, produtos, adicionais e pedidos.',
+    // allowedPlans: exact match — consultorio must NOT see this via planAtLeast bleed-through
+    allowedPlans: ['restaurante'],
+    pinnedByDefaultFor: ['restaurante'],
+    recommendedFor: ['restaurante'],
+    sidebarOrder: 27,
   },
 ];
 

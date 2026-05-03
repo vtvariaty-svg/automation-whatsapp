@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { getPublicRestaurantBySlug } from '@/lib/public/restaurant';
+import { RestaurantOrderForm } from './RestaurantOrderForm';
 
 function waLink(phone: string, message: string) {
   const clean = phone.replace(/\D/g, '');
@@ -170,10 +171,23 @@ export default async function CardapioPage(
           })
         )}
 
-        {/* CTA bottom */}
-        {phone && hasProducts && (
+        {/* Order form */}
+        <section>
+          <RestaurantOrderForm
+            slug={slug}
+            restaurantName={restaurant.displayName}
+            whatsappPhone={phone}
+            acceptsDelivery={restaurant.acceptsDelivery}
+            acceptsPickup={restaurant.acceptsPickup}
+            categories={restaurant.categories}
+          />
+        </section>
+
+        {/* CTA bottom — WhatsApp direto sem formulário */}
+        {phone && (
           <div className="bg-orange-50 border border-orange-100 rounded-2xl p-6 text-center">
-            <p className="text-sm font-semibold text-orange-800 mb-3">Quer fazer um pedido completo?</p>
+            <p className="text-sm font-semibold text-orange-800 mb-1">Prefere falar direto pelo WhatsApp?</p>
+            <p className="text-xs text-orange-600 mb-3">Sem preencher formulário</p>
             <a
               href={waLink(phone, generalMsg)}
               target="_blank"

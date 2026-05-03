@@ -53,6 +53,11 @@ export interface AppModule {
   recommendedFor?: string[];
   /** Ordem de exibição na sidebar. */
   sidebarOrder: number;
+  /** When set, module is only visible to tenants whose plan exactly matches one of these slugs.
+   * Takes precedence over minPlan/planAtLeast. Superadmin always bypasses this.
+   * Use for vertical plans that should not bleed into each other (e.g. consultorio ≠ restaurante).
+   */
+  allowedPlans?: string[];
   /** Metadados de onboarding. Ausente = não faz parte do checklist. */
   onboarding?: OnboardingMeta;
 }
@@ -67,7 +72,7 @@ export interface SidebarSection {
 
 export const SIDEBAR_SECTIONS: SidebarSection[] = [
   { id: 'principal',      label: 'Principal',     moduleIds: ['dashboard', 'analytics'] },
-  { id: 'atendimento',    label: 'Atendimento',   moduleIds: ['conversations', 'contacts', 'sales', 'appointments', 'orders', 'payments', 'catalog', 'services', 'professionals', 'handoff', 'beauty_workspace'] },
+  { id: 'atendimento',    label: 'Atendimento',   moduleIds: ['conversations', 'contacts', 'sales', 'appointments', 'orders', 'payments', 'catalog', 'services', 'professionals', 'handoff', 'beauty_workspace', 'clinic_workspace'] },
   { id: 'canais',         label: 'Canais & IA',   moduleIds: ['channels', 'instagram_comments', 'atendimento_ia', 'bots', 'templates', 'broadcasts', 'insights'] },
   { id: 'crescimento',    label: 'Crescimento',   moduleIds: ['setup', 'metrics', 'attribution', 'referral', 'go_live', 'lead_intelligence'] },
   { id: 'fiscal',         label: 'Fiscal',        moduleIds: ['fiscal', 'fiscal_new', 'fiscal_history', 'fiscal_whatsapp'] },
@@ -532,6 +537,21 @@ export const MODULE_CATALOG: AppModule[] = [
       label: 'Ativar Beauty Workspace',
       description: 'Configure o workspace especializado para seu negócio de beleza.',
     },
+  },
+
+  // ── Clinic Workspace (Consultório) ────────────────────────────────────────
+  {
+    id: 'clinic_workspace',
+    label: 'Consultório',
+    icon: '🏥',
+    href: '/dashboard/clinic',
+    category: 'atendimento',
+    description: 'Workspace do Plano Consultório: perfil da clínica, serviços, profissionais, disponibilidade e solicitações de agendamento.',
+    // allowedPlans: exact match — restaurante must NOT see this via planAtLeast bleed-through
+    allowedPlans: ['consultorio'],
+    pinnedByDefaultFor: ['consultorio'],
+    recommendedFor: ['clínica', 'consultório', 'saúde'],
+    sidebarOrder: 26,
   },
 ];
 

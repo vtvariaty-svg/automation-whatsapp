@@ -19,10 +19,13 @@ import type { FeatureKey } from "@/lib/config/plans";
 
 function isModuleLocked(m: AppModule, ent: ReturnType<typeof useEntitlements>): boolean {
   if (ent.loading) return false;
+  // Exact-plan gate: vertical modules that must not bleed via planAtLeast ordering
+  if (m.allowedPlans) return !m.allowedPlans.includes(ent.plan ?? 'free');
   if (m.requiredFeature) return !ent.features[m.requiredFeature as FeatureKey];
   if (m.minPlan)         return !planAtLeast(ent.plan, m.minPlan);
   return false;
 }
+
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
 

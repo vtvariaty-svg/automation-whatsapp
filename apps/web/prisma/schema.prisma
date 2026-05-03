@@ -8,126 +8,142 @@ datasource db {
 }
 
 model Tenant {
-  id                        String                    @id @default(uuid())
-  name                      String
-  businessDescription       String?
-  businessType              String?
-  phone                     String?
-  whatsappPhoneNumberId     String?
-  whatsappPhoneId           String?
-  whatsappBusinessAccountId String?
-  whatsappToken             String?
-  openaiKey                 String?
-  aiPrompt                  String?                   @db.Text
-  aiGuidedSetup             Json?                     // structured guided-setup answers (merged into aiPrompt as managed block)
-  welcomeMessage            String?                   @db.Text
-  businessHours             String?
-  setupStep                 Int                       @default(1)
-  setupCompleted            Boolean                   @default(false)
-  activeBotKey              String?                   // bot ativo via marketplace (fonte de verdade)
-  sessionTimeoutHours       Int                       @default(24) // inactivity window before session restart (1–168h)
-  createdAt                 DateTime                  @default(now())
+  id                           String                        @id @default(uuid())
+  name                         String
+  businessDescription          String?
+  businessType                 String?
+  phone                        String?
+  whatsappPhoneNumberId        String?
+  whatsappPhoneId              String?
+  whatsappBusinessAccountId    String?
+  whatsappToken                String?
+  openaiKey                    String?
+  aiPrompt                     String?                       @db.Text
+  aiGuidedSetup                Json? // structured guided-setup answers (merged into aiPrompt as managed block)
+  welcomeMessage               String?                       @db.Text
+  businessHours                String?
+  setupStep                    Int                           @default(1)
+  setupCompleted               Boolean                       @default(false)
+  activeBotKey                 String? // bot ativo via marketplace (fonte de verdade)
+  sessionTimeoutHours          Int                           @default(24) // inactivity window before session restart (1–168h)
+  createdAt                    DateTime                      @default(now())
   // M0 – omnichannel
-  enabledChannels           String? // comma-separated: "whatsapp,instagram"
+  enabledChannels              String? // comma-separated: "whatsapp,instagram"
   // L4 – kill switch (comma-separated channels manually paused by operator)
-  channelKillSwitch         String?
+  channelKillSwitch            String?
   // R1 – demo tenant flag
-  isDemo                    Boolean                   @default(false)
+  isDemo                       Boolean                       @default(false)
   // G1 – operational status
-  operationalStatus         String                    @default("setup") // setup | ready | live | paused | blocked
+  operationalStatus            String                        @default("setup") // setup | ready | live | paused | blocked
   // R5 – agency/reseller
-  agencyId                  String?
-  agencyBranding            Boolean                   @default(false)
-  agency                    Agency?                   @relation(fields: [agencyId], references: [id])
+  agencyId                     String?
+  agencyBranding               Boolean                       @default(false)
+  agency                       Agency?                       @relation(fields: [agencyId], references: [id])
   // M1 – Instagram (Instagram Login architecture)
-  instagramPageId           String?   // deprecated: kept for backward compat only
-  instagramToken            String?   // encrypted IG user access token
-  instagramAccountId        String?   // IG user ID (runtime source of truth)
+  instagramPageId              String? // deprecated: kept for backward compat only
+  instagramToken               String? // encrypted IG user access token
+  instagramAccountId           String? // IG user ID (runtime source of truth)
   // M4 – Facebook
-  facebookPageId            String?
-  facebookToken             String?
-  facebookConnection        FacebookConnection?
-  users                     User[]
-  contacts                  Contact[]
-  conversations             Conversation[]
-  products                  Product[]
-  orders                    Order[]
-  appointments              Appointment[]
-  businessConfig            BusinessConfig?
-  subscription              Subscription?
-  automationRules           AutomationRule[]
-  services                  Service[]
-  aiUsages                  AiUsage[]
-  whatsappConnection        WhatsAppConnection?
-  instagramConnection       InstagramConnection?
-  salesEvents               SalesEvent[]
-  salesOpportunities        SalesOpportunity[]
-  customerMemories          CustomerMemory[]
-  conversationInsights      ConversationInsight[]
+  facebookPageId               String?
+  facebookToken                String?
+  facebookConnection           FacebookConnection?
+  users                        User[]
+  contacts                     Contact[]
+  conversations                Conversation[]
+  products                     Product[]
+  orders                       Order[]
+  appointments                 Appointment[]
+  businessConfig               BusinessConfig?
+  subscription                 Subscription?
+  automationRules              AutomationRule[]
+  services                     Service[]
+  aiUsages                     AiUsage[]
+  whatsappConnection           WhatsAppConnection?
+  instagramConnection          InstagramConnection?
+  salesEvents                  SalesEvent[]
+  salesOpportunities           SalesOpportunity[]
+  customerMemories             CustomerMemory[]
+  conversationInsights         ConversationInsight[]
   // M2
-  instagramCommentRules     InstagramCommentRule[]
-  instagramModerationItems  InstagramModerationItem[]
+  instagramCommentRules        InstagramCommentRule[]
+  instagramModerationItems     InstagramModerationItem[]
   // M3
-  conversionSequences       ConversionSequence[]
-  conversionLeads           ConversionLead[]
+  conversionSequences          ConversionSequence[]
+  conversionLeads              ConversionLead[]
   // G4 Referral
-  referralCodes             ReferralCode[]
+  referralCodes                ReferralCode[]
   // G6 Expansion
-  expansionEvents           ExpansionEvent[]
+  expansionEvents              ExpansionEvent[]
   // G3 Churn
-  churnSignals              ChurnSignal[]
-  churnPlaybooks            ChurnPlaybook[]
+  churnSignals                 ChurnSignal[]
+  churnPlaybooks               ChurnPlaybook[]
   // G2 Attribution
-  leadAttributions          LeadAttribution[]
+  leadAttributions             LeadAttribution[]
   // R6 Health
-  healthScore               TenantHealthScore?
+  healthScore                  TenantHealthScore?
   // SC1 Support Copilot
-  supportCopilotLogs        SupportCopilotLog[]
+  supportCopilotLogs           SupportCopilotLog[]
   // AG1 Availability
-  availabilityBlocks        AvailabilityBlock[]
+  availabilityBlocks           AvailabilityBlock[]
   // AG5 Professionals
-  professionals             Professional[]
+  professionals                Professional[]
   // TD1 Template Delivery
-  templateBroadcasts        TemplateBroadcast[]
-  customTemplates           CustomTemplate[]
+  templateBroadcasts           TemplateBroadcast[]
+  customTemplates              CustomTemplate[]
   // Fiscal Integration
-  fiscalEmissionRecords     FiscalEmissionRecord[]
+  fiscalEmissionRecords        FiscalEmissionRecord[]
   // V2 Identity Support
-  contactIdentifiers        ContactIdentifier[]
-  migrationAudits           MigrationAudit[]
+  contactIdentifiers           ContactIdentifier[]
+  migrationAudits              MigrationAudit[]
   // Shadow Read Config
-  shadowReadEnabled         Boolean                   @default(false)
-  shadowReadSampleRate      Int                       @default(5) // 0-100
+  shadowReadEnabled            Boolean                       @default(false)
+  shadowReadSampleRate         Int                           @default(5) // 0-100
   // PAY1 — transactional payments
-  paymentConfig             TenantPaymentConfig?
-  payments                  Payment[]
+  paymentConfig                TenantPaymentConfig?
+  payments                     Payment[]
   // HANDOFF1 — operator alert / escalation config
-  handoffConfig             HandoffConfig?
+  handoffConfig                HandoffConfig?
   // MOD1 — workspace module preferences (array of module IDs)
-  pinnedModules             String[]                  @default([])
+  pinnedModules                String[]                      @default([])
   // LEAD1 — Prospecção IA
-  leadSearchRuns            LeadSearchRun[]
-  leadCandidates            LeadCandidate[]
-  leadScores                LeadScore[]
-  leadEnrichmentAttempts    LeadEnrichmentAttempt[]
-  leadCampaignDrafts        LeadCampaignDraft[]
-  leadCampaignExecutions    LeadCampaignExecution[]
-  leadCampaignExecutionItems LeadCampaignExecutionItem[]
-  leadSuppressions        LeadSuppression[]
-  leadProviderEventLogs   LeadProviderEventLog[]
-  leadProspectingTemplates LeadProspectingTemplate[]
-  leadFollowUpLogs        LeadFollowUpLog[]
-  leadOperationalAlerts           LeadOperationalAlert[]
-  leadCompanyRegistrySnapshots    LeadCompanyRegistrySnapshot[]
+  leadSearchRuns               LeadSearchRun[]
+  leadCandidates               LeadCandidate[]
+  leadScores                   LeadScore[]
+  leadEnrichmentAttempts       LeadEnrichmentAttempt[]
+  leadCampaignDrafts           LeadCampaignDraft[]
+  leadCampaignExecutions       LeadCampaignExecution[]
+  leadCampaignExecutionItems   LeadCampaignExecutionItem[]
+  leadSuppressions             LeadSuppression[]
+  leadProviderEventLogs        LeadProviderEventLog[]
+  leadProspectingTemplates     LeadProspectingTemplate[]
+  leadFollowUpLogs             LeadFollowUpLog[]
+  leadOperationalAlerts        LeadOperationalAlert[]
+  leadCompanyRegistrySnapshots LeadCompanyRegistrySnapshot[]
   // BW1 — Beauty Workspace
-  beautyWorkspaceConfig           BeautyWorkspaceConfig?
-  beautyServiceProfiles           BeautyServiceProfile[]
-  beautyCustomerProfiles          BeautyCustomerProfile[]
-  beautyProfessionalProfiles      BeautyProfessionalProfile[]
-  beautyPackages                  BeautyPackage[]
-  beautyWaitlistEntries           BeautyWaitlistEntry[]
-  beautyCampaignRules             BeautyCampaignRule[]
-  appointmentLocks                AppointmentLock[]
+  beautyWorkspaceConfig        BeautyWorkspaceConfig?
+  beautyServiceProfiles        BeautyServiceProfile[]
+  beautyCustomerProfiles       BeautyCustomerProfile[]
+  beautyProfessionalProfiles   BeautyProfessionalProfile[]
+  beautyPackages               BeautyPackage[]
+  beautyWaitlistEntries        BeautyWaitlistEntry[]
+  beautyCampaignRules          BeautyCampaignRule[]
+  appointmentLocks             AppointmentLock[]
+  // PHASE 5 — Public Vertical Pages
+  clinicProfiles               ClinicProfile[]
+  clinicServices               ClinicService[]
+  clinicProfessionals          ClinicProfessional[]
+  clinicAvailability           ClinicAvailability[]
+  appointmentRequests          AppointmentRequest[]
+  publicBookingPageConfigs     PublicBookingPageConfig[]
+  restaurantProfiles           RestaurantProfile[]
+  publicMenuPageConfigs        PublicMenuPageConfig[]
+  foodCategories               FoodCategory[]
+  foodProducts                 FoodProduct[]
+  foodAddonGroups              FoodAddonGroup[]
+  foodAddonOptions             FoodAddonOption[]
+  foodOrders                   FoodOrder[]
+  foodOrderItems               FoodOrderItem[]
+  foodOrderItemAddons          FoodOrderItemAddon[]
 }
 
 // ─── Contacts Module (Phase 1) ────────────────────────────────────────────────
@@ -166,15 +182,15 @@ model Contact {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  tenant           Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant           Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   conversations    Conversation[]
   orders           Order[]
   appointments     Appointment[]
-  payments         Payment[]       // PAY-INT1
-  memory           CustomerMemory? @relation("ContactMemory")
+  payments         Payment[] // PAY-INT1
+  memory           CustomerMemory?        @relation("ContactMemory")
   events           ContactEvent[]
-  mergesAsSurvivor ContactMerge[]  @relation("MergeSurvivor")
-  mergesAsMerged   ContactMerge[]  @relation("MergeMerged")
+  mergesAsSurvivor ContactMerge[]         @relation("MergeSurvivor")
+  mergesAsMerged   ContactMerge[]         @relation("MergeMerged")
   // BW1 — Beauty Workspace customer enrichment
   beautyProfile    BeautyCustomerProfile?
 
@@ -266,22 +282,22 @@ model BusinessConfig {
 
 // HANDOFF1 — per-tenant operator alert / human escalation configuration
 model HandoffConfig {
-  id                        String   @id @default(uuid())
-  tenantId                  String   @unique
-  enabled                   Boolean  @default(false)
-  alertPhone                String?  // operator WhatsApp number for alerts (international format)
-  clientMessage             String?  @db.Text // message sent to client when handoff triggers
-  operatorMessage           String?  @db.Text // template for operator alert
-  cooldownMinutes           Int      @default(60) // min gap between alerts for the same conversation
-  maxAlertsPerConversation  Int      @default(3)  // hard cap on alerts per conversation
-  autoSetHuman              Boolean  @default(true)  // auto-set conversation.status = 'human'
-  triggerOnLowConfidence    Boolean  @default(true)  // trigger when AI response indicates uncertainty
-  triggerOnExplicitRequest  Boolean  @default(true)  // trigger when customer explicitly asks for human
-  triggerOnRepetition       Boolean  @default(false) // trigger after N repeated unanswered intents
-  triggerOnCheckoutError    Boolean  @default(false) // trigger when checkout generation fails
-  triggerOnNoProduct        Boolean  @default(false) // trigger when no matching product found
-  createdAt                 DateTime @default(now())
-  updatedAt                 DateTime @updatedAt
+  id                       String   @id @default(uuid())
+  tenantId                 String   @unique
+  enabled                  Boolean  @default(false)
+  alertPhone               String? // operator WhatsApp number for alerts (international format)
+  clientMessage            String?  @db.Text // message sent to client when handoff triggers
+  operatorMessage          String?  @db.Text // template for operator alert
+  cooldownMinutes          Int      @default(60) // min gap between alerts for the same conversation
+  maxAlertsPerConversation Int      @default(3) // hard cap on alerts per conversation
+  autoSetHuman             Boolean  @default(true) // auto-set conversation.status = 'human'
+  triggerOnLowConfidence   Boolean  @default(true) // trigger when AI response indicates uncertainty
+  triggerOnExplicitRequest Boolean  @default(true) // trigger when customer explicitly asks for human
+  triggerOnRepetition      Boolean  @default(false) // trigger after N repeated unanswered intents
+  triggerOnCheckoutError   Boolean  @default(false) // trigger when checkout generation fails
+  triggerOnNoProduct       Boolean  @default(false) // trigger when no matching product found
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
@@ -289,35 +305,35 @@ model HandoffConfig {
 }
 
 model Product {
-  id                 String             @id @default(uuid())
-  tenantId           String
-  name               String
-  description        String?
-  category           String?
-  price              Float              @default(0.0)
-  currency           String             @default("BRL")
-  stock              Int?
+  id                    String             @id @default(uuid())
+  tenantId              String
+  name                  String
+  description           String?
+  category              String?
+  price                 Float              @default(0.0)
+  currency              String             @default("BRL")
+  stock                 Int?
   // PAY1 — product type for transactional payments
-  type               String             @default("product") // product | service
-  durationMinutes    Int?               // only for type=service
+  type                  String             @default("product") // product | service
+  durationMinutes       Int? // only for type=service
   // CAT1 — published in catalog (bot + checkout see only active=true)
-  active             Boolean            @default(true)
-  createdAt          DateTime           @default(now())
+  active                Boolean            @default(true)
+  createdAt             DateTime           @default(now())
   // COMM1 — commercial orchestrator fields
-  salesMode          String             @default("none") // none | dynamic_checkout | external_link
-  salesCtaText       String?            // CTA sent in offer message (ex: "Clique aqui para comprar")
-  salesShortText     String?            // short name/alias for AI disambiguation
-  externalSalesUrl   String?            // used when salesMode = external_link
-  aliases            String[]           @default([]) // explicit tenant-configured aliases for AI matching
-  salesPriority      Int                @default(0)  // higher = shown first when multiple products match
-  requiresHumanApproval Boolean         @default(false) // if true, orchestrator returns handoff_human
+  salesMode             String             @default("none") // none | dynamic_checkout | external_link
+  salesCtaText          String? // CTA sent in offer message (ex: "Clique aqui para comprar")
+  salesShortText        String? // short name/alias for AI disambiguation
+  externalSalesUrl      String? // used when salesMode = external_link
+  aliases               String[]           @default([]) // explicit tenant-configured aliases for AI matching
+  salesPriority         Int                @default(0) // higher = shown first when multiple products match
+  requiresHumanApproval Boolean            @default(false) // if true, orchestrator returns handoff_human
   // COMM1 — optional link to a Service (1 Service → N Products: avulso, pacote, premium)
-  serviceId          String?
-  service            Service?           @relation(fields: [serviceId], references: [id], onDelete: SetNull)
-  tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  salesEvents        SalesEvent[]
-  salesOpportunities SalesOpportunity[]
-  orderItems         OrderItem[]        @relation("ProductOrderItems")
+  serviceId             String?
+  service               Service?           @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  tenant                Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  salesEvents           SalesEvent[]
+  salesOpportunities    SalesOpportunity[]
+  orderItems            OrderItem[]        @relation("ProductOrderItems")
 
   @@index([tenantId])
   @@index([tenantId, active])
@@ -325,23 +341,23 @@ model Product {
 }
 
 model User {
-  id                 String       @id @default(uuid())
-  tenantId           String
-  name               String?
-  email              String       @unique
-  emailVerifiedAt    DateTime?
-  passwordHash       String?
-  facebookId         String?      @unique
-  instagramId        String?      @unique
-  role               String       @default("user")
-  isActive           Boolean      @default(true)
-  lastLoginAt        DateTime?
-  forcePasswordReset Boolean      @default(false)
-  sessionVersion     Int          @default(1)
-  createdAt          DateTime     @default(now())
-  tenant                  Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  loginEvents             LoginEvent[]
-  ownedLeadCandidates     LeadCandidate[]
+  id                  String          @id @default(uuid())
+  tenantId            String
+  name                String?
+  email               String          @unique
+  emailVerifiedAt     DateTime?
+  passwordHash        String?
+  facebookId          String?         @unique
+  instagramId         String?         @unique
+  role                String          @default("user")
+  isActive            Boolean         @default(true)
+  lastLoginAt         DateTime?
+  forcePasswordReset  Boolean         @default(false)
+  sessionVersion      Int             @default(1)
+  createdAt           DateTime        @default(now())
+  tenant              Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  loginEvents         LoginEvent[]
+  ownedLeadCandidates LeadCandidate[]
 }
 
 model LoginEvent {
@@ -372,24 +388,24 @@ model VerificationToken {
 }
 
 model Conversation {
-  id            String    @id @default(uuid())
-  tenantId      String
-  customerPhone String
-  status        String    @default("open")
-  lastMessageAt DateTime  @default(now())
-  assignedUser  String?
-  createdAt     DateTime  @default(now())
-  channel       String    @default("whatsapp") // M0
-  contactId     String? // nullable FK → Contact (phase 1)
+  id                 String    @id @default(uuid())
+  tenantId           String
+  customerPhone      String
+  status             String    @default("open")
+  lastMessageAt      DateTime  @default(now())
+  assignedUser       String?
+  createdAt          DateTime  @default(now())
+  channel            String    @default("whatsapp") // M0
+  contactId          String? // nullable FK → Contact (phase 1)
   // COMM1 — commercial orchestrator state (JSON, TTL 24h, managed by commercialStateService)
-  commercialState       Json?
+  commercialState    Json?
   // HANDOFF1 — anti-spam counters for operator alerts
-  handoffAlertCount     Int       @default(0)
-  lastHandoffAlertAt    DateTime?
-  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  contact       Contact?  @relation(fields: [contactId], references: [id], onDelete: SetNull)
-  messages      Message[]
-  payments      Payment[] // PAY-INT1
+  handoffAlertCount  Int       @default(0)
+  lastHandoffAlertAt DateTime?
+  tenant             Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contact            Contact?  @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  messages           Message[]
+  payments           Payment[] // PAY-INT1
 
   @@index([tenantId, status])
   @@index([tenantId, lastMessageAt])
@@ -482,7 +498,7 @@ model Order {
   cancelledAt        DateTime?
   refundedAt         DateTime?
   // PAY1 — link to transactional payment (separate from externalPaymentRef/Stripe)
-  paymentId          String?   @unique
+  paymentId          String?              @unique
   tenant             Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   contact            Contact?             @relation(fields: [contactId], references: [id], onDelete: SetNull)
   payment            Payment?             @relation("OrderActivePayment", fields: [paymentId], references: [id], onDelete: SetNull)
@@ -497,13 +513,13 @@ model Order {
 }
 
 model OrderItem {
-  id         String   @id @default(uuid())
+  id         String  @id @default(uuid())
   orderId    String
   productId  String?
   name       String
-  quantity   Int      @default(1)
-  unitPrice  Float    @default(0.0)
-  totalPrice Float    @default(0.0)
+  quantity   Int     @default(1)
+  unitPrice  Float   @default(0.0)
+  totalPrice Float   @default(0.0)
 
   order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product Product? @relation("ProductOrderItems", fields: [productId], references: [id], onDelete: SetNull)
@@ -556,14 +572,14 @@ model Appointment {
   // Contacts Module — FK → Contact (nullable, phase 1)
   contactId              String?
   // PAY1 — payment state (separate from operational status)
-  paymentId              String?   @unique
-  paymentStatus          String?                   // null | payment_pending | payment_confirmed | payment_failed
+  paymentId              String?                   @unique
+  paymentStatus          String? // null | payment_pending | payment_confirmed | payment_failed
   // BW1 — Beauty Workspace extensions
-  serviceId              String?                   // FK → Service (structured ref)
-  checkInAt              DateTime?                 // when customer physically arrived
-  completedAt            DateTime?                 // when service was finished
-  attendanceStatus       String?                   // null | present | late | no_show
-  originFlow             String?                   // whatsapp_bot | manual | online_booking | reengagement
+  serviceId              String? // FK → Service (structured ref)
+  checkInAt              DateTime? // when customer physically arrived
+  completedAt            DateTime? // when service was finished
+  attendanceStatus       String? // null | present | late | no_show
+  originFlow             String? // whatsapp_bot | manual | online_booking | reengagement
   depositRequired        Boolean                   @default(false)
   depositAmount          Float?
   tenant                 Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -607,11 +623,11 @@ model AutomationRule {
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
   // COMM1 — extended action (null = legacy text/template behavior)
-  actionType   String?  // send_checkout | send_external_link | handoff_human | send_offer
-  actionConfig Json?    // arbitrary config: { productId, message, phone, url, ... }
+  actionType   String? // send_checkout | send_external_link | handoff_human | send_offer
+  actionConfig Json? // arbitrary config: { productId, message, phone, url, ... }
   // P1 — source tracking: manual = user created, system = seeded by bot preset
   sourceType   String   @default("manual") // "manual" | "system"
-  sourceBotKey String?  // bot/preset that created this rule — null for manual rules
+  sourceBotKey String? // bot/preset that created this rule — null for manual rules
 
   tenant Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   logs   AutomationLog[]
@@ -650,7 +666,7 @@ model Service {
   bufferAfterMinutes  Int      @default(0)
   // P1 — source tracking: manual = user created, system = seeded by bot preset
   sourceType          String   @default("manual") // "manual" | "system"
-  sourceBotKey        String?  // bot/preset that seeded this service — null for manual records
+  sourceBotKey        String? // bot/preset that seeded this service — null for manual records
 
   tenant        Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   // AG5 — professionals assigned to this service
@@ -675,9 +691,9 @@ model Professional {
   closedWeekdays String   @default("") // comma-separated 0=Sun…6=Sat
   createdAt      DateTime @default(now())
 
-  tenant       Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  services     ProfessionalService[]
-  appointments Appointment[]
+  tenant        Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  services      ProfessionalService[]
+  appointments  Appointment[]
   // BW1 — Beauty Workspace professional enrichment
   beautyProfile BeautyProfessionalProfile?
 
@@ -841,9 +857,9 @@ model SalesOpportunity {
 model InstagramConnection {
   id             String    @id @default(uuid())
   tenantId       String    @unique
-  pageId         String?   // deprecated: not used in Instagram Login architecture
-  accessToken    String?   // encrypted IG user access token
-  igAccountId    String?   // IG user ID (runtime source of truth)
+  pageId         String? // deprecated: not used in Instagram Login architecture
+  accessToken    String? // encrypted IG user access token
+  igAccountId    String? // IG user ID (runtime source of truth)
   username       String?
   status         String    @default("connected")
   tokenExpiresAt DateTime? // long-lived token expiry (~60 days from issue)
@@ -1314,13 +1330,13 @@ model TemplateBroadcast {
 }
 
 model TemplateBroadcastRecipient {
-  id           String    @id @default(uuid())
-  broadcastId  String
-  phone        String
-  customerName String?
-  variables    Json?
+  id            String    @id @default(uuid())
+  broadcastId   String
+  phone         String
+  customerName  String?
+  variables     Json?
   status        String    @default("pending") // pending|accepted|sent|delivered|read|failed|skipped
-  metaMessageId String?   // wamid returned by Meta Graph API — used to correlate delivery webhook events
+  metaMessageId String? // wamid returned by Meta Graph API — used to correlate delivery webhook events
   errorMessage  String?
   sentAt        DateTime?
   createdAt     DateTime  @default(now())
@@ -1337,19 +1353,19 @@ model TemplateBroadcastRecipient {
 model CustomTemplate {
   id             String    @id @default(uuid())
   tenantId       String
-  name           String   // snake_case, unique per tenant
-  category       String   @default("UTILITY") // UTILITY | MARKETING | AUTHENTICATION
-  language       String   @default("pt_BR")
+  name           String // snake_case, unique per tenant
+  category       String    @default("UTILITY") // UTILITY | MARKETING | AUTHENTICATION
+  language       String    @default("pt_BR")
   body           String
   header         String?
   footer         String?
-  exampleVars    String[] @default([]) // example values for {{1}}, {{2}}... (required by Meta)
-  metaTemplateId String?  // ID returned by Meta after submission
-  status         String   @default("DRAFT") // DRAFT | PENDING | APPROVED | REJECTED
+  exampleVars    String[]  @default([]) // example values for {{1}}, {{2}}... (required by Meta)
+  metaTemplateId String? // ID returned by Meta after submission
+  status         String    @default("DRAFT") // DRAFT | PENDING | APPROVED | REJECTED
   rejectedReason String?
   lastSyncAt     DateTime? // last successful sync with Meta provider
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
@@ -1357,7 +1373,6 @@ model CustomTemplate {
   @@index([tenantId, status])
   @@map("custom_templates")
 }
-
 
 // ─── Fiscal Integration Records ───────────────────────────────────────────────
 
@@ -1434,9 +1449,9 @@ model TenantPaymentConfig {
   provider         String   @default("asaas")
   environment      String   @default("sandbox") // sandbox | production
   enabled          Boolean  @default(false)
-  apiKey           String   // server-side only — never exposed to frontend
-  webhookAuthToken String   // validated against asaas-access-token header
-  webhookId        String?  // Asaas webhook registration ID (for update/delete)
+  apiKey           String // server-side only — never exposed to frontend
+  webhookAuthToken String // validated against asaas-access-token header
+  webhookId        String? // Asaas webhook registration ID (for update/delete)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -1453,14 +1468,14 @@ model Payment {
   sourceType         String    @default("standalone") // order | appointment | standalone
   orderId            String?
   appointmentId      String?
-  contactId          String?   // traceability to Contact
-  conversationId     String?   // traceability to originating Conversation
+  contactId          String? // traceability to Contact
+  conversationId     String? // traceability to originating Conversation
   provider           String    @default("asaas")
   providerPaymentId  String?   @unique // Asaas payment ID
-  providerCustomerId String?   // Asaas customer ID — reused on future charges
-  invoiceUrl         String?   // link sent to customer
-  pixCopiaECola      String?   // pix copy-paste code (when billingType=PIX)
-  pixQrCodeBase64    String?   // base64 QR code image (when billingType=PIX)
+  providerCustomerId String? // Asaas customer ID — reused on future charges
+  invoiceUrl         String? // link sent to customer
+  pixCopiaECola      String? // pix copy-paste code (when billingType=PIX)
+  pixQrCodeBase64    String? // base64 QR code image (when billingType=PIX)
   // status: pending | confirmed | failed | refunded | canceled | overdue
   status             String    @default("pending")
   amount             Float
@@ -1470,7 +1485,7 @@ model Payment {
   customerPhone      String
   customerEmail      String?
   customerCpfCnpj    String?
-  dueDate            String    // YYYY-MM-DD
+  dueDate            String // YYYY-MM-DD
   // billingType: BOLETO | PIX | CREDIT_CARD | UNDEFINED (customer chooses)
   billingType        String    @default("UNDEFINED")
   paidAt             DateTime?
@@ -1478,17 +1493,17 @@ model Payment {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
-  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant         Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   // Payment → Order (find which order this payment is for)
-  order       Order?       @relation("PaymentToOrder", fields: [orderId], references: [id], onDelete: SetNull)
+  order          Order?         @relation("PaymentToOrder", fields: [orderId], references: [id], onDelete: SetNull)
   // Payment → Appointment (find which appointment this payment is for)
-  appointment Appointment? @relation("PaymentToAppointment", fields: [appointmentId], references: [id], onDelete: SetNull)
+  appointment    Appointment?   @relation("PaymentToAppointment", fields: [appointmentId], references: [id], onDelete: SetNull)
   // PAY-INT1: traceability relations
-  contact      Contact?      @relation(fields: [contactId], references: [id], onDelete: SetNull)
-  conversation Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  contact        Contact?       @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  conversation   Conversation?  @relation(fields: [conversationId], references: [id], onDelete: SetNull)
   // Back-relations (Order/Appointment → this Payment, via their paymentId FK)
-  orderRef       Order?       @relation("OrderActivePayment")
-  appointmentRef Appointment? @relation("AppointmentActivePayment")
+  orderRef       Order?         @relation("OrderActivePayment")
+  appointmentRef Appointment?   @relation("AppointmentActivePayment")
   events         PaymentEvent[]
 
   @@index([tenantId, status])
@@ -1504,8 +1519,8 @@ model PaymentEvent {
   paymentId        String
   tenantId         String
   providerEventId  String   @unique // Asaas event.id — insert failure = duplicate = skip
-  eventType        String   // PAYMENT_RECEIVED | PAYMENT_CONFIRMED | PAYMENT_OVERDUE | PAYMENT_DELETED | PAYMENT_REFUNDED
-  payload          Json     // full raw webhook body
+  eventType        String // PAYMENT_RECEIVED | PAYMENT_CONFIRMED | PAYMENT_OVERDUE | PAYMENT_DELETED | PAYMENT_REFUNDED
+  payload          Json // full raw webhook body
   // processingStatus: processed | ignored_duplicate | failed
   processingStatus String   @default("processed")
   errorMessage     String?
@@ -1524,12 +1539,12 @@ model PaymentEvent {
 model FeatureFlag {
   id              String   @id @default(cuid())
   moduleId        String
-  scope           String   @default("module")  // module | function
-  parentModuleId  String?                       // preenchido quando scope = "function"
+  scope           String   @default("module") // module | function
+  parentModuleId  String? // preenchido quando scope = "function"
   enabled         Boolean  @default(true)
-  maintenanceNote String?                       // mensagem exibida no banner de manutenção
+  maintenanceNote String? // mensagem exibida no banner de manutenção
   updatedAt       DateTime @updatedAt
-  updatedBy       String?                       // userId do superadmin que fez a alteração
+  updatedBy       String? // userId do superadmin que fez a alteração
 
   @@unique([moduleId, scope])
   @@index([parentModuleId])
@@ -1558,12 +1573,12 @@ model LeadSearchRun {
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
 
-  tenant              Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  candidates          LeadCandidate[]
-  enrichmentAttempts  LeadEnrichmentAttempt[]
-  campaignDrafts      LeadCampaignDraft[]
-  campaignExecutions  LeadCampaignExecution[]
-  operationalAlerts   LeadOperationalAlert[]
+  tenant             Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  candidates         LeadCandidate[]
+  enrichmentAttempts LeadEnrichmentAttempt[]
+  campaignDrafts     LeadCampaignDraft[]
+  campaignExecutions LeadCampaignExecution[]
+  operationalAlerts  LeadOperationalAlert[]
 
   @@index([tenantId, createdAt])
   @@index([tenantId, status])
@@ -1571,57 +1586,57 @@ model LeadSearchRun {
 }
 
 model LeadCandidate {
-  id           String  @id @default(uuid())
-  tenantId     String
-  searchRunId  String
-  companyName  String
-  tradeName    String?
-  placeId      String?
-  cnpj         String?
-  website      String?
-  email        String?
-  phone        String?
-  mobilePhone  String?
-  address      String?
-  city         String?
-  state        String?
-  category     String?
-  rating       Float?
-  reviewsCount Int?
-  source       String  @default("manual") // manual | google | import | unknown
-  status       String  @default("pending_review") // pending_review | approved | rejected | archived
-  emailConsentStatus String @default("unknown") // unknown | granted | denied
-  whatsappConsentStatus String @default("unknown") // unknown | granted | denied
-  outreachStatus String @default("not_ready") // not_ready | ready_email | ready_whatsapp | ready_multichannel | blocked
-  outreachBlockReason String?
-  lastReadinessCheckedAt DateTime?
+  id                           String    @id @default(uuid())
+  tenantId                     String
+  searchRunId                  String
+  companyName                  String
+  tradeName                    String?
+  placeId                      String?
+  cnpj                         String?
+  website                      String?
+  email                        String?
+  phone                        String?
+  mobilePhone                  String?
+  address                      String?
+  city                         String?
+  state                        String?
+  category                     String?
+  rating                       Float?
+  reviewsCount                 Int?
+  source                       String    @default("manual") // manual | google | import | unknown
+  status                       String    @default("pending_review") // pending_review | approved | rejected | archived
+  emailConsentStatus           String    @default("unknown") // unknown | granted | denied
+  whatsappConsentStatus        String    @default("unknown") // unknown | granted | denied
+  outreachStatus               String    @default("not_ready") // not_ready | ready_email | ready_whatsapp | ready_multichannel | blocked
+  outreachBlockReason          String?
+  lastReadinessCheckedAt       DateTime?
   // Pipeline fields (LEAD3)
-  pipelineStage  String   @default("new") // new | contacted | interested | proposal_sent | negotiating | won | lost
-  ownerUserId    String?
-  priority       String   @default("normal") // low | normal | high
-  nextActionAt   DateTime?
-  lastContactAt  DateTime?
-  internalNotes  String?
+  pipelineStage                String    @default("new") // new | contacted | interested | proposal_sent | negotiating | won | lost
+  ownerUserId                  String?
+  priority                     String    @default("normal") // low | normal | high
+  nextActionAt                 DateTime?
+  lastContactAt                DateTime?
+  internalNotes                String?
   // Company registry (LEAD6)
   legalName                    String?
-  cnpjStatus                   String?   // active | inactive | unknown
-  cnpjSource                   String?   // brasilapi | manual | other
-  registryConfidence           Int?      // 0-100
+  cnpjStatus                   String? // active | inactive | unknown
+  cnpjSource                   String? // brasilapi | manual | other
+  registryConfidence           Int? // 0-100
   companyRegistryLastCheckedAt DateTime?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt                    DateTime  @default(now())
+  updatedAt                    DateTime  @updatedAt
 
-  tenant             Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  searchRun          LeadSearchRun           @relation(fields: [searchRunId], references: [id], onDelete: Cascade)
-  score              LeadScore?
-  enrichmentAttempts LeadEnrichmentAttempt[]
-  campaignDrafts     LeadCampaignDraft[]
-  executionItems     LeadCampaignExecutionItem[]
-  suppressions       LeadSuppression[]
-  followUpLogs       LeadFollowUpLog[]
-  owner              User?                   @relation(fields: [ownerUserId], references: [id], onDelete: SetNull)
-  operationalAlerts           LeadOperationalAlert[]
-  companyRegistrySnapshots    LeadCompanyRegistrySnapshot[]
+  tenant                   Tenant                        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  searchRun                LeadSearchRun                 @relation(fields: [searchRunId], references: [id], onDelete: Cascade)
+  score                    LeadScore?
+  enrichmentAttempts       LeadEnrichmentAttempt[]
+  campaignDrafts           LeadCampaignDraft[]
+  executionItems           LeadCampaignExecutionItem[]
+  suppressions             LeadSuppression[]
+  followUpLogs             LeadFollowUpLog[]
+  owner                    User?                         @relation(fields: [ownerUserId], references: [id], onDelete: SetNull)
+  operationalAlerts        LeadOperationalAlert[]
+  companyRegistrySnapshots LeadCompanyRegistrySnapshot[]
 
   @@index([tenantId, searchRunId])
   @@index([tenantId, status])
@@ -1639,7 +1654,7 @@ model LeadScore {
   digitalMaturityScore     Int      @default(0)
   approachabilityScore     Int      @default(0)
   confidenceScore          Int      @default(0)
-  verdict                  String   // compensa | revisar | nao_compensa
+  verdict                  String // compensa | revisar | nao_compensa
   reasons                  Json?
   createdAt                DateTime @default(now())
   updatedAt                DateTime @updatedAt
@@ -1652,17 +1667,17 @@ model LeadScore {
 }
 
 model LeadEnrichmentAttempt {
-  id                String    @id @default(uuid())
-  tenantId          String
-  searchRunId       String?
-  leadCandidateId   String?
-  provider          String
-  status            String    @default("pending") // pending | success | failed
-  requestedFields   String[]  @default([])
-  responseSummary   Json?
-  errorMessage      String?
-  attemptedAt       DateTime  @default(now())
-  completedAt       DateTime?
+  id              String    @id @default(uuid())
+  tenantId        String
+  searchRunId     String?
+  leadCandidateId String?
+  provider        String
+  status          String    @default("pending") // pending | success | failed
+  requestedFields String[]  @default([])
+  responseSummary Json?
+  errorMessage    String?
+  attemptedAt     DateTime  @default(now())
+  completedAt     DateTime?
 
   tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   searchRun     LeadSearchRun? @relation(fields: [searchRunId], references: [id], onDelete: SetNull)
@@ -1674,29 +1689,29 @@ model LeadEnrichmentAttempt {
 }
 
 model LeadCampaignDraft {
-  id              String   @id @default(uuid())
-  tenantId        String
-  searchRunId     String
-  leadCandidateId String
-  channel         String   // email | whatsapp
-  status          String   @default("draft") // draft | approved | rejected | sent | failed
-  subject         String?
-  messageBody     String   @db.Text
-  personalization Json?
+  id                String    @id @default(uuid())
+  tenantId          String
+  searchRunId       String
+  leadCandidateId   String
+  channel           String // email | whatsapp
+  status            String    @default("draft") // draft | approved | rejected | sent | failed
+  subject           String?
+  messageBody       String    @db.Text
+  personalization   Json?
   readinessSnapshot Json?
-  approvedAt      DateTime?
-  approvedBy      String?
-  sentAt          DateTime?
+  approvedAt        DateTime?
+  approvedBy        String?
+  sentAt            DateTime?
   providerMessageId String?
   providerChannel   String?
-  errorMessage    String?
-  deliveryMeta    Json?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  errorMessage      String?
+  deliveryMeta      Json?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
-  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  searchRun     LeadSearchRun @relation(fields: [searchRunId], references: [id], onDelete: Cascade)
-  leadCandidate LeadCandidate @relation(fields: [leadCandidateId], references: [id], onDelete: Cascade)
+  tenant         Tenant                      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  searchRun      LeadSearchRun               @relation(fields: [searchRunId], references: [id], onDelete: Cascade)
+  leadCandidate  LeadCandidate               @relation(fields: [leadCandidateId], references: [id], onDelete: Cascade)
   executionItems LeadCampaignExecutionItem[]
 
   @@index([tenantId, searchRunId])
@@ -1706,26 +1721,26 @@ model LeadCampaignDraft {
 }
 
 model LeadCampaignExecution {
-  id              String   @id @default(uuid())
-  tenantId        String
-  searchRunId     String
-  channel         String   // email | whatsapp
-  status          String   @default("queued") // queued | running | completed | partial | failed
-  requestedCount  Int      @default(0)
-  eligibleCount   Int      @default(0)
-  sentCount       Int      @default(0)
-  failedCount     Int      @default(0)
-  skippedCount    Int      @default(0)
-  batchSize       Int      @default(10)
-  notes           String?
-  startedAt       DateTime?
-  finishedAt      DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id             String    @id @default(uuid())
+  tenantId       String
+  searchRunId    String
+  channel        String // email | whatsapp
+  status         String    @default("queued") // queued | running | completed | partial | failed
+  requestedCount Int       @default(0)
+  eligibleCount  Int       @default(0)
+  sentCount      Int       @default(0)
+  failedCount    Int       @default(0)
+  skippedCount   Int       @default(0)
+  batchSize      Int       @default(10)
+  notes          String?
+  startedAt      DateTime?
+  finishedAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
-  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  searchRun     LeadSearchRun @relation(fields: [searchRunId], references: [id], onDelete: Cascade)
-  items         LeadCampaignExecutionItem[]
+  tenant    Tenant                      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  searchRun LeadSearchRun               @relation(fields: [searchRunId], references: [id], onDelete: Cascade)
+  items     LeadCampaignExecutionItem[]
 
   @@index([tenantId, createdAt])
   @@index([tenantId, channel])
@@ -1734,31 +1749,31 @@ model LeadCampaignExecution {
 }
 
 model LeadCampaignExecutionItem {
-  id              String   @id @default(uuid())
-  tenantId        String
-  executionId     String
-  draftId         String
-  leadCandidateId String
-  channel         String
-  status          String   // sent | failed | skipped
-  reason          String?
-  providerMessageId String?
-  deliveredTo     String?
-  processedAt     DateTime @default(now())
-  responseStatus  String   @default("unknown") // unknown | delivered | opened | replied | qualified | converted | lost | unsubscribed
-  outcomeNotes    String?
-  conversionValue Float?
-  respondedAt     DateTime?
-  convertedAt     DateTime?
-  outcomeUpdatedAt DateTime?
-  outcomeSource   String   @default("manual") // manual | provider_webhook
+  id                    String    @id @default(uuid())
+  tenantId              String
+  executionId           String
+  draftId               String
+  leadCandidateId       String
+  channel               String
+  status                String // sent | failed | skipped
+  reason                String?
+  providerMessageId     String?
+  deliveredTo           String?
+  processedAt           DateTime  @default(now())
+  responseStatus        String    @default("unknown") // unknown | delivered | opened | replied | qualified | converted | lost | unsubscribed
+  outcomeNotes          String?
+  conversionValue       Float?
+  respondedAt           DateTime?
+  convertedAt           DateTime?
+  outcomeUpdatedAt      DateTime?
+  outcomeSource         String    @default("manual") // manual | provider_webhook
   lastProviderEventType String?
   lastProviderEventAt   DateTime?
 
-  tenant        Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  execution     LeadCampaignExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
-  draft         LeadCampaignDraft     @relation(fields: [draftId], references: [id], onDelete: Cascade)
-  leadCandidate LeadCandidate         @relation(fields: [leadCandidateId], references: [id], onDelete: Cascade)
+  tenant            Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  execution         LeadCampaignExecution  @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  draft             LeadCampaignDraft      @relation(fields: [draftId], references: [id], onDelete: Cascade)
+  leadCandidate     LeadCandidate          @relation(fields: [leadCandidateId], references: [id], onDelete: Cascade)
   providerEventLogs LeadProviderEventLog[]
 
   @@index([tenantId, executionId])
@@ -1771,7 +1786,7 @@ model LeadSuppression {
   id              String   @id @default(uuid())
   tenantId        String
   leadCandidateId String
-  channel         String   // email | whatsapp | all
+  channel         String // email | whatsapp | all
   reason          String
   source          String   @default("manual") // manual | unsubscribe | bounce | operator | compliance
   active          Boolean  @default(true)
@@ -1788,18 +1803,18 @@ model LeadSuppression {
 }
 
 model LeadProviderEventLog {
-  id                String   @id @default(uuid())
+  id                String    @id @default(uuid())
   tenantId          String?
   executionItemId   String?
-  provider          String   // resend
-  channel           String   // email
+  provider          String // resend
+  channel           String // email
   externalEventId   String
   providerMessageId String?
   eventType         String
-  processingStatus  String   @default("pending") // pending | processed | ignored_duplicate | ignored_unmatched | failed
+  processingStatus  String    @default("pending") // pending | processed | ignored_duplicate | ignored_unmatched | failed
   errorMessage      String?
   payload           Json
-  receivedAt        DateTime @default(now())
+  receivedAt        DateTime  @default(now())
   processedAt       DateTime?
 
   tenant        Tenant?                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -1827,7 +1842,7 @@ model LeadProspectingTemplate {
   requiresWebsite         Boolean  @default(false)
   requiresCommercialPhone Boolean  @default(false)
   localB2BOnly            Boolean  @default(false)
-  preferredChannel        String?  // email | whatsapp | multichannel | null
+  preferredChannel        String? // email | whatsapp | multichannel | null
   notes                   String?
   active                  Boolean  @default(true)
   createdAt               DateTime @default(now())
@@ -1846,10 +1861,10 @@ model LeadFollowUpLog {
   id              String   @id @default(uuid())
   tenantId        String
   leadCandidateId String
-  userId          String?  // author, if known
-  type            String   // manual_contact | note | stage_change | auto_event
+  userId          String? // author, if known
+  type            String // manual_contact | note | stage_change | auto_event
   content         String
-  metadata        Json?    // e.g. { from: 'new', to: 'contacted' }
+  metadata        Json? // e.g. { from: 'new', to: 'contacted' }
   loggedAt        DateTime @default(now())
 
   tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -1862,23 +1877,23 @@ model LeadFollowUpLog {
 
 // LEAD5 — Operational alerts (escalation control)
 model LeadOperationalAlert {
-  id               String    @id @default(uuid())
-  tenantId         String
-  leadCandidateId  String
-  searchRunId      String?
-  alertType        String    // overdue_next_action | no_owner_high_priority | stalled_follow_up | replied_no_next_action | ready_no_activation
-  severity         String    @default("medium") // low | medium | high | critical
-  status           String    @default("open")   // open | acknowledged | resolved
-  title            String
-  detail           String?
-  ruleKey          String    // "${alertType}::${leadCandidateId}" — unique per tenant
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-  acknowledgedAt   DateTime?
-  resolvedAt       DateTime?
+  id              String    @id @default(uuid())
+  tenantId        String
+  leadCandidateId String
+  searchRunId     String?
+  alertType       String // overdue_next_action | no_owner_high_priority | stalled_follow_up | replied_no_next_action | ready_no_activation
+  severity        String    @default("medium") // low | medium | high | critical
+  status          String    @default("open") // open | acknowledged | resolved
+  title           String
+  detail          String?
+  ruleKey         String // "${alertType}::${leadCandidateId}" — unique per tenant
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  acknowledgedAt  DateTime?
+  resolvedAt      DateTime?
 
-  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  leadCandidate LeadCandidate @relation(fields: [leadCandidateId], references: [id], onDelete: Cascade)
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  leadCandidate LeadCandidate  @relation(fields: [leadCandidateId], references: [id], onDelete: Cascade)
   searchRun     LeadSearchRun? @relation(fields: [searchRunId], references: [id], onDelete: SetNull)
 
   @@unique([tenantId, ruleKey])
@@ -1891,23 +1906,23 @@ model LeadOperationalAlert {
 // ─── LEAD6 — Company Registry / CNPJ Enrichment ──────────────────────────────
 
 model LeadCompanyRegistrySnapshot {
-  id               String   @id @default(uuid())
-  tenantId         String
-  leadCandidateId  String
-  provider         String   // brasilapi | manual
-  matched          Boolean  @default(false)
-  confidence       Int?     // 0-100
-  cnpj             String?
-  legalName        String?
-  tradeName        String?
-  companyType      String?
-  mainActivity     String?
-  city             String?
-  state            String?
-  cnpjStatus       String?  // active | inactive | unknown
-  rawSummary       String?
-  notes            Json?    // String[]
-  createdAt        DateTime @default(now())
+  id              String   @id @default(uuid())
+  tenantId        String
+  leadCandidateId String
+  provider        String // brasilapi | manual
+  matched         Boolean  @default(false)
+  confidence      Int? // 0-100
+  cnpj            String?
+  legalName       String?
+  tradeName       String?
+  companyType     String?
+  mainActivity    String?
+  city            String?
+  state           String?
+  cnpjStatus      String? // active | inactive | unknown
+  rawSummary      String?
+  notes           Json? // String[]
+  createdAt       DateTime @default(now())
 
   tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   leadCandidate LeadCandidate @relation(fields: [leadCandidateId], references: [id], onDelete: Cascade)
@@ -1923,12 +1938,12 @@ model BeautyWorkspaceConfig {
   id                    String   @id @default(uuid())
   tenantId              String   @unique
   status                String   @default("setup") // setup | active | paused
-  businessSubtype       String?  // salon | barbershop | aesthetics | nail | lash | massage | other
-  defaultDepositPercent Float?   // e.g. 30.0 = 30%
+  businessSubtype       String? // salon | barbershop | aesthetics | nail | lash | massage | other
+  defaultDepositPercent Float? // e.g. 30.0 = 30%
   depositRequired       Boolean  @default(false)
   reengagementDays      Int      @default(30) // days of inactivity before reengagement campaign fires
   confirmationLeadHours Int      @default(24) // hours before appointment to send confirmation
-  reminderLeadHours     Int      @default(2)  // hours before appointment to send reminder
+  reminderLeadHours     Int      @default(2) // hours before appointment to send reminder
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
@@ -1939,19 +1954,19 @@ model BeautyWorkspaceConfig {
 
 // BW-SVC — per-service beauty enrichment (extends Service)
 model BeautyServiceProfile {
-  id                  String   @id @default(uuid())
-  tenantId            String
-  serviceId           String   @unique
-  category            String?  // corte | coloracao | tratamento | estetica | unhas | sobrancelha | outros
-  priceFrom           Float?
-  priceTo             Float?
-  requiresDeposit     Boolean  @default(false)
-  depositAmount       Float?
-  popularityScore     Int      @default(0) // incremented on each booking
-  photoUrl            String?
-  description         String?  @db.Text
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id              String   @id @default(uuid())
+  tenantId        String
+  serviceId       String   @unique
+  category        String? // corte | coloracao | tratamento | estetica | unhas | sobrancelha | outros
+  priceFrom       Float?
+  priceTo         Float?
+  requiresDeposit Boolean  @default(false)
+  depositAmount   Float?
+  popularityScore Int      @default(0) // incremented on each booking
+  photoUrl        String?
+  description     String?  @db.Text
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   service Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
@@ -1962,24 +1977,24 @@ model BeautyServiceProfile {
 
 // BW-CUST — per-customer beauty enrichment (extends Contact)
 model BeautyCustomerProfile {
-  id                   String    @id @default(uuid())
-  tenantId             String
-  contactId            String    @unique
-  preferredProfessional String?  // professionalId snapshot preference
-  preferredServices    String[]  @default([]) // serviceId list
-  notes                String?   @db.Text
-  lastServiceAt        DateTime?
-  totalVisits          Int       @default(0)
-  totalSpend           Float     @default(0)
-  birthdayDate         String?   // MM-DD for birthday campaigns (no year)
-  loyaltyPoints        Int       @default(0)
-  vipStatus            Boolean   @default(false)
-  reengagementSentAt   DateTime?
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
+  id                    String    @id @default(uuid())
+  tenantId              String
+  contactId             String    @unique
+  preferredProfessional String? // professionalId snapshot preference
+  preferredServices     String[]  @default([]) // serviceId list
+  notes                 String?   @db.Text
+  lastServiceAt         DateTime?
+  totalVisits           Int       @default(0)
+  totalSpend            Float     @default(0)
+  birthdayDate          String? // MM-DD for birthday campaigns (no year)
+  loyaltyPoints         Int       @default(0)
+  vipStatus             Boolean   @default(false)
+  reengagementSentAt    DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
-  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  tenant        Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contact       Contact                 @relation(fields: [contactId], references: [id], onDelete: Cascade)
   packageUsages CustomerBeautyPackage[]
 
   @@index([tenantId, lastServiceAt])
@@ -1993,11 +2008,11 @@ model BeautyProfessionalProfile {
   tenantId        String
   professionalId  String   @unique
   specialties     String[] @default([]) // e.g. ["coloracao", "corte_feminino"]
-  commissionPct   Float?   // percentage of service price
+  commissionPct   Float? // percentage of service price
   photoUrl        String?
   bio             String?  @db.Text
   instagramHandle String?
-  rating          Float?   // 0-5 average
+  rating          Float? // 0-5 average
   totalReviews    Int      @default(0)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -2022,9 +2037,9 @@ model BeautyPackage {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  tenant        Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  items         BeautyPackageItem[]
-  customerPkgs  CustomerBeautyPackage[]
+  tenant       Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  items        BeautyPackageItem[]
+  customerPkgs CustomerBeautyPackage[]
 
   @@index([tenantId, active])
   @@map("beauty_packages")
@@ -2066,11 +2081,11 @@ model CustomerBeautyPackage {
 
 // BW-PKG-USE — individual session usage record
 model BeautyPackageUsage {
-  id              String   @id @default(uuid())
-  customerPkgId  String
-  appointmentId  String?
-  usedAt         DateTime @default(now())
-  notes          String?
+  id            String   @id @default(uuid())
+  customerPkgId String
+  appointmentId String?
+  usedAt        DateTime @default(now())
+  notes         String?
 
   customerPackage CustomerBeautyPackage @relation(fields: [customerPkgId], references: [id], onDelete: Cascade)
 
@@ -2080,15 +2095,15 @@ model BeautyPackageUsage {
 
 // BW-LOCK — optimistic slot lock during booking flow (prevents double-booking race)
 model AppointmentLock {
-  id             String   @id @default(uuid())
-  tenantId       String
-  professionalId String?
-  date           String   // YYYY-MM-DD
-  time           String   // HH:MM
+  id              String   @id @default(uuid())
+  tenantId        String
+  professionalId  String?
+  date            String // YYYY-MM-DD
+  time            String // HH:MM
   durationMinutes Int
-  sessionId      String   // client session or WA conversation id holding lock
-  expiresAt      DateTime // typically now() + 5 minutes
-  createdAt      DateTime @default(now())
+  sessionId       String // client session or WA conversation id holding lock
+  expiresAt       DateTime // typically now() + 5 minutes
+  createdAt       DateTime @default(now())
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
@@ -2104,8 +2119,8 @@ model BeautyWaitlistEntry {
   contactId      String?
   serviceId      String?
   professionalId String?
-  preferredDate  String?   // YYYY-MM-DD
-  preferredTime  String?   // HH:MM
+  preferredDate  String? // YYYY-MM-DD
+  preferredTime  String? // HH:MM
   status         String    @default("waiting") // waiting | notified | booked | cancelled
   notifiedAt     DateTime?
   bookedAt       DateTime?
@@ -2120,19 +2135,19 @@ model BeautyWaitlistEntry {
 
 // BW-CAMP — reengagement / retention campaign rules
 model BeautyCampaignRule {
-  id               String   @id @default(uuid())
-  tenantId         String
-  name             String
-  triggerType      String   // inactivity | birthday | post_visit | package_expiring | loyalty_milestone
-  inactivityDays   Int?     // for triggerType = inactivity
-  messageTemplate  String   @db.Text
-  channel          String   @default("whatsapp") // whatsapp | instagram
-  active           Boolean  @default(true)
-  cooldownDays     Int      @default(7) // min days between sends to same customer
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id              String   @id @default(uuid())
+  tenantId        String
+  name            String
+  triggerType     String // inactivity | birthday | post_visit | package_expiring | loyalty_milestone
+  inactivityDays  Int? // for triggerType = inactivity
+  messageTemplate String   @db.Text
+  channel         String   @default("whatsapp") // whatsapp | instagram
+  active          Boolean  @default(true)
+  cooldownDays    Int      @default(7) // min days between sends to same customer
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  tenant Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   runs   BeautyCampaignRun[]
 
   @@index([tenantId, active])
@@ -2141,18 +2156,404 @@ model BeautyCampaignRule {
 
 // BW-CAMP-RUN — execution log per customer per campaign
 model BeautyCampaignRun {
-  id         String   @id @default(uuid())
-  tenantId   String
-  ruleId     String
-  contactId  String?
-  status     String   @default("sent") // sent | failed | replied | converted
-  sentAt     DateTime @default(now())
-  repliedAt  DateTime?
-  notes      String?
+  id        String    @id @default(uuid())
+  tenantId  String
+  ruleId    String
+  contactId String?
+  status    String    @default("sent") // sent | failed | replied | converted
+  sentAt    DateTime  @default(now())
+  repliedAt DateTime?
+  notes     String?
 
   rule BeautyCampaignRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
 
   @@index([ruleId, sentAt])
   @@index([tenantId, sentAt])
   @@map("beauty_campaign_runs")
+}
+
+// ─── PHASE 5 — Public Vertical Pages: Clinic / Consultório ───────────────────
+
+// PV-CLINIC-PROFILE — public page identity for a clinic or consultório
+// One profile per tenant (@@unique on tenantId).
+// slug is globally unique within this model; routes: /agendar/[slug]
+model ClinicProfile {
+  id            String   @id @default(uuid())
+  tenantId      String
+  slug          String   @unique
+  displayName   String
+  description   String?  @db.Text
+  whatsappPhone String?
+  address       String?
+  city          String?
+  state         String?
+  isPublished   Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant              Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  services            ClinicService[]
+  professionals       ClinicProfessional[]
+  availability        ClinicAvailability[]
+  appointmentRequests AppointmentRequest[]
+  bookingPageConfig   PublicBookingPageConfig?
+
+  @@unique([tenantId]) // one profile per tenant for MVP
+  @@index([isPublished])
+  @@map("clinic_profiles")
+}
+
+// PV-CLINIC-SERVICE — services/procedures offered at the clinic
+model ClinicService {
+  id               String   @id @default(uuid())
+  tenantId         String
+  clinicProfileId  String
+  name             String
+  description      String?  @db.Text
+  durationMinutes  Int?
+  priceDescription String? // free text: "A partir de R$ 150"
+  isActive         Boolean  @default(true)
+  sortOrder        Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clinicProfile       ClinicProfile        @relation(fields: [clinicProfileId], references: [id], onDelete: Cascade)
+  appointmentRequests AppointmentRequest[]
+
+  @@index([tenantId])
+  @@index([clinicProfileId])
+  @@map("clinic_services")
+}
+
+// PV-CLINIC-PROF — professionals/specialists at the clinic (optional feature)
+model ClinicProfessional {
+  id              String   @id @default(uuid())
+  tenantId        String
+  clinicProfileId String
+  name            String
+  role            String? // "Dentista", "Fisioterapeuta"
+  bio             String?  @db.Text
+  isActive        Boolean  @default(true)
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clinicProfile       ClinicProfile        @relation(fields: [clinicProfileId], references: [id], onDelete: Cascade)
+  availability        ClinicAvailability[]
+  appointmentRequests AppointmentRequest[]
+
+  @@index([tenantId])
+  @@index([clinicProfileId])
+  @@map("clinic_professionals")
+}
+
+// PV-CLINIC-AVAIL — simple recurring weekly availability windows
+// dayOfWeek: 0=Sunday … 6=Saturday (matches JS Date convention)
+model ClinicAvailability {
+  id              String   @id @default(uuid())
+  tenantId        String
+  clinicProfileId String
+  professionalId  String? // null = applies to whole clinic
+  dayOfWeek       Int // 0–6
+  startTime       String // HH:MM
+  endTime         String // HH:MM
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant        Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clinicProfile ClinicProfile       @relation(fields: [clinicProfileId], references: [id], onDelete: Cascade)
+  professional  ClinicProfessional? @relation(fields: [professionalId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([clinicProfileId])
+  @@map("clinic_availability")
+}
+
+// PV-APPT-REQUEST — administrative lead/booking request from the public page
+// NOT a clinical record. No diagnosis, prescription, or clinical data.
+// status: NEW | CONTACTED | SCHEDULED | CANCELED | ARCHIVED
+model AppointmentRequest {
+  id              String   @id @default(uuid())
+  tenantId        String
+  clinicProfileId String
+  serviceId       String? // FK → ClinicService (optional)
+  professionalId  String? // FK → ClinicProfessional (optional)
+  customerName    String
+  customerPhone   String
+  customerEmail   String?
+  preferredDate   String? // YYYY-MM-DD (user preference, not a confirmed slot)
+  preferredTime   String? // HH:MM
+  notes           String?  @db.Text
+  status          String   @default("NEW") // NEW | CONTACTED | SCHEDULED | CANCELED | ARCHIVED
+  source          String   @default("public_page") // public_page | whatsapp | manual
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant        Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clinicProfile ClinicProfile       @relation(fields: [clinicProfileId], references: [id], onDelete: Cascade)
+  service       ClinicService?      @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  professional  ClinicProfessional? @relation(fields: [professionalId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([clinicProfileId])
+  @@index([tenantId, status])
+  @@map("appointment_requests")
+}
+
+// PV-BOOKING-CFG — cosmetic configuration for the public booking page
+model PublicBookingPageConfig {
+  id                String   @id @default(uuid())
+  tenantId          String
+  clinicProfileId   String   @unique
+  heroTitle         String?
+  heroSubtitle      String?
+  primaryCtaLabel   String?
+  showPrices        Boolean  @default(true)
+  showProfessionals Boolean  @default(true)
+  showAddress       Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clinicProfile ClinicProfile @relation(fields: [clinicProfileId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("public_booking_page_configs")
+}
+
+// ─── PHASE 5 — Public Vertical Pages: Restaurant / Restaurante ───────────────
+
+// PV-REST-PROFILE — public page identity for a restaurant
+// One profile per tenant (@@unique on tenantId).
+// slug is globally unique within this model; routes: /cardapio/[slug]
+model RestaurantProfile {
+  id                     String   @id @default(uuid())
+  tenantId               String
+  slug                   String   @unique
+  displayName            String
+  description            String?  @db.Text
+  whatsappPhone          String?
+  address                String?
+  city                   String?
+  state                  String?
+  acceptsDelivery        Boolean  @default(true)
+  acceptsPickup          Boolean  @default(true)
+  deliveryFeeDescription String? // "Taxa de entrega: R$ 5,00"
+  minimumOrderValue      Float?
+  isPublished            Boolean  @default(false)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  tenant         Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  categories     FoodCategory[]
+  products       FoodProduct[]
+  addonGroups    FoodAddonGroup[]
+  orders         FoodOrder[]
+  menuPageConfig PublicMenuPageConfig?
+
+  @@unique([tenantId]) // one profile per tenant for MVP
+  @@index([isPublished])
+  @@map("restaurant_profiles")
+}
+
+// PV-MENU-CFG — cosmetic configuration for the public menu page
+model PublicMenuPageConfig {
+  id                  String   @id @default(uuid())
+  tenantId            String
+  restaurantProfileId String   @unique
+  heroTitle           String?
+  heroSubtitle        String?
+  primaryCtaLabel     String?
+  showDeliveryInfo    Boolean  @default(true)
+  showPickupInfo      Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  tenant            Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  restaurantProfile RestaurantProfile @relation(fields: [restaurantProfileId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("public_menu_page_configs")
+}
+
+// PV-FOOD-CATEGORY — menu categories (e.g. "Entradas", "Pratos principais")
+model FoodCategory {
+  id                  String   @id @default(uuid())
+  tenantId            String
+  restaurantProfileId String
+  name                String
+  description         String?
+  isActive            Boolean  @default(true)
+  sortOrder           Int      @default(0)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  tenant            Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  restaurantProfile RestaurantProfile @relation(fields: [restaurantProfileId], references: [id], onDelete: Cascade)
+  products          FoodProduct[]
+
+  @@index([tenantId])
+  @@index([restaurantProfileId])
+  @@map("food_categories")
+}
+
+// PV-FOOD-PRODUCT — individual menu item / product
+model FoodProduct {
+  id                  String   @id @default(uuid())
+  tenantId            String
+  restaurantProfileId String
+  categoryId          String
+  name                String
+  description         String?  @db.Text
+  price               Float
+  imageUrl            String?
+  isActive            Boolean  @default(true)
+  isAvailable         Boolean  @default(true)
+  sortOrder           Int      @default(0)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  tenant            Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  restaurantProfile RestaurantProfile @relation(fields: [restaurantProfileId], references: [id], onDelete: Cascade)
+  category          FoodCategory      @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  addonGroups       FoodAddonGroup[]
+  orderItems        FoodOrderItem[]
+
+  @@index([tenantId])
+  @@index([restaurantProfileId])
+  @@index([categoryId])
+  @@map("food_products")
+}
+
+// PV-FOOD-ADDON-GROUP — a group of optional extras (e.g. "Molhos", "Ponto da carne")
+// productId optional: null = applies to all products in the restaurant
+model FoodAddonGroup {
+  id                  String   @id @default(uuid())
+  tenantId            String
+  restaurantProfileId String
+  productId           String? // null = restaurant-level group, linked per-product via relation
+  name                String
+  minSelect           Int      @default(0)
+  maxSelect           Int      @default(1)
+  isRequired          Boolean  @default(false)
+  isActive            Boolean  @default(true)
+  sortOrder           Int      @default(0)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  tenant            Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  restaurantProfile RestaurantProfile @relation(fields: [restaurantProfileId], references: [id], onDelete: Cascade)
+  product           FoodProduct?      @relation(fields: [productId], references: [id], onDelete: SetNull)
+  options           FoodAddonOption[]
+
+  @@index([tenantId])
+  @@index([restaurantProfileId])
+  @@index([productId])
+  @@map("food_addon_groups")
+}
+
+// PV-FOOD-ADDON-OPTION — individual option within an addon group
+// priceDelta: price modifier (positive = extra cost, 0 = included, negative = discount)
+model FoodAddonOption {
+  id           String   @id @default(uuid())
+  tenantId     String
+  addonGroupId String
+  name         String
+  priceDelta   Float    @default(0)
+  isActive     Boolean  @default(true)
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tenant          Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  addonGroup      FoodAddonGroup       @relation(fields: [addonGroupId], references: [id], onDelete: Cascade)
+  orderItemAddons FoodOrderItemAddon[]
+
+  @@index([tenantId])
+  @@index([addonGroupId])
+  @@map("food_addon_options")
+}
+
+// PV-FOOD-ORDER — a customer order submitted via the public menu page
+// Payment is intentionally NOT modeled here — paymentMethodText is free text only.
+// status: NEW | CONFIRMED | PREPARING | READY_FOR_PICKUP | OUT_FOR_DELIVERY | COMPLETED | CANCELED
+// fulfillmentType: DELIVERY | PICKUP
+model FoodOrder {
+  id                  String   @id @default(uuid())
+  tenantId            String
+  restaurantProfileId String
+  customerName        String
+  customerPhone       String
+  customerAddress     String?
+  customerNotes       String?  @db.Text
+  fulfillmentType     String // DELIVERY | PICKUP
+  paymentMethodText   String? // "Pix na entrega", "Cartão na retirada", "Dinheiro"
+  subtotal            Float    @default(0)
+  deliveryFee         Float?
+  total               Float    @default(0)
+  status              String   @default("NEW") // NEW | CONFIRMED | PREPARING | READY_FOR_PICKUP | OUT_FOR_DELIVERY | COMPLETED | CANCELED
+  source              String   @default("public_page") // public_page | whatsapp | manual
+  whatsappMessage     String?  @db.Text // generated WhatsApp order summary (optional)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  tenant            Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  restaurantProfile RestaurantProfile @relation(fields: [restaurantProfileId], references: [id], onDelete: Cascade)
+  items             FoodOrderItem[]
+
+  @@index([tenantId])
+  @@index([restaurantProfileId])
+  @@index([tenantId, status])
+  @@map("food_orders")
+}
+
+// PV-FOOD-ORDER-ITEM — individual line item in a food order
+// productNameSnapshot preserves the name at order time (product may change later)
+model FoodOrderItem {
+  id                  String   @id @default(uuid())
+  tenantId            String
+  orderId             String
+  productId           String? // nullable: product may be deleted post-order
+  productNameSnapshot String // name captured at order time
+  quantity            Int      @default(1)
+  unitPrice           Float
+  notes               String?
+  total               Float
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  tenant  Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  order   FoodOrder            @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product FoodProduct?         @relation(fields: [productId], references: [id], onDelete: SetNull)
+  addons  FoodOrderItemAddon[]
+
+  @@index([tenantId])
+  @@index([orderId])
+  @@index([productId])
+  @@map("food_order_items")
+}
+
+// PV-FOOD-ORDER-ITEM-ADDON — addon options selected for a specific order item
+// addonNameSnapshot preserves the name at order time
+model FoodOrderItemAddon {
+  id                String   @id @default(uuid())
+  tenantId          String
+  orderItemId       String
+  addonOptionId     String? // nullable: option may be deleted post-order
+  addonNameSnapshot String // name captured at order time
+  priceDelta        Float    @default(0)
+  quantity          Int      @default(1)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  orderItem   FoodOrderItem    @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  addonOption FoodAddonOption? @relation(fields: [addonOptionId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([orderItemId])
+  @@map("food_order_item_addons")
 }

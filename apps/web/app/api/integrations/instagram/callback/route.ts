@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { persistInstagramConnection } from '@/lib/instagram/persist';
+import { isChannelItemAccessible, channelBlockedRedirect } from '@/lib/auth/moduleGuard';
 
 // Instagram Login callback.
 // Flow:
@@ -16,6 +17,8 @@ const IG_GRAPH = 'https://graph.instagram.com';
 export async function GET(req: Request) {
   let base = process.env.NEXT_PUBLIC_BASE_URL || 'https://automation-whatsapp.onrender.com';
   if (!base.startsWith('http')) base = `https://${base}`;
+
+  if (!(await isChannelItemAccessible('instagram'))) return channelBlockedRedirect('instagram', base);
 
   const { searchParams } = new URL(req.url);
   const code = searchParams.get('code');

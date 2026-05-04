@@ -6,6 +6,8 @@ import Link from "next/link";
 import Script from "next/script";
 import PlanGate from "@/components/PlanGate";
 import { useEntitlements } from "@/hooks/useEntitlements";
+import { useModuleContext } from "@/hooks/useModuleContext";
+import { useAuth } from "@/hooks/useAuth";
 
 export const dynamic = "force-dynamic";
 
@@ -182,7 +184,24 @@ const STEPS_FACEBOOK  = ["Autorizar Meta", "Escolher página", "Concluir"];
 // ─── Main component ───────────────────────────────────────────────────────────
 
 function IntegrationsContent() {
+  const { isSuperAdmin } = useAuth();
   const ent = useEntitlements();
+  const { itemFlags } = useModuleContext();
+  const channelFlags = itemFlags['channels'] ?? {};
+
+  function isChannelVisible(itemId: string): boolean {
+    if (isSuperAdmin) return true;
+    const f = channelFlags[itemId];
+    if (!f) return true;
+    return !f.hidden;
+  }
+
+  function isChannelEnabled(itemId: string): boolean {
+    if (isSuperAdmin) return true;
+    const f = channelFlags[itemId];
+    if (!f) return true;
+    return !f.hidden && f.enabled;
+  }
   const [waStatus, setWaStatus] = useState<WhatsAppStatus | null>(null);
   const [igStatus, setIgStatus] = useState<InstagramStatus | null>(null);
   const [fbStatus, setFbStatus] = useState<FacebookStatus | null>(null);
@@ -461,8 +480,8 @@ function IntegrationsContent() {
         </div>
       ) : (
         <>
-          {/* ── WhatsApp Card (UNTOUCHED logic) ───────────────────────────── */}
-          <PlanGate feature="whatsapp" allowed={ent.features.whatsapp} loading={ent.loading} name="WhatsApp Business" icon="💬" minPlan="standard">
+          {/* ── WhatsApp Card ─────────────────────────────────────────────── */}
+          {isChannelVisible('whatsapp') && <PlanGate feature="whatsapp" allowed={ent.features.whatsapp} loading={ent.loading} name="WhatsApp Business" icon="💬" minPlan="standard">
           <div className={`bg-white rounded-2xl border shadow-sm overflow-hidden ${waStatus?.connected ? "border-emerald-200" : "border-gray-200/60"}`}>
             <div className={`px-6 py-5 border-b flex items-center justify-between ${waStatus?.connected ? "bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-100" : "bg-gray-50/50 border-gray-100"}`}>
               <div className="flex items-center gap-4">
@@ -479,6 +498,11 @@ function IntegrationsContent() {
               </div>
             </div>
             <div className="p-6">
+              {!isChannelEnabled('whatsapp') && (
+                <div className="mb-4 p-4 bg-amber-50 rounded-xl border border-amber-100 text-sm text-amber-700">
+                  🔧 {channelFlags['whatsapp']?.maintenanceNote || 'Canal WhatsApp temporariamente desativado pelo administrador.'}
+                </div>
+              )}
               {waStatus?.connected ? (
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -546,10 +570,10 @@ function IntegrationsContent() {
               )}
             </div>
           </div>
-          </PlanGate>
+          </PlanGate>}
 
           {/* ── Instagram Card ─────────────────────────────────────────────── */}
-          <div className={`bg-white rounded-2xl border shadow-sm overflow-hidden ${igStatus?.connected ? "border-pink-200" : "border-gray-200/60"}`}>
+          {isChannelVisible('instagram') && <div className={`bg-white rounded-2xl border shadow-sm overflow-hidden ${igStatus?.connected ? "border-pink-200" : "border-gray-200/60"}`}>
             {/* Header */}
             <div className={`px-6 py-5 border-b flex items-center justify-between ${igStatus?.connected ? "bg-gradient-to-r from-pink-50 to-purple-50 border-pink-100" : "bg-gray-50/50 border-gray-100"}`}>
               <div className="flex items-center gap-4">
@@ -687,13 +711,18 @@ function IntegrationsContent() {
                     </div>
                   </div>
                   {igError && <ErrorBanner title={igError.title} guidance={igError.guidance} onRetry={handleConnectInstagram} />}
+                  {!isChannelEnabled('instagram') && (
+                    <div className="mt-4 p-4 bg-amber-50 rounded-xl border border-amber-100 text-sm text-amber-700">
+                      🔧 {channelFlags['instagram']?.maintenanceNote || 'Canal Instagram temporariamente desativado pelo administrador.'}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
-          </div>
+          </div>}
 
           {/* ── Facebook Messenger Card ────────────────────────────────────── */}
-          <PlanGate feature="facebook" allowed={ent.features.facebook} loading={ent.loading} name="Facebook Messenger" icon="💬" minPlan="pro">
+          {isChannelVisible('facebook') && <PlanGate feature="facebook" allowed={ent.features.facebook} loading={ent.loading} name="Facebook Messenger" icon="💬" minPlan="pro">
           <div className={`bg-white rounded-2xl border shadow-sm overflow-hidden ${fbStatus?.connected ? "border-blue-200" : "border-gray-200/60"}`}>
             {/* Header */}
             <div className={`px-6 py-5 border-b flex items-center justify-between ${fbStatus?.connected ? "bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-100" : "bg-gray-50/50 border-gray-100"}`}>
@@ -812,7 +841,7 @@ function IntegrationsContent() {
               )}
             </div>
           </div>
-          </PlanGate>
+          </PlanGate>}
         </>
       )}
     </div>

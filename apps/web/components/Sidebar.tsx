@@ -53,10 +53,11 @@ export default function Sidebar() {
   const effectivePlan = isSuperAdmin ? 'business' : (ent.plan ?? 'free');
   const pinnedIds = resolvePinnedIds(savedPins, effectivePlan, businessType);
 
-  // Resolve módulos visíveis com estado: locked / inMaintenance
+  // Resolve módulos visíveis com estado: locked / inMaintenance / hidden
   const resolved = pinnedIds
     .map(id => getModuleById(id))
     .filter((m): m is AppModule => !!m)
+    .filter(m => isSuperAdmin || !flags[m.id]?.hidden)
     .map(m => {
       const locked = isSuperAdmin ? false : isModuleLocked(m, ent);
       const flagState = flags[m.id];

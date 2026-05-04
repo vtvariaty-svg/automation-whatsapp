@@ -3,9 +3,12 @@ import { prisma } from '@/lib/prisma';
 import { getAuthTenant } from '@/lib/getAuthTenant';
 import { encrypt } from '@/lib/utils/crypto';
 import { checkFeature } from '@/lib/services/entitlementsService';
+import { isChannelItemAccessible, channelBlockedResponse } from '@/lib/auth/moduleGuard';
 
 export async function POST(request: Request) {
   try {
+    if (!(await isChannelItemAccessible('whatsapp'))) return channelBlockedResponse('whatsapp');
+
     const body = await request.json();
     const { accessToken, wabaId, phoneNumberId } = body;
 

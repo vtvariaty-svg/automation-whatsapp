@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useEntitlements } from '@/hooks/useEntitlements';
 import { useModuleContext, resolvePinnedIds, invalidateModuleContext } from '@/hooks/useModuleContext';
+import { useAuth } from '@/hooks/useAuth';
 import {
   MODULE_CATALOG,
   CATEGORY_LABELS,
@@ -25,6 +26,7 @@ function isLocked(m: AppModule, ent: ReturnType<typeof useEntitlements>): boolea
 // ─── Página ───────────────────────────────────────────────────────────────────
 
 export default function AllAppsPage() {
+  const { isSuperAdmin } = useAuth();
   const ent = useEntitlements();
   const { flags, pinnedModules: savedPins, businessType, loading: ctxLoading } = useModuleContext();
   const [localPins, setLocalPins] = useState<string[] | null>(null);
@@ -67,6 +69,7 @@ export default function AllAppsPage() {
   // Filtragem
   const filtered = MODULE_CATALOG.filter(m => {
     if (m.id === 'apps') return false; // esconde meta-módulo da listagem
+    if (!isSuperAdmin && flags[m.id]?.hidden) return false; // oculto pelo admin
     if (activeCategory !== 'todos' && m.category !== activeCategory) return false;
     if (search.trim()) {
       const q = search.toLowerCase();

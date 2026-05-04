@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAuthTenant } from '@/lib/getAuthTenant';
+import { isChannelItemAccessible, channelBlockedResponse } from '@/lib/auth/moduleGuard';
 
 // Instagram Login connect flow.
 // Uses api.instagram.com/oauth/authorize with Instagram-specific scopes.
@@ -12,6 +13,8 @@ export async function GET(request: Request) {
 
   const auth = await getAuthTenant(request);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  if (!(await isChannelItemAccessible('instagram'))) return channelBlockedResponse('instagram');
 
   // NEXT_PUBLIC_INSTAGRAM_APP_ID is the Instagram-specific app ID.
   // Falls back to NEXT_PUBLIC_FB_APP_ID if the same Meta app is used for all channels.

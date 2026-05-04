@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthTenant } from '@/lib/getAuthTenant';
 import { encrypt } from '@/lib/utils/crypto';
+import { isChannelItemAccessible, channelBlockedResponse } from '@/lib/auth/moduleGuard';
 
 /**
  * Handles the WhatsApp Embedded Signup callback.
@@ -10,6 +11,8 @@ import { encrypt } from '@/lib/utils/crypto';
  */
 export async function POST(request: Request) {
   try {
+    if (!(await isChannelItemAccessible('whatsapp'))) return channelBlockedResponse('whatsapp');
+
     const body = await request.json();
     const { code, wabaId: embeddedWabaId, phoneNumberId: embeddedPhoneId, isCoexistence } = body;
 

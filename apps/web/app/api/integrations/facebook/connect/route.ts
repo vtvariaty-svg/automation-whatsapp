@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
 import { checkFeature } from '@/lib/services/entitlementsService';
+import { isChannelItemAccessible } from '@/lib/auth/moduleGuard';
 
 if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET environment variable is required');
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -22,6 +23,11 @@ export async function GET() {
       role = decoded.role || 'user';
     } catch {
       return NextResponse.redirect(`${base}/login`);
+    }
+
+    // Admin module guard: block if facebook channel is hidden or disabled
+    if (!(await isChannelItemAccessible('facebook'))) {
+      return NextResponse.redirect(`${base}/dashboard/integrations?error=plan_required&message=${encodeURIComponent('Facebook Manager está desativado pelo administrador.')}`);
     }
 
     // Plan enforcement: Facebook Messenger is only available on Pro and Business plans

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthTenant } from '@/lib/getAuthTenant';
+import { isChannelItemAccessible, channelBlockedResponse } from '@/lib/auth/moduleGuard';
 
 export async function GET(request: Request) {
   try {
@@ -8,6 +9,8 @@ export async function GET(request: Request) {
     if (!auth) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
+
+    if (!(await isChannelItemAccessible('whatsapp'))) return channelBlockedResponse('whatsapp');
 
     const tenant = await prisma.tenant.findUnique({
       where: { id: auth.tenantId },

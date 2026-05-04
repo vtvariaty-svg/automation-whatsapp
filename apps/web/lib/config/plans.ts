@@ -325,21 +325,21 @@ export const PLAN_ENTITLEMENTS: Record<string, PlanEntitlements> = {
 // ─── Upgrade messages ─────────────────────────────────────────────────────
 
 export const FEATURE_UPGRADE_MESSAGES: Record<FeatureKey, string> = {
-  whatsapp: 'WhatsApp está disponível a partir do plano Pro. Faça upgrade para conectar.',
-  instagram: 'Instagram DM está disponível em todos os planos.',
-  facebook: 'Facebook Messenger está disponível no plano Pro.',
-  instagramComments: 'Comentários do Instagram estão disponíveis a partir do plano Pro.',
-  advancedCRM: 'CRM Avançado (tags, segmentos, lead score) está disponível no plano Pro.',
-  dynamicSegments: 'Segmentos dinâmicos e testes A/B estão disponíveis no plano Pro.',
-  abTesting: 'Testes A/B estão disponíveis no plano Pro.',
-  aiCopilot: 'AI Copilot e Insights estão disponíveis no plano Pro.',
-  conversionSequences: 'Sequências de conversão estão disponíveis a partir do plano Pro.',
-  premiumTemplates: 'Templates premium estão disponíveis no plano Pro.',
+  whatsapp: 'WhatsApp está disponível em planos compatíveis. Consulte os planos disponíveis.',
+  instagram: 'Instagram DM está disponível em planos compatíveis.',
+  facebook: 'Facebook Messenger está disponível em planos compatíveis.',
+  instagramComments: 'Comentários do Instagram estão disponíveis em planos compatíveis.',
+  advancedCRM: 'CRM Avançado (tags, segmentos, lead score) está disponível em planos compatíveis.',
+  dynamicSegments: 'Segmentos dinâmicos e testes A/B estão disponíveis em planos compatíveis.',
+  abTesting: 'Testes A/B estão disponíveis em planos compatíveis.',
+  aiCopilot: 'AI Copilot e Insights estão disponíveis em planos compatíveis.',
+  conversionSequences: 'Sequências de conversão estão disponíveis em planos compatíveis.',
+  premiumTemplates: 'Templates premium estão disponíveis em planos compatíveis.',
   whiteLabel: 'White-label é exclusivo do plano Business (Consultivo).',
   agencyReseller: 'Painel de revenda é exclusivo do plano Business (Consultivo).',
-  advancedAnalytics: 'Analytics avançado está disponível a partir do plano Pro.',
+  advancedAnalytics: 'Analytics avançado está disponível em planos compatíveis.',
   leadProspectingIntel: 'Prospecção IA requer o plano Business (Consultivo).',
-  beautyWorkspace: 'Beauty Workspace está disponível a partir do plano Pro. Faça upgrade para acessar a gestão completa para salão, barbearia e estética.',
+  beautyWorkspace: 'Beauty Workspace está disponível em planos compatíveis. Faça upgrade para acessar a gestão completa para salão, barbearia e estética.',
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────

@@ -3,14 +3,15 @@
 // Supports query params: status, page, pageSize
 
 import { NextResponse } from 'next/server';
-import { getAuthTenant } from '@/lib/getAuthTenant';
+import { requireClinicAccess } from '@/lib/auth/verticalAccess';
 import { prisma } from '@/lib/prisma';
 
 const VALID_STATUS = ['NEW', 'CONTACTED', 'SCHEDULED', 'CANCELED', 'ARCHIVED'];
 
 export async function GET(request: Request) {
-  const auth = await getAuthTenant(request);
-  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const access = await requireClinicAccess(request);
+  if (!access.ok) return access.response;
+  const auth = access;
 
   const { searchParams } = new URL(request.url);
   const status = searchParams.get('status') ?? undefined;

@@ -3,7 +3,7 @@
 // DELETE /api/clinic/availability/[id]  → hard delete (simple slot, no dependent records)
 
 import { NextResponse } from 'next/server';
-import { getAuthTenant } from '@/lib/getAuthTenant';
+import { requireClinicAccess } from '@/lib/auth/verticalAccess';
 import { prisma } from '@/lib/prisma';
 
 type Params = { params: Promise<{ id: string }> };
@@ -12,8 +12,9 @@ const TIME_REGEX = /^\d{2}:\d{2}$/;
 const VALID_DAY_OF_WEEK = [0, 1, 2, 3, 4, 5, 6];
 
 export async function PATCH(request: Request, { params }: Params) {
-  const auth = await getAuthTenant(request);
-  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const access = await requireClinicAccess(request);
+  if (!access.ok) return access.response;
+  const auth = access;
 
   const { id } = await params;
 
@@ -65,8 +66,9 @@ export async function PATCH(request: Request, { params }: Params) {
 }
 
 export async function DELETE(request: Request, { params }: Params) {
-  const auth = await getAuthTenant(request);
-  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const access = await requireClinicAccess(request);
+  if (!access.ok) return access.response;
+  const auth = access;
 
   const { id } = await params;
 

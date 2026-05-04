@@ -4,13 +4,14 @@
 // PATCH /api/clinic/profile → update clinic profile and/or booking page config
 
 import { NextResponse } from 'next/server';
-import { getAuthTenant } from '@/lib/getAuthTenant';
+import { requireClinicAccess } from '@/lib/auth/verticalAccess';
 import { prisma } from '@/lib/prisma';
 import { slugify } from '@/lib/utils/slugify';
 
 export async function GET(request: Request) {
-  const auth = await getAuthTenant(request);
-  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const access = await requireClinicAccess(request);
+  if (!access.ok) return access.response;
+  const auth = access;
 
   try {
     const profile = await prisma.clinicProfile.findUnique({
@@ -25,8 +26,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const auth = await getAuthTenant(request);
-  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const access = await requireClinicAccess(request);
+  if (!access.ok) return access.response;
+  const auth = access;
 
   try {
     // One profile per tenant
@@ -83,8 +85,9 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const auth = await getAuthTenant(request);
-  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const access = await requireClinicAccess(request);
+  if (!access.ok) return access.response;
+  const auth = access;
 
   try {
     const profile = await prisma.clinicProfile.findUnique({

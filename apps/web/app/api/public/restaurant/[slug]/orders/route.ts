@@ -6,6 +6,7 @@
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { checkRateLimit, getClientIp } from '@/lib/security/rateLimit';
 
 const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -29,6 +30,19 @@ export async function POST(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   const { slug } = await params;
+
+  // Rate limit: 10 orders per IP+slug per 10 minutes
+  const ip = getClientIp(request);
+  const rl = checkRateLimit(`restaurant-order:${ip}:${slug}`, { limit: 10, windowMs: 10 * 60 * 1000 });
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'Muitas solicitações. Tente novamente em alguns minutos.' },
+      {
+        status: 429,
+        headers: { 'Retry-After': String(rl.retryAfterSeconds) },
+      },
+    );
+  }
 
   // Find published restaurant by slug — never by tenantId from client
   const profile = await prisma.restaurantProfile.findUnique({

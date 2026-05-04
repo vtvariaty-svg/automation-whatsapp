@@ -5,6 +5,7 @@
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { checkRateLimit, getClientIp } from '@/lib/security/rateLimit';
 
 function waLink(phone: string, message: string) {
   const clean = phone.replace(/\D/g, '');
@@ -20,6 +21,19 @@ export async function POST(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   const { slug } = await params;
+
+  // Rate limit: 5 requests per IP+slug per 10 minutes
+  const ip = getClientIp(request);
+  const rl = checkRateLimit(`clinic-appt:${ip}:${slug}`, { limit: 5, windowMs: 10 * 60 * 1000 });
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'Muitas solicitações. Tente novamente em alguns minutos.' },
+      {
+        status: 429,
+        headers: { 'Retry-After': String(rl.retryAfterSeconds) },
+      },
+    );
+  }
 
   // Find published clinic by slug only — never by tenantId from client
   const profile = await prisma.clinicProfile.findUnique({

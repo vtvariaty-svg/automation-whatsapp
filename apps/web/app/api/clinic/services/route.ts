@@ -3,12 +3,13 @@
 // POST /api/clinic/services     → create a service
 
 import { NextResponse } from 'next/server';
-import { getAuthTenant } from '@/lib/getAuthTenant';
+import { requireClinicAccess } from '@/lib/auth/verticalAccess';
 import { prisma } from '@/lib/prisma';
 
 export async function GET(request: Request) {
-  const auth = await getAuthTenant(request);
-  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const access = await requireClinicAccess(request);
+  if (!access.ok) return access.response;
+  const auth = access;
 
   try {
     const profile = await prisma.clinicProfile.findUnique({
@@ -28,8 +29,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const auth = await getAuthTenant(request);
-  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const access = await requireClinicAccess(request);
+  if (!access.ok) return access.response;
+  const auth = access;
 
   try {
     const profile = await prisma.clinicProfile.findUnique({

@@ -3,7 +3,7 @@
 // PATCH /api/clinic/appointment-requests/[id]  → update status / admin notes
 
 import { NextResponse } from 'next/server';
-import { getAuthTenant } from '@/lib/getAuthTenant';
+import { requireClinicAccess } from '@/lib/auth/verticalAccess';
 import { prisma } from '@/lib/prisma';
 
 type Params = { params: Promise<{ id: string }> };
@@ -11,8 +11,9 @@ type Params = { params: Promise<{ id: string }> };
 const VALID_STATUS = ['NEW', 'CONTACTED', 'SCHEDULED', 'CANCELED', 'ARCHIVED'];
 
 export async function GET(request: Request, { params }: Params) {
-  const auth = await getAuthTenant(request);
-  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const access = await requireClinicAccess(request);
+  if (!access.ok) return access.response;
+  const auth = access;
 
   const { id } = await params;
 
@@ -34,8 +35,9 @@ export async function GET(request: Request, { params }: Params) {
 }
 
 export async function PATCH(request: Request, { params }: Params) {
-  const auth = await getAuthTenant(request);
-  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const access = await requireClinicAccess(request);
+  if (!access.ok) return access.response;
+  const auth = access;
 
   const { id } = await params;
 

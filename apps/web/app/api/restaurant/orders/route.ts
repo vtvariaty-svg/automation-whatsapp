@@ -3,7 +3,7 @@
 // Supports: status, page, pageSize query params
 
 import { NextResponse } from 'next/server';
-import { getAuthTenant } from '@/lib/getAuthTenant';
+import { requireRestaurantAccess } from '@/lib/auth/verticalAccess';
 import { prisma } from '@/lib/prisma';
 
 const VALID_STATUS = [
@@ -12,8 +12,9 @@ const VALID_STATUS = [
 ];
 
 export async function GET(request: Request) {
-  const auth = await getAuthTenant(request);
-  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const access = await requireRestaurantAccess(request);
+  if (!access.ok) return access.response;
+  const auth = access;
 
   const { searchParams } = new URL(request.url);
   const status = searchParams.get('status') ?? undefined;

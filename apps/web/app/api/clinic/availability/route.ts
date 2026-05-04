@@ -3,15 +3,16 @@
 // POST /api/clinic/availability     → create an availability slot
 
 import { NextResponse } from 'next/server';
-import { getAuthTenant } from '@/lib/getAuthTenant';
+import { requireClinicAccess } from '@/lib/auth/verticalAccess';
 import { prisma } from '@/lib/prisma';
 
 const VALID_DAY_OF_WEEK = [0, 1, 2, 3, 4, 5, 6];
 const TIME_REGEX = /^\d{2}:\d{2}$/;
 
 export async function GET(request: Request) {
-  const auth = await getAuthTenant(request);
-  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const access = await requireClinicAccess(request);
+  if (!access.ok) return access.response;
+  const auth = access;
 
   try {
     const profile = await prisma.clinicProfile.findUnique({
@@ -32,8 +33,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const auth = await getAuthTenant(request);
-  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const access = await requireClinicAccess(request);
+  if (!access.ok) return access.response;
+  const auth = access;
 
   try {
     const profile = await prisma.clinicProfile.findUnique({

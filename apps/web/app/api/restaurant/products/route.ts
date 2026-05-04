@@ -3,12 +3,13 @@
 // POST /api/restaurant/products  → create a product
 
 import { NextResponse } from 'next/server';
-import { getAuthTenant } from '@/lib/getAuthTenant';
+import { requireRestaurantAccess } from '@/lib/auth/verticalAccess';
 import { prisma } from '@/lib/prisma';
 
 export async function GET(request: Request) {
-  const auth = await getAuthTenant(request);
-  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const access = await requireRestaurantAccess(request);
+  if (!access.ok) return access.response;
+  const auth = access;
 
   const { searchParams } = new URL(request.url);
   const categoryId = searchParams.get('categoryId') ?? undefined;
@@ -36,8 +37,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const auth = await getAuthTenant(request);
-  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const access = await requireRestaurantAccess(request);
+  if (!access.ok) return access.response;
+  const auth = access;
 
   try {
     const profile = await prisma.restaurantProfile.findUnique({

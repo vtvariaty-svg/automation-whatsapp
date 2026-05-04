@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEntitlements } from "@/hooks/useEntitlements";
 import { useAuth } from "@/hooks/useAuth";
+import { useEffect, useState } from "react";
 import ClinicProfile from "./components/ClinicProfile";
 import ClinicServices from "./components/ClinicServices";
 import ClinicProfessionals from "./components/ClinicProfessionals";
@@ -19,13 +20,36 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
 ];
 
 export default function ClinicDashboardPage() {
-  const { user } = useAuth();
+  const { isSuperAdmin } = useAuth();
+  const ent = useEntitlements();
   const [tab, setTab] = useState<Tab>("perfil");
 
-  if (!user) {
+  // Show spinner while plan is loading
+  if (ent.loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full" />
+        <div className="animate-spin w-8 h-8 border-4 border-teal-500 border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  // Plan guard: only consultorio or superadmin
+  const hasAccess = isSuperAdmin || ent.plan === "consultorio";
+  if (!hasAccess) {
+    return (
+      <div className="max-w-lg mx-auto mt-16 text-center px-4">
+        <p className="text-5xl mb-4">🏥</p>
+        <h1 className="text-xl font-bold text-gray-800 mb-2">Consultório não disponível</h1>
+        <p className="text-sm text-gray-500 mb-6">
+          Este espaço de trabalho é exclusivo do Plano Consultório.
+          {ent.plan ? ` Você está no plano ${ent.plan}.` : ""}
+        </p>
+        <a
+          href="/dashboard/billing"
+          className="inline-flex items-center gap-2 bg-teal-600 text-white font-semibold text-sm px-5 py-2.5 rounded-full hover:bg-teal-700 transition-colors"
+        >
+          Ver planos disponíveis
+        </a>
       </div>
     );
   }

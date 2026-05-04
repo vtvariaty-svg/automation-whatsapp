@@ -92,7 +92,7 @@ export const MODULE_CATALOG: AppModule[] = [
     sidebarSection: 'Principal',
     category: 'atendimento',
     description: 'Visão geral da operação: mensagens, conversas ativas e métricas do dia.',
-    pinnedByDefaultFor: ['free', 'standard', 'pro', 'business'],
+    pinnedByDefaultFor: ['free', 'standard', 'pro', 'business', 'consultorio', 'restaurante'],
     sidebarOrder: 1,
   },
   {
@@ -115,7 +115,7 @@ export const MODULE_CATALOG: AppModule[] = [
     sidebarSection: 'Atendimento',
     category: 'atendimento',
     description: 'Caixa de entrada unificada: WhatsApp, Instagram e Facebook.',
-    pinnedByDefaultFor: ['free', 'standard', 'pro', 'business'],
+    pinnedByDefaultFor: ['free', 'standard', 'pro', 'business', 'consultorio', 'restaurante'],
     sidebarOrder: 10,
     onboarding: {
       plans: ['*'],
@@ -132,7 +132,7 @@ export const MODULE_CATALOG: AppModule[] = [
     href: '/dashboard/contacts',
     category: 'atendimento',
     description: 'CRM com histórico completo de interações por cliente.',
-    pinnedByDefaultFor: ['free', 'standard', 'pro', 'business'],
+    pinnedByDefaultFor: ['free', 'standard', 'pro', 'business', 'consultorio', 'restaurante'],
     sidebarOrder: 11,
   },
   {
@@ -276,7 +276,7 @@ export const MODULE_CATALOG: AppModule[] = [
     href: '/dashboard/atendimento-ia',
     category: 'canais',
     description: 'Configuração central do comportamento conversacional: IA, automações, handoff e simulação.',
-    pinnedByDefaultFor: ['free', 'standard', 'pro', 'business'],
+    pinnedByDefaultFor: ['free', 'standard', 'pro', 'business', 'consultorio', 'restaurante'],
     sidebarOrder: 29,
   },
   {
@@ -287,7 +287,7 @@ export const MODULE_CATALOG: AppModule[] = [
     sidebarSection: 'Canais & IA',
     category: 'canais',
     description: 'Conectar e gerenciar WhatsApp, Instagram e Facebook.',
-    pinnedByDefaultFor: ['free', 'standard', 'pro', 'business'],
+    pinnedByDefaultFor: ['free', 'standard', 'pro', 'business', 'consultorio', 'restaurante'],
     sidebarOrder: 30,
     onboarding: {
       plans: ['standard', 'pro', 'business'],
@@ -316,7 +316,7 @@ export const MODULE_CATALOG: AppModule[] = [
     href: '/dashboard/bots',
     category: 'canais',
     description: 'Personalidade da IA, prompt e fluxos de resposta.',
-    pinnedByDefaultFor: ['free', 'standard', 'pro', 'business'],
+    pinnedByDefaultFor: ['free', 'standard', 'pro', 'business', 'consultorio', 'restaurante'],
     sidebarOrder: 32,
     onboarding: {
       plans: ['*'],
@@ -502,7 +502,7 @@ export const MODULE_CATALOG: AppModule[] = [
     href: '/dashboard/billing',
     category: 'administracao',
     description: 'Gerenciar plano, fatura e método de pagamento.',
-    pinnedByDefaultFor: ['free', 'standard', 'pro', 'business'],
+    pinnedByDefaultFor: ['free', 'standard', 'pro', 'business', 'consultorio', 'restaurante'],
     sidebarOrder: 61,
   },
   {
@@ -512,7 +512,7 @@ export const MODULE_CATALOG: AppModule[] = [
     href: '/dashboard/settings',
     category: 'administracao',
     description: 'Configurações gerais da conta, IA e workspace.',
-    pinnedByDefaultFor: ['free', 'standard', 'pro', 'business'],
+    pinnedByDefaultFor: ['free', 'standard', 'pro', 'business', 'consultorio', 'restaurante'],
     sidebarOrder: 62,
   },
 

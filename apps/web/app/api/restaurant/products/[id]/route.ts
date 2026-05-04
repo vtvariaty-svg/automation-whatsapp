@@ -4,14 +4,15 @@
 // DELETE /api/restaurant/products/[id] → soft delete (isActive=false)
 
 import { NextResponse } from 'next/server';
-import { getAuthTenant } from '@/lib/getAuthTenant';
+import { requireRestaurantAccess } from '@/lib/auth/verticalAccess';
 import { prisma } from '@/lib/prisma';
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function GET(request: Request, { params }: Params) {
-  const auth = await getAuthTenant(request);
-  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const access = await requireRestaurantAccess(request);
+  if (!access.ok) return access.response;
+  const auth = access;
 
   const { id } = await params;
 
@@ -32,8 +33,9 @@ export async function GET(request: Request, { params }: Params) {
 }
 
 export async function PATCH(request: Request, { params }: Params) {
-  const auth = await getAuthTenant(request);
-  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const access = await requireRestaurantAccess(request);
+  if (!access.ok) return access.response;
+  const auth = access;
 
   const { id } = await params;
 
@@ -86,8 +88,9 @@ export async function PATCH(request: Request, { params }: Params) {
 }
 
 export async function DELETE(request: Request, { params }: Params) {
-  const auth = await getAuthTenant(request);
-  if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const access = await requireRestaurantAccess(request);
+  if (!access.ok) return access.response;
+  const auth = access;
 
   const { id } = await params;
 

@@ -5,12 +5,21 @@ import { getDefaultPinnedIdsForBusinessType } from '@/lib/config/modules';
 
 export interface ModuleFlag {
   enabled: boolean;
+  hidden: boolean;
+  maintenanceNote: string | null;
+}
+
+export interface ItemFlag {
+  enabled: boolean;
+  hidden: boolean;
   maintenanceNote: string | null;
 }
 
 export interface ModuleContextState {
   loading: boolean;
   flags: Record<string, ModuleFlag>;
+  /** parentModuleId → itemId → flag (ex: channels → whatsapp → flag) */
+  itemFlags: Record<string, Record<string, ItemFlag>>;
   /** IDs explicitamente salvos pelo tenant. Vazio = usar defaults por plano. */
   pinnedModules: string[];
   /** businessType do tenant para personalização de sidebar e recomendações. */
@@ -20,6 +29,7 @@ export interface ModuleContextState {
 const DEFAULT_STATE: ModuleContextState = {
   loading: true,
   flags: {},
+  itemFlags: {},
   pinnedModules: [],
   businessType: null,
 };
@@ -46,6 +56,7 @@ export function useModuleContext(): ModuleContextState {
           const next: ModuleContextState = {
             loading: false,
             flags: data?.flags ?? {},
+            itemFlags: data?.itemFlags ?? {},
             pinnedModules: data?.pinnedModules ?? [],
             businessType: data?.businessType ?? null,
           };
@@ -53,7 +64,7 @@ export function useModuleContext(): ModuleContextState {
           setState(next);
         })
         .catch(() => {
-          const next: ModuleContextState = { ...DEFAULT_STATE, loading: false };
+          const next: ModuleContextState = { ...DEFAULT_STATE, loading: false, itemFlags: {} };
           _cache = next;
           setState(next);
         });

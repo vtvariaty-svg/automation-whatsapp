@@ -1542,6 +1542,7 @@ model FeatureFlag {
   scope           String   @default("module") // module | function
   parentModuleId  String? // preenchido quando scope = "function"
   enabled         Boolean  @default(true)
+  hidden          Boolean  @default(false) // true = não aparece para tenant
   maintenanceNote String? // mensagem exibida no banner de manutenção
   updatedAt       DateTime @updatedAt
   updatedBy       String? // userId do superadmin que fez a alteração

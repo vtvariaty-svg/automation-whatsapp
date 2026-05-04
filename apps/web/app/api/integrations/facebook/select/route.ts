@@ -4,6 +4,7 @@ import { decrypt } from '@/lib/utils/crypto';
 import { getAuthTenant } from '@/lib/getAuthTenant';
 import { GRAPH_BASE, graphFetch } from '@/lib/meta/pageDiscovery';
 import { connectFacebookPage } from '@/lib/facebook/persist';
+import { isChannelItemAccessible, channelBlockedResponse } from '@/lib/auth/moduleGuard';
 
 // Confirms the Facebook page selection after a pending OAuth.
 // Re-fetches the page access token server-side using the stored user token.
@@ -12,6 +13,8 @@ import { connectFacebookPage } from '@/lib/facebook/persist';
 export async function POST(request: Request) {
   const auth = await getAuthTenant(request);
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  if (!(await isChannelItemAccessible('facebook'))) return channelBlockedResponse('facebook');
 
   let selectedPageId: string;
   try {

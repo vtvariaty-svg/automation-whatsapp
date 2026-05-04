@@ -24,3 +24,10 @@ export function channelBlockedResponse(itemId: string): NextResponse {
     { status: 403 },
   );
 }
+
+export function channelBlockedRedirect(channel: string, base: string): NextResponse {
+  const b = base.startsWith('http') ? base : `https://${base}`;
+  return NextResponse.redirect(
+    `${b}/dashboard/integrations?error=channel_disabled&channel=${channel}`,
+  );
+}

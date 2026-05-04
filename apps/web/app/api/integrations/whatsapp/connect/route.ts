@@ -1,17 +1,21 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import jwt from 'jsonwebtoken';
+import { isChannelItemAccessible, channelBlockedRedirect } from '@/lib/auth/moduleGuard';
 
 if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET environment variable is required');
 const JWT_SECRET = process.env.JWT_SECRET;
 
 export async function GET() {
+  const base = process.env.NEXT_PUBLIC_BASE_URL || 'https://automation-whatsapp.onrender.com';
   try {
+    if (!(await isChannelItemAccessible('whatsapp'))) return channelBlockedRedirect('whatsapp', base);
+
     // Get tenantId from auth cookie
     const cookieStore = await cookies();
     const authToken = cookieStore.get('auth_token')?.value;
     if (!authToken) {
-      return NextResponse.redirect(new URL('/login', process.env.NEXT_PUBLIC_BASE_URL || 'https://automation-whatsapp.onrender.com'));
+      return NextResponse.redirect(new URL('/login', base));
     }
 
     let tenantId: string;
@@ -19,18 +23,16 @@ export async function GET() {
       const decoded = jwt.verify(authToken, JWT_SECRET) as { tenantId: string };
       tenantId = decoded.tenantId;
     } catch {
-      return NextResponse.redirect(new URL('/login', process.env.NEXT_PUBLIC_BASE_URL || 'https://automation-whatsapp.onrender.com'));
+      return NextResponse.redirect(new URL('/login', base));
     }
 
     const fbAppId = process.env.NEXT_PUBLIC_FB_APP_ID;
     if (!fbAppId) {
-      const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://automation-whatsapp.onrender.com';
-      return NextResponse.redirect(`${baseUrl}/dashboard/integrations?error=missing_app_id`);
+      return NextResponse.redirect(`${base}/dashboard/integrations?error=missing_app_id`);
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://automation-whatsapp.onrender.com';
     // Use the client-side callback page (not API route) for implicit flow
-    const redirectUri = `${baseUrl}/dashboard/integrations/callback`;
+    const redirectUri = `${base}/dashboard/integrations/callback`;
 
     // Encode tenantId in state
     const state = Buffer.from(JSON.stringify({ tenantId })).toString('base64');
@@ -47,7 +49,6 @@ export async function GET() {
     return NextResponse.redirect(fbOAuthUrl.toString());
   } catch (error: any) {
     console.error('Error generating OAuth URL:', error);
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://automation-whatsapp.onrender.com';
-    return NextResponse.redirect(`${baseUrl}/dashboard/integrations?error=server_error`);
+    return NextResponse.redirect(`${base}/dashboard/integrations?error=server_error`);
   }
 }

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { encrypt } from '@/lib/utils/crypto';
 import { GRAPH_BASE, graphFetch, discoverFacebookCandidates } from '@/lib/meta/pageDiscovery';
 import { connectFacebookPage } from '@/lib/facebook/persist';
+import { isChannelItemAccessible, channelBlockedRedirect } from '@/lib/auth/moduleGuard';
 
 // Facebook Messenger OAuth callback.
 //
@@ -27,6 +28,8 @@ type StoredFbCandidate = {
 export async function GET(req: Request) {
   let base = process.env.NEXT_PUBLIC_BASE_URL || 'https://automation-whatsapp.onrender.com';
   if (!base.startsWith('http')) base = `https://${base}`;
+
+  if (!(await isChannelItemAccessible('facebook'))) return channelBlockedRedirect('facebook', base);
 
   const { searchParams } = new URL(req.url);
   const code = searchParams.get('code');

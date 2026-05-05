@@ -21,7 +21,7 @@ export default function SuperAdminUsers() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const [overrideModal, setOverrideModal] = useState<User | null>(null);
-  const [newPlan, setNewPlan] = useState('pro');
+  const [newPlan, setNewPlan] = useState('consultorio');
   const [newLimits, setNewLimits] = useState('{}');
 
   const fetchUsers = async () => {
@@ -225,7 +225,7 @@ export default function SuperAdminUsers() {
                           return;
                         }
                         setOverrideModal(user);
-                        setNewPlan('pro');
+                        setNewPlan('consultorio');
                       }}
                       disabled={actionLoading === user.id}
                       className="p-2 text-slate-400 hover:text-emerald-600 bg-slate-100 hover:bg-emerald-50 rounded-lg transition-colors"
@@ -270,10 +270,9 @@ export default function SuperAdminUsers() {
                     onChange={(e) => setNewPlan(e.target.value)}
                     className="w-full border border-slate-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-slate-900 focus:border-slate-900 outline-none bg-white"
                   >
-                    <option value="free">Free – R$ 0 (500 msgs)</option>
-                    <option value="standard">Standard – R$ 49,90 (Legado)</option>
-                    <option value="pro">Pro – R$ 49,90 (10.000 msgs, Trial 7 dias)</option>
-                    <option value="business">Business – Consultivo (Ilimitado)</option>
+                    <option value="consultorio">Consultório – R$ 97 (10.000 msgs, Trial 7 dias)</option>
+                    <option value="restaurante">Restaurante – R$ 97 (10.000 msgs, Trial 7 dias)</option>
+                    <option value="free">Free – R$ 0 (500 msgs, suporte manual)</option>
                   </select>
                 </div>
                 

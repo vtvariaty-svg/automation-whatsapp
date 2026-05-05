@@ -10,11 +10,12 @@ export async function POST(req: Request) {
   try {
     let { name, email, password, plan, eventId } = await req.json();
 
-    // Only allow current public vertical plans for self-service registration.
-    // Legacy plans (free/pro/standard/starter) and admin tiers always fall back to 'free'.
     const PUBLIC_REGISTRATION_PLANS = ['consultorio', 'restaurante'];
     if (!plan || !PUBLIC_REGISTRATION_PLANS.includes(plan)) {
-      plan = 'free';
+      return NextResponse.json(
+        { error: 'Plano inválido. Escolha entre Plano Consultório ou Plano Restaurante.' },
+        { status: 400 },
+      );
     }
 
     const result = await registerUser(name, email, password, 'user', plan);

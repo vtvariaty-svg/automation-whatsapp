@@ -10,6 +10,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     if (!plan) return NextResponse.json({ error: 'Plan name is required' }, { status: 400 });
 
+    const ALLOWED_PLANS = ['consultorio', 'restaurante', 'free'];
+    if (!ALLOWED_PLANS.includes(plan)) {
+      return NextResponse.json(
+        { error: `Plano "${plan}" não é mais suportado. Use: consultorio, restaurante ou free.` },
+        { status: 422 },
+      );
+    }
+
     const tenant = await prisma.tenant.findUnique({ 
       where: { id },
       include: { subscription: true }

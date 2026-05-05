@@ -18,6 +18,7 @@ import type { FeatureKey } from '@/lib/config/plans';
 
 function isLocked(m: AppModule, ent: ReturnType<typeof useEntitlements>): boolean {
   if (ent.loading) return false;
+  if (m.allowedPlans) return !m.allowedPlans.includes(ent.plan ?? 'free');
   if (m.requiredFeature) return !ent.features[m.requiredFeature as FeatureKey];
   if (m.minPlan) return !planAtLeast(ent.plan, m.minPlan);
   return false;

@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { billingApi } from '@/lib/api/client';
 
+const PUBLIC_PLAN_SLUGS = ['consultorio', 'restaurante'];
+
 // Active commercial plans (shown as upgrade/checkout options)
 const PLANS = [
   {
@@ -151,6 +153,7 @@ export default function BillingPage() {
   const isCanceled = subscription?.status === 'canceled';
   const showUrgentUpgrade = isTrialExpired || isCanceled;
   const isPaidPlan = subscription?.plan && subscription.plan !== 'free' && subscription.plan !== 'starter';
+  const isLegacyPlan = subscription?.hasSubscription && !!subscription.plan && !PUBLIC_PLAN_SLUGS.includes(subscription.plan);
 
   if (loading) {
     return (
@@ -198,6 +201,19 @@ export default function BillingPage() {
             >
               Assinar agora →
             </a>
+          </div>
+        </div>
+      )}
+
+      {/* Legacy plan notice */}
+      {isLegacyPlan && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 flex items-start gap-4">
+          <div className="text-amber-500 text-2xl shrink-0">⚠️</div>
+          <div>
+            <h3 className="font-semibold text-amber-800 text-sm">Plano legado: {subscription?.planName}</h3>
+            <p className="text-amber-700 text-xs mt-1">
+              Seu plano atual não está mais disponível para novos clientes. Escolha um plano atual abaixo para continuar usando todos os recursos.
+            </p>
           </div>
         </div>
       )}

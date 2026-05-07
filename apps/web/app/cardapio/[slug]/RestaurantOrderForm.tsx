@@ -2,6 +2,21 @@
 
 import { useState } from "react";
 
+type AddonOption = {
+  id: string;
+  name: string;
+  priceDelta: number;
+};
+
+type AddonGroup = {
+  id: string;
+  name: string;
+  minSelect: number;
+  maxSelect: number;
+  isRequired: boolean;
+  options: AddonOption[];
+};
+
 type Product = {
   id: string;
   name: string;
@@ -9,6 +24,7 @@ type Product = {
   description: string | null;
   imageUrl: string | null;
   isAvailable: boolean;
+  addonGroups: AddonGroup[];
 };
 
 type Category = {
@@ -32,6 +48,7 @@ type CartItem = {
   price: number;
   quantity: number;
   notes: string;
+  addonOptionIds: string[];
 };
 
 type SuccessData = {
@@ -76,7 +93,7 @@ export function RestaurantOrderForm({
           i.productId === product.id ? { ...i, quantity: Math.min(50, i.quantity + 1) } : i
         );
       }
-      return [...prev, { productId: product.id, name: product.name, price: product.price, quantity: 1, notes: "" }];
+      return [...prev, { productId: product.id, name: product.name, price: product.price, quantity: 1, notes: "", addonOptionIds: [] }];
     });
   };
 
@@ -94,14 +111,57 @@ export function RestaurantOrderForm({
     setCart(prev => prev.map(i => i.productId === productId ? { ...i, notes } : i));
   };
 
+  const setAddonSelection = (product: Product, group: AddonGroup, optionId: string, checked: boolean) => {
+    setCart(prev => prev.map(item => {
+      if (item.productId !== product.id) return item;
+      const groupOptionIds = new Set(group.options.map(option => option.id));
+      const withoutGroup = item.addonOptionIds.filter(id => !groupOptionIds.has(id));
+      const currentGroup = item.addonOptionIds.filter(id => groupOptionIds.has(id));
+
+      if (group.maxSelect === 1) {
+        return { ...item, addonOptionIds: checked ? [...withoutGroup, optionId] : withoutGroup };
+      }
+
+      const nextGroup = checked
+        ? [...currentGroup, optionId].slice(0, group.maxSelect)
+        : currentGroup.filter(id => id !== optionId);
+      return { ...item, addonOptionIds: [...withoutGroup, ...nextGroup] };
+    }));
+  };
+
+  const getSelectedAddons = (item: CartItem) => {
+    const product = availableProducts.find(p => p.id === item.productId);
+    if (!product) return [];
+    return product.addonGroups.flatMap(group =>
+      group.options
+        .filter(option => item.addonOptionIds.includes(option.id))
+        .map(option => ({ ...option, groupName: group.name }))
+    );
+  };
+
   const cartQty = (productId: string) => cart.find(i => i.productId === productId)?.quantity ?? 0;
-  const subtotal = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
+  const subtotal = cart.reduce((sum, i) => {
+    const addonsTotal = getSelectedAddons(i).reduce((addonSum, addon) => addonSum + addon.priceDelta, 0);
+    return sum + (i.price + addonsTotal) * i.quantity;
+  }, 0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
     if (cart.length === 0) { setError("Adicione pelo menos 1 item ao pedido."); return; }
+    for (const item of cart) {
+      const product = availableProducts.find(p => p.id === item.productId);
+      if (!product) continue;
+      for (const group of product.addonGroups) {
+        const selectedCount = group.options.filter(option => item.addonOptionIds.includes(option.id)).length;
+        const minRequired = group.isRequired ? Math.max(1, group.minSelect) : Math.max(0, group.minSelect);
+        if (selectedCount < minRequired) {
+          setError(`Selecione ${minRequired} opção(ões) em ${group.name} para ${product.name}.`);
+          return;
+        }
+      }
+    }
     if (!customerName.trim() || customerName.trim().length < 2) { setError("Informe seu nome completo."); return; }
     if (!customerPhone.replace(/\D/g, "") || customerPhone.replace(/\D/g, "").length < 8) { setError("Informe um telefone válido."); return; }
     if (fulfillmentType === "DELIVERY" && !customerAddress.trim()) { setError("Informe o endereço de entrega."); return; }
@@ -123,6 +183,7 @@ export function RestaurantOrderForm({
             productId: i.productId,
             quantity: i.quantity,
             notes: i.notes.trim() || undefined,
+            addonOptionIds: i.addonOptionIds,
           })),
         }),
       });
@@ -221,7 +282,38 @@ export function RestaurantOrderForm({
                             </div>
                           </div>
                           {qty > 0 && cartItem && (
-                            <div className="px-3 pb-3">
+                            <div className="px-3 pb-3 space-y-3">
+                              {product.addonGroups.length > 0 && (
+                                <div className="space-y-2 rounded-lg bg-orange-50/60 border border-orange-100 p-3">
+                                  {product.addonGroups.map(group => (
+                                    <div key={group.id}>
+                                      <p className="text-[11px] font-bold text-gray-600">
+                                        {group.name}
+                                        {group.isRequired && <span className="text-red-500"> *</span>}
+                                        <span className="font-normal text-gray-400 ml-1">máx. {group.maxSelect}</span>
+                                      </p>
+                                      <div className="mt-1 grid gap-1">
+                                        {group.options.map(option => {
+                                          const checked = cartItem.addonOptionIds.includes(option.id);
+                                          return (
+                                            <label key={option.id} className="flex items-center gap-2 text-xs text-gray-700">
+                                              <input
+                                                type={group.maxSelect === 1 ? "radio" : "checkbox"}
+                                                name={`${product.id}-${group.id}`}
+                                                checked={checked}
+                                                onChange={e => setAddonSelection(product, group, option.id, e.target.checked)}
+                                                className="accent-orange-500"
+                                              />
+                                              <span className="flex-1">{option.name}</span>
+                                              {option.priceDelta !== 0 && <span className="font-medium">{fmt(option.priceDelta)}</span>}
+                                            </label>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                               <input
                                 type="text"
                                 value={cartItem.notes}
@@ -246,12 +338,25 @@ export function RestaurantOrderForm({
         {cart.length > 0 && (
           <div className="bg-orange-50 rounded-xl p-4 space-y-1">
             <p className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-2">Resumo</p>
-            {cart.map(i => (
-              <div key={i.productId} className="flex justify-between text-sm">
-                <span className="text-gray-700">{i.quantity}× {i.name}</span>
-                <span className="font-medium text-gray-900">{fmt(i.price * i.quantity)}</span>
-              </div>
-            ))}
+            {cart.map(i => {
+              const selectedAddons = getSelectedAddons(i);
+              const addonsTotal = selectedAddons.reduce((sum, addon) => sum + addon.priceDelta, 0);
+              return (
+                <div key={i.productId} className="text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-700">{i.quantity}× {i.name}</span>
+                    <span className="font-medium text-gray-900">{fmt((i.price + addonsTotal) * i.quantity)}</span>
+                  </div>
+                  {selectedAddons.length > 0 && (
+                    <div className="pl-4 text-xs text-gray-500">
+                      {selectedAddons.map(addon => (
+                        <div key={addon.id}>+ {addon.groupName}: {addon.name}{addon.priceDelta ? ` (${fmt(addon.priceDelta)})` : ""}</div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
             <div className="border-t border-orange-200 pt-2 mt-2 flex justify-between font-bold text-gray-900">
               <span>Subtotal</span>
               <span className="text-orange-600">{fmt(subtotal)}</span>

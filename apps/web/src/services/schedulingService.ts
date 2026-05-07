@@ -129,15 +129,21 @@ export async function createAppointment(tenantId: string, data: CreateAppointmen
       tenantId,
       date: data.date,
       status: { in: ['agendado', 'confirmado'] },
+      OR: data.professionalId
+        ? [{ professionalId: data.professionalId }, { professionalId: null }]
+        : undefined,
     },
-    select: { time: true, durationMinutes: true },
+    select: { time: true, durationMinutes: true, professionalId: true },
   });
 
   for (const existing of sameDay) {
     if (!existing.time) continue;
     const exStart = parse(existing.time, 'HH:mm', baseDate);
     const exEnd = addMinutes(exStart, existing.durationMinutes ?? durationMinutes);
-    // Overlap: newStart < exEnd && newEnd > exStart
+    // Overlap: newStart < exEnd && newEnd > exStart. If the new booking is
+    // assigned to a professional, only that professional's agenda plus global
+    // unassigned blocks are considered. Unassigned bookings keep blocking the
+    // tenant-level agenda to preserve legacy behaviour.
     if (isBefore(newStart, exEnd) && isAfter(newEnd, exStart)) {
       throw new Error('Este horário já está ocupado. Por favor, escolha outro horário.');
     }
@@ -392,8 +398,11 @@ export async function rescheduleAppointment(
       date: newDate,
       status: { in: ['agendado', 'confirmado'] },
       id: { not: appointmentId },
+      OR: existing.professionalId
+        ? [{ professionalId: existing.professionalId }, { professionalId: null }]
+        : undefined,
     },
-    select: { time: true, durationMinutes: true },
+    select: { time: true, durationMinutes: true, professionalId: true },
   });
 
   for (const appt of sameDay) {

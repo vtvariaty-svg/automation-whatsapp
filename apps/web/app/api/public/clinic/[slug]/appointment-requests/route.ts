@@ -16,6 +16,28 @@ function sanitize(s: string, max: number): string {
   return String(s).trim().slice(0, max);
 }
 
+function isValidCalendarDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split('-').map(Number);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  return parsed.getUTCFullYear() === year
+    && parsed.getUTCMonth() === month - 1
+    && parsed.getUTCDate() === day;
+}
+
+function isPastDate(value: string): boolean {
+  const today = new Date();
+  const todayUtc = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
+  const [year, month, day] = value.split('-').map(Number);
+  return Date.UTC(year, month - 1, day) < todayUtc;
+}
+
+function isValidClockTime(value: string): boolean {
+  if (!/^\d{2}:\d{2}$/.test(value)) return false;
+  const [hour, minute] = value.split(':').map(Number);
+  return hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59;
+}
+
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ slug: string }> }
@@ -88,15 +110,18 @@ export async function POST(
   const preferredDate = typeof body.preferredDate === 'string' && body.preferredDate.trim()
     ? sanitize(body.preferredDate, 10)
     : undefined;
-  if (preferredDate && !/^\d{4}-\d{2}-\d{2}$/.test(preferredDate)) {
-    return NextResponse.json({ error: 'Data deve estar no formato YYYY-MM-DD.' }, { status: 400 });
+  if (preferredDate && !isValidCalendarDate(preferredDate)) {
+    return NextResponse.json({ error: 'Data deve estar no formato YYYY-MM-DD e ser uma data válida.' }, { status: 400 });
+  }
+  if (preferredDate && isPastDate(preferredDate)) {
+    return NextResponse.json({ error: 'Data preferida não pode estar no passado.' }, { status: 400 });
   }
 
   const preferredTime = typeof body.preferredTime === 'string' && body.preferredTime.trim()
     ? sanitize(body.preferredTime, 5)
     : undefined;
-  if (preferredTime && !/^\d{2}:\d{2}$/.test(preferredTime)) {
-    return NextResponse.json({ error: 'Horário deve estar no formato HH:MM.' }, { status: 400 });
+  if (preferredTime && !isValidClockTime(preferredTime)) {
+    return NextResponse.json({ error: 'Horário deve estar no formato HH:MM e ser um horário válido.' }, { status: 400 });
   }
 
   // Validate optional serviceId against this clinic

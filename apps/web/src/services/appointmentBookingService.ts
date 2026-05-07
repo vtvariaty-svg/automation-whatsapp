@@ -87,7 +87,20 @@ export function detectBookingIntent(text: string): boolean {
 
 function formatSlotList(service: string, slots: SlotOption[]): string {
   const list = slots.map((s, i) => `*${i + 1}.* ${s.label}`).join('\n');
-  return `📅 *Agendamento — ${service}*\n\nHorários disponíveis:\n${list}\n\nResponda com o *número* do horário desejado.`;
+  return `📅 *Agendamento — ${service}*\n\nHorários disponíveis:\n${list}\n\nResponda com o *número* do horário desejado. Se quiser cancelar esta etapa, envie *cancelar*.`;
+}
+
+function formatInvalidSlotSelection(service: string, slots: SlotOption[]): string {
+  return `Não consegui identificar o horário escolhido. Por favor, responda apenas com um número de *1* a *${slots.length}*.\n\n${formatSlotList(service, slots)}`;
+}
+
+function normalizeText(text: string): string {
+  return text.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+function isAbortCurrentFlow(text: string): boolean {
+  const normalized = normalizeText(text);
+  return ['cancelar', 'sair', 'parar', 'desistir'].some(kw => normalized === kw || normalized.includes(` ${kw}`));
 }
 
 // ─── State management in CustomerMemory.notes ────────────────────────────────
@@ -198,6 +211,11 @@ export async function handleBookingFlow(
   // ── Step 2: In-progress slot selection (pendingBooking) ──
   const pending = await getPendingState(tenantId, phone);
   if (pending?.step === 'selecting_slot' && pending._key === 'pendingBooking') {
+    if (isAbortCurrentFlow(text)) {
+      await clearPendingKey(tenantId, phone, 'pendingBooking');
+      return 'Tudo bem, cancelei esta seleção de horário. Quando quiser retomar, é só pedir para agendar novamente. 😊';
+    }
+
     const trimmed = text.trim();
     const numMatch = trimmed.match(/^(\d+)$/);
 
@@ -258,8 +276,8 @@ export async function handleBookingFlow(
       }
     }
 
-    // Couldn't parse selection — re-show the options
-    return formatSlotList(pending.service, pending.slots);
+    // Couldn't parse selection — re-show the options with explicit recovery guidance.
+    return formatInvalidSlotSelection(pending.service, pending.slots);
   }
 
   // ── Step 1: Detect initial booking intent ──
@@ -403,7 +421,7 @@ export async function handleAppointmentMessage(
   text: string,
   conversationId?: string
 ): Promise<string | null> {
-  const normalized = text.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const normalized = normalizeText(text);
   const pending = await getPendingState(tenantId, phone);
 
   // ── Handle pending cancel confirmation ──
@@ -442,6 +460,11 @@ export async function handleAppointmentMessage(
   // ── Handle pending reschedule slot selection ──
   if (pending?.step === 'selecting_new_slot' && pending._key === 'pendingReschedule') {
     const ps = pending as PendingRescheduleState & { _key: PendingKey };
+    if (isAbortCurrentFlow(text)) {
+      await clearPendingKey(tenantId, phone, 'pendingReschedule');
+      return 'Tudo bem! Seu agendamento atual segue mantido. 😊';
+    }
+
     const numMatch = text.trim().match(/^(\d+)$/);
     if (numMatch) {
       const idx = parseInt(numMatch[1], 10) - 1;
@@ -469,7 +492,7 @@ export async function handleAppointmentMessage(
         }
       }
     }
-    return formatSlotList(ps.service, ps.slots);
+    return formatInvalidSlotSelection(ps.service, ps.slots);
   }
 
   // ── Handle pending booking slot selection ──
@@ -511,9 +534,17 @@ export async function handleAppointmentMessage(
     }
 
     const dayLabel = format(new Date(`${appt.date}T12:00:00`), "EEEE',' dd/MM", { locale: ptBR });
-    const slotsWithLabels: SlotOption[] = slots.map(s => ({
+    const availableNewSlots = slots.filter(s => !(s.date === appt.date && s.time === appt.time));
+    if (availableNewSlots.length === 0) {
+      return 'No momento não encontramos outro horário disponível para remarcar. Entre em contato para verificar a disponibilidade.';
+    }
+
+    const slotsWithLabels: SlotOption[] = availableNewSlots.map(s => ({
       ...s,
-      label: `${format(new Date(`${s.date}T12:00:00`), "EEE dd/MM", { locale: ptBR })} às ${s.time}h`,
+      label: [
+        `${format(new Date(`${s.date}T12:00:00`), "EEE dd/MM", { locale: ptBR })} às ${s.time}h`,
+        s.professionalName ? `com ${s.professionalName}` : '',
+      ].filter(Boolean).join(' '),
     }));
 
     await setPendingKey(tenantId, phone, 'pendingReschedule', {

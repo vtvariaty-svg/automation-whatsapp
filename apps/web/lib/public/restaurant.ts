@@ -43,6 +43,26 @@ export async function getPublicRestaurantBySlug(slug: string) {
               price: true,
               imageUrl: true,
               isAvailable: true,
+              addonGroups: {
+                where: { isActive: true },
+                orderBy: { sortOrder: 'asc' },
+                select: {
+                  id: true,
+                  name: true,
+                  minSelect: true,
+                  maxSelect: true,
+                  isRequired: true,
+                  options: {
+                    where: { isActive: true },
+                    orderBy: { sortOrder: 'asc' },
+                    select: {
+                      id: true,
+                      name: true,
+                      priceDelta: true,
+                    },
+                  },
+                },
+              },
             },
           },
         },

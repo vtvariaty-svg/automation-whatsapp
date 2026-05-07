@@ -23,7 +23,27 @@ type ItemPayload = {
   productId: string;
   quantity: number;
   notes?: string;
+  addonOptionIds?: string[];
 };
+
+type ProductWithAddons = {
+  id: string;
+  name: string;
+  price: number;
+  addonGroups: Array<{
+    id: string;
+    name: string;
+    minSelect: number;
+    maxSelect: number;
+    isRequired: boolean;
+    options: Array<{ id: string; name: string; priceDelta: number }>;
+  }>;
+};
+
+function normalizeAddonOptionIds(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return [...new Set(value.filter((id): id is string => typeof id === 'string' && id.trim().length > 0))].slice(0, 20);
+}
 
 export async function POST(
   request: Request,
@@ -55,6 +75,7 @@ export async function POST(
       isPublished: true,
       acceptsDelivery: true,
       acceptsPickup: true,
+      minimumOrderValue: true,
     },
   });
 
@@ -134,10 +155,30 @@ export async function POST(
       isActive: true,
       isAvailable: true,
     },
-    select: { id: true, name: true, price: true },
+    select: {
+      id: true,
+      name: true,
+      price: true,
+      addonGroups: {
+        where: { isActive: true },
+        orderBy: { sortOrder: 'asc' },
+        select: {
+          id: true,
+          name: true,
+          minSelect: true,
+          maxSelect: true,
+          isRequired: true,
+          options: {
+            where: { isActive: true },
+            orderBy: { sortOrder: 'asc' },
+            select: { id: true, name: true, priceDelta: true },
+          },
+        },
+      },
+    },
   });
 
-  const productMap = new Map(dbProducts.map(p => [p.id, p]));
+  const productMap = new Map<string, ProductWithAddons>(dbProducts.map(p => [p.id, p]));
   for (const item of rawItems) {
     if (!productMap.has(item.productId)) {
       return NextResponse.json(
@@ -148,19 +189,76 @@ export async function POST(
   }
 
   // --- Calculate totals server-side ---
-  type LineItem = { product: { id: string; name: string; price: number }; quantity: number; notes?: string; lineTotal: number };
-  const lineItems: LineItem[] = rawItems.map(item => {
+  type LineAddon = { optionId: string; groupName: string; name: string; priceDelta: number };
+  type LineItem = {
+    product: ProductWithAddons;
+    quantity: number;
+    notes?: string;
+    addons: LineAddon[];
+    unitTotal: number;
+    lineTotal: number;
+  };
+
+  const lineItems: LineItem[] = [];
+  for (const item of rawItems) {
     const product = productMap.get(item.productId)!;
     const qty = Number(item.quantity);
-    return {
+    const selectedOptionIds = normalizeAddonOptionIds(item.addonOptionIds);
+    const selectedAddons: LineAddon[] = [];
+
+    for (const group of product.addonGroups) {
+      const optionsById = new Map(group.options.map(option => [option.id, option]));
+      const groupSelections = selectedOptionIds
+        .filter(id => optionsById.has(id))
+        .map(id => optionsById.get(id)!);
+
+      const minRequired = group.isRequired ? Math.max(1, group.minSelect ?? 0) : Math.max(0, group.minSelect ?? 0);
+      const maxAllowed = Math.max(minRequired || 0, group.maxSelect ?? groupSelections.length);
+      if (groupSelections.length < minRequired) {
+        return NextResponse.json(
+          { error: `Selecione pelo menos ${minRequired} opção(ões) em ${group.name} para ${product.name}.` },
+          { status: 400 }
+        );
+      }
+      if (groupSelections.length > maxAllowed) {
+        return NextResponse.json(
+          { error: `Selecione no máximo ${maxAllowed} opção(ões) em ${group.name} para ${product.name}.` },
+          { status: 400 }
+        );
+      }
+
+      selectedAddons.push(...groupSelections.map(option => ({
+        optionId: option.id,
+        groupName: group.name,
+        name: option.name,
+        priceDelta: option.priceDelta,
+      })));
+    }
+
+    const knownOptionIds = new Set(product.addonGroups.flatMap(group => group.options.map(option => option.id)));
+    if (selectedOptionIds.some(id => !knownOptionIds.has(id))) {
+      return NextResponse.json({ error: 'Adicional inválido para um dos itens.' }, { status: 400 });
+    }
+
+    const addonUnitTotal = selectedAddons.reduce((sum, addon) => sum + addon.priceDelta, 0);
+    const unitTotal = Math.round((product.price + addonUnitTotal) * 100) / 100;
+    lineItems.push({
       product,
       quantity: qty,
       notes: item.notes ? sanitize(String(item.notes), 300) : undefined,
-      lineTotal: Math.round(product.price * qty * 100) / 100,
-    };
-  });
+      addons: selectedAddons,
+      unitTotal,
+      lineTotal: Math.round(unitTotal * qty * 100) / 100,
+    });
+  }
 
   const subtotal = Math.round(lineItems.reduce((sum, l) => sum + l.lineTotal, 0) * 100) / 100;
+  if (profile.minimumOrderValue && subtotal < profile.minimumOrderValue) {
+    return NextResponse.json(
+      { error: `Pedido mínimo de ${fmt(profile.minimumOrderValue)} não atingido.` },
+      { status: 400 }
+    );
+  }
   const deliveryFee = 0; // Numeric delivery fee not stored in profile; restaurant confirms via WhatsApp
   const total = subtotal + deliveryFee;
 
@@ -169,7 +267,10 @@ export async function POST(
   const fulfillmentLabel = fulfillmentType === 'DELIVERY' ? 'Entrega' : 'Retirada';
 
   const itemLines = lineItems.map(l => {
-    const line = `- ${l.quantity}x ${l.product.name} — ${fmt(l.lineTotal)}`;
+    const addonLines = l.addons.map(addon =>
+      `  + ${addon.groupName}: ${addon.name}${addon.priceDelta ? ` (${fmt(addon.priceDelta)})` : ''}`
+    );
+    const line = [`- ${l.quantity}x ${l.product.name} — ${fmt(l.lineTotal)}`, ...addonLines].join('\n');
     return l.notes ? `${line}\n  Obs: ${l.notes}` : line;
   });
 
@@ -219,9 +320,18 @@ export async function POST(
           productId: l.product.id,
           productNameSnapshot: l.product.name,
           quantity: l.quantity,
-          unitPrice: l.product.price,
+          unitPrice: l.unitTotal,
           notes: l.notes,
           total: l.lineTotal,
+          addons: {
+            create: l.addons.map(addon => ({
+              tenantId: profile.tenantId,
+              addonOptionId: addon.optionId,
+              addonNameSnapshot: `${addon.groupName}: ${addon.name}`,
+              priceDelta: addon.priceDelta,
+              quantity: 1,
+            })),
+          },
         })),
       },
     },
